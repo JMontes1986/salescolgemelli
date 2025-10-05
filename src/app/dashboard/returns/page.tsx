@@ -64,7 +64,7 @@ export default function ReturnsPage() {
             }
         }
         loadInitialData();
-    }, [toast]);
+    }, []);
 
     const handleReturn = async (e: React.FormEvent) => {
         e.preventDefault();
