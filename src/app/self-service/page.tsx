@@ -177,17 +177,16 @@ export default function SelfServicePage() {
         items: cart.map(({ stock, ...item }) => item),
         cedula,
         celular,
-        status: 'pending',
+        status: 'pre-sale', // Self-service purchases are treated as pre-sales
     };
     
     try {
-        const addedPurchase = await addPurchase(newPurchaseData);
+        const addedPurchase = await addPreSalePurchase(newPurchaseData);
         setPaymentCode(addedPurchase.id);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Código de pago generado. Su compra está pendiente de confirmación." });
         
-         // Add audit log for self-service purchase
         await addAuditLog({
           userId: cedula,
           userName: 'Cliente (Autogestión)',
