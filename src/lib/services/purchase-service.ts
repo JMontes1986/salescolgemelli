@@ -334,12 +334,11 @@ export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUs
         const purchaseData = purchaseDoc.data() as Purchase;
 
         // --- 2. WRITE PHASE ---
-        // Increase stock and decrease pre-sale count for each item
+        // Increase stock for each item
         for (const item of purchaseData.items) {
             const productRef = doc(db, "products", item.id);
             transaction.update(productRef, { 
                 stock: increment(item.quantity),
-                preSaleSold: increment(-item.quantity)
             });
         }
         
