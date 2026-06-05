@@ -1,219 +1,113 @@
 # 📦 Ventas ColGemelli
 
-Aplicación web para **gestión de ventas y emisión de tickets** del Colegio Franciscano Agustín Gemelli. Construida con **Next.js + TypeScript** en el frontend y **Firebase (Auth, Firestore, Hosting/Storage, App Check)** en el backend.
+Aplicación web para **gestión de ventas, preventas, caja, devoluciones, usuarios y auditoría** del Colegio Franciscano Agustín Gemelli. El proyecto ahora está preparado para ejecutarse con **Next.js + TypeScript**, desplegarse en **Netlify** y persistir datos en **Supabase**.
 
 ---
 
 ## ✨ Características
-- Registro de **ventas** con productos, cantidades y medios de pago.
-- Emisión y validación de **tickets** (con código/QR).
-- Búsqueda y filtros por fecha, estado o usuario.
-- Roles básicos de usuario (**admin / operador**).
-- UI con **Tailwind CSS**.
-- Preparado para despliegue en **Firebase Hosting** o **Netlify**.
+- Registro de ventas presenciales y de autogestión.
+- Administración de productos, inventario y orden visual.
+- Preventas, confirmación de pagos y entrega/reclamo.
+- Apertura/cierre de caja.
+- Usuarios, roles, permisos y auditoría.
+- Historial de devoluciones con reintegro de stock.
 
 ---
 
 ## 🧱 Arquitectura
-- **Next.js (TypeScript):** Rutas, páginas y componentes UI.
-- **Firebase:**
-  - **Auth:** Autenticación de usuarios.
-  - **Firestore:** Base de datos NoSQL.
-  - **Storage:** Archivos y comprobantes (opcional).
-  - **App Check:** Protección contra abuso.
-- **Reglas de seguridad:** Definidas en `firestore.rules`.
+- **Next.js (App Router + TypeScript):** UI, rutas y componentes.
+- **Supabase:** Postgres expuesto vía REST para tablas de negocio y Storage para imágenes.
+- **Netlify:** build y hosting configurados en `netlify.toml`.
 
----
-
-## 📁 Estructura del proyecto
-```bash
-├── .firebaserc
-├── apphosting.yaml
-├── firestore.rules
-├── next.config.ts
-├── package.json
-├── tailwind.config.ts
-├── tsconfig.json
-└── src/
-    ├── components/
-    ├── pages/    # o app/ según versión de Next.js
-    ├── styles/
-    └── utils/
-```
+La conexión a Supabase está centralizada en `src/lib/supabase.ts`; los módulos de negocio consumen esa capa desde `src/lib/services/`.
 
 ---
 
 ## ⚙️ Requisitos
-- **Node.js** 18+ (LTS recomendado)
-- **npm** o **pnpm**
-- **Proyecto Firebase** con Firestore habilitado
+- Node.js 18+.
+- npm.
+- Proyecto Supabase creado.
+- Tablas creadas en Supabase ejecutando el SQL de `supabase/schema.sql`.
 
 ---
 
 ## 🔐 Variables de entorno
-Crea un archivo `.env.local` en la raíz:
+Crea `.env.local` para desarrollo y configura las mismas variables en **Netlify → Site configuration → Environment variables**:
 
 ```env
-NEXT_PUBLIC_FIREBASE_API_KEY=xxxx
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=xxxx.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=xxxx
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=xxxx.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=xxxx
-NEXT_PUBLIC_FIREBASE_APP_ID=xxxx
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 ```
 
-> ⚠️ **Importante:** No subas este archivo al repositorio.
+> ⚠️ No subas claves privadas ni archivos `.env.local` al repositorio.
 
 ---
 
-## 🚀 Primeros pasos
+## 🗃️ Base de datos Supabase
+1. Entra al panel de Supabase.
+2. Abre **SQL Editor**.
+3. Ejecuta el contenido de `supabase/schema.sql`.
+4. Configura las políticas RLS según tu operación. Para una app interna puedes empezar permitiendo acceso autenticado y luego endurecer por rol.
+
+Tablas principales:
+- `users`
+- `products`
+- `purchases`
+- `returns`
+- `auditLogs`
+- `cashboxSessions`
+- `counters`
+
+---
+
+## 🚀 Desarrollo local
 ```bash
-# Instalar dependencias
 npm install
-
-# Ejecutar en desarrollo
 npm run dev
-
-# Abrir en navegador
-http://localhost:3000
 ```
 
----
-
-## 🗃️ Modelo de datos sugerido
-
-### `ventas/{ventaId}`
-- `fecha`: Timestamp
-- `vendedorId`: string
-- `items`: array `{ productoId, nombre, cantidad, precioUnitario, subtotal }`
-- `total`: number
-- `medioPago`: string
-- `estado`: `registrada | anulada`
-- `ticketId`: string
-
-### `tickets/{ticketId}`
-- `ventaId`: string
-- `codigo`: string | QR
-- `estado`: `emitido | validado | anulado`
-- `emitidoEn`: Timestamp
-- `validadoEn`: Timestamp
-
-### `productos/{productoId}`
-- `nombre`: string
-- `precio`: number
-- `categoria`: string
-- `activo`: boolean
-- `stock`: number
-
-### `usuarios/{uid}`
-- `displayName`: string
-- `role`: `admin | operador`
-- `activo`: boolean
+Abre `http://localhost:3000`.
 
 ---
 
-## 🔒 Reglas de seguridad Firestore (ejemplo)
-```txt
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    match /usuarios/{uid} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    match /ventas/{docId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role in ['admin','operador'];
-    }
-
-    match /tickets/{docId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role in ['admin','operador'];
-      allow delete: if request.auth != null
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    match /productos/{docId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin';
-    }
-  }
-}
-```
-
----
-
-## 🧪 Scripts de npm
-```jsonc
-{
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  }
-}
-```
-
----
-
-## ☁️ Despliegue
-
-### Firebase Hosting
+## 🧪 Scripts
 ```bash
-firebase login
+npm run dev
 npm run build
-firebase deploy
+npm run start
+npm run typecheck
 ```
-
-### Netlify
-1. Conectar repositorio.
-2. **Build command:** `npm run build`
-3. **Publish directory:** `.next`
 
 ---
 
-## 📸 Capturas de pantalla
+## ☁️ Despliegue en Netlify
+El archivo `netlify.toml` define:
 
-> Agrega tus imágenes en `/docs/screenshots/` y actualiza las rutas:
+```toml
+[build]
+  command = "npm run build"
+  publish = ".next"
 
-- Pantalla de inicio
-  ![Inicio](docs/screenshots/inicio.png)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
 
-- Panel de ventas
-  ![Panel de ventas](docs/screenshots/panel-ventas.png)
-
-- Emisión de ticket
-  ![Ticket](docs/screenshots/ticket.png)
+Pasos:
+1. Conecta el repositorio en Netlify.
+2. Usa `npm run build` como build command.
+3. Deja `.next` como publish directory.
+4. Agrega `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+5. Despliega.
 
 ---
 
 ## 🐛 Solución de problemas
-- **Pantalla en blanco:** revisa variables de entorno.
-- **PERMISSION_DENIED:** revisa `firestore.rules` y roles de usuario.
-- **Límites Firestore:** usa paginación e índices compuestos.
-
----
-
-## 🤝 Contribuir
-1. Haz un fork.
-2. Crea una rama:
-   ```bash
-   git checkout -b feature/nueva-funcionalidad
-   ```
-3. Envía un PR.
+- **Supabase no está configurado:** revisa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- **Errores 401/403:** revisa políticas RLS y permisos de la anon key.
+- **Tablas o columnas no encontradas:** vuelve a ejecutar `supabase/schema.sql` en el proyecto correcto.
+- **Imágenes remotas bloqueadas:** agrega el host de Supabase Storage en `next.config.ts` si cambias de proyecto.
 
 ---
 
 ## 📄 Licencia
 MIT
-
----
-
-## 📫 Contacto
-**Autor:** Julián Montes — Colegio Franciscano Agustín Gemelli (Manizales

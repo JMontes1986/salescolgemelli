@@ -83,10 +83,10 @@ export function SidebarNav({ navItems: accessibleNavItems }: { navItems: NavItem
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === item.href}
-                  icon={item.icon}
                   tooltip={item.label}
                 >
                   <Link href={item.href} target={item.external ? '_blank' : '_self'}>
+                    <item.icon />
                     {item.label}
                   </Link>
                 </SidebarMenuButton>
@@ -98,10 +98,10 @@ export function SidebarNav({ navItems: accessibleNavItems }: { navItems: NavItem
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === item.href}
-                  icon={item.icon}
                   tooltip={item.label}
                 >
                   <Link href={item.href}>
+                    <item.icon />
                     {item.label}
                   </Link>
                 </SidebarMenuButton>
@@ -112,7 +112,10 @@ export function SidebarNav({ navItems: accessibleNavItems }: { navItems: NavItem
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton icon={LogOut} onClick={handleLogout}>Cerrar Sesión</SidebarMenuButton>
+            <SidebarMenuButton onClick={handleLogout}>
+              <LogOut />
+              Cerrar Sesión
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
