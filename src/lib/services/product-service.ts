@@ -6,21 +6,72 @@ export type NewProduct = Omit<Product, 'id' | 'position'>;
 export type UpdatableProduct = Partial<Omit<Product, 'id'>>;
 
 const fallbackAvailability: ProductAvailability[] = ['pos', 'self-service', 'presale'];
+const availabilityValues = new Set<ProductAvailability>(fallbackAvailability);
 const missingAvailabilitySchemaMessage =
   'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
+
+function normalizeAvailabilityValue(value: unknown, hasAvailabilityColumn: boolean): ProductAvailability[] {
+  const rawValues = (() => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+
+      if (!trimmed) {
+        return [];
+      }
+
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          return Array.isArray(parsed) ? parsed : [trimmed];
+        } catch {
+          return [trimmed];
+        }
+      }
+
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        return trimmed
+          .slice(1, -1)
+          .split(',')
+          .map(item => item.replace(/^"|"$/g, '').trim())
+          .filter(Boolean);
+      }
+
+      return [trimmed];
+    }
+
+    return [];
+  })();
+
+  const normalized = rawValues.reduce<ProductAvailability[]>((acc, item) => {
+    if (typeof item !== 'string') {
+      return acc;
+    }
+
+    const availability = item.trim() as ProductAvailability;
+    if (availabilityValues.has(availability) && !acc.includes(availability)) {
+      acc.push(availability);
+    }
+
+    return acc;
+  }, []);
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return hasAvailabilityColumn ? [] : fallbackAvailability;
+}
 
 function normalizeProduct(product: Product): Product {
   const hasAvailabilityColumn = Object.prototype.hasOwnProperty.call(product, 'availability');
 
   return {
     ...product,
-    availability: Array.isArray(product.availability)
-      ? product.availability
-      : product.availability
-        ? [product.availability]
-        : hasAvailabilityColumn
-          ? []
-          : fallbackAvailability,
+    availability: normalizeAvailabilityValue(product.availability, hasAvailabilityColumn),
     position: product.position ?? 0,
     restockCount: product.restockCount ?? 0,
     preSaleSold: product.preSaleSold ?? 0,
@@ -86,37 +137,8 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function getProductsByAvailability(availability: ProductAvailability): Promise<Product[]> {
-  let products: Product[];
-
-  try {
-    products = await selectRows<Product>('products', {
-      availability: `cs.{${availability}}`,
-      order: 'position.asc',
-    });
-  } catch (error) {
-    if (isMissingAvailabilityColumn(error)) {
-      return getProducts();
-    }
-
-    if (!isMissingPositionColumn(error)) {
-      throw error;
-    }
-
-    try {
-      products = await selectRows<Product>('products', {
-        availability: `cs.{${availability}}`,
-        order: 'name.asc',
-      });
-    } catch (fallbackError) {
-      if (isMissingAvailabilityColumn(fallbackError)) {
-        return getProducts();
-      }
-
-      throw fallbackError;
-    }
-  }
-
-  return products.map(normalizeProduct).sort((a, b) => a.position - b.position);
+  const products = await getProducts();
+  return products.filter(product => product.availability.includes(availability));
 }
 
 export async function addProduct(product: NewProduct): Promise<Product> {
@@ -138,8 +160,9 @@ export async function addProductWithId(product: Product): Promise<void> {
   await withProductSchemaFallback(normalized, (payload) => upsertRow<Product>('products', payload));
 }
 
-export async function updateProduct(productId: string, product: UpdatableProduct): Promise<void> {
-  await withProductSchemaFallback(product, (payload) => updateById<Product>('products', productId, payload));
+export async function updateProduct(productId: string, product: UpdatableProduct): Promise<Product | null> {
+  const updatedProduct = await withProductSchemaFallback(product, (payload) => updateById<Product>('products', productId, payload));
+  return updatedProduct ? normalizeProduct(updatedProduct) : null;
 }
 
 export async function increaseProductStock(productId: string, quantity: number, user?: User): Promise<void> {

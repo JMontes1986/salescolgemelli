@@ -167,8 +167,8 @@ function ProductForm({
                 position: initialData.position,
             };
             try {
-                await updateProduct(initialData.id, updatedProductData);
-                onProductUpdated({ ...initialData, ...updatedProductData });
+                const savedProduct = await updateProduct(initialData.id, updatedProductData);
+                onProductUpdated(savedProduct || { ...initialData, ...updatedProductData });
                 toast({ title: "Éxito", description: "Producto actualizado correctamente." });
                 setIsOpen(false);
             } catch (error) {
