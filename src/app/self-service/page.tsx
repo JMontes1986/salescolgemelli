@@ -57,6 +57,7 @@ export default function SelfServicePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
 
   const loadProducts = useCallback(async () => {
     setIsLoading(true);
@@ -141,9 +142,19 @@ export default function SelfServicePage() {
     setIsProcessing(true);
     
     try {
-        await updatePendingPurchase(editingPurchase.id, cart.map(({ stock, ...item }) => item));
+        const updatedItems = cart.map(({ stock, ...item }) => item);
+        await updatePendingPurchase(editingPurchase.id, updatedItems);
+        const updatedPurchase: Purchase = {
+          ...editingPurchase,
+          items: updatedItems.map(item => ({ ...item, returned: false })),
+          total: subtotal,
+          date: new Date().toLocaleString('es-CO'),
+        };
         
         setPaymentCode(editingPurchase.id);
+        setLastPurchase(updatedPurchase);
+        setSearchCedula(updatedPurchase.cedula);
+        setPurchaseHistory(prev => [updatedPurchase, ...prev.filter(purchase => purchase.id !== updatedPurchase.id)]);
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Su compra ha sido actualizada correctamente." });
 
@@ -173,6 +184,9 @@ export default function SelfServicePage() {
     try {
         const addedPurchase = await addPreSalePurchase(newPurchaseData);
         setPaymentCode(addedPurchase.id);
+        setLastPurchase(addedPurchase);
+        setSearchCedula(addedPurchase.cedula);
+        setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Código de pago generado. Su compra está pendiente de confirmación." });
@@ -218,8 +232,6 @@ export default function SelfServicePage() {
       setCelular('');
       clearCart();
       loadProducts(); // Refresh products after a successful purchase
-      setPurchaseHistory([]);
-      setSearchCedula('');
   }
 
   const handleEditPurchase = (purchase: Purchase) => {
@@ -267,6 +279,42 @@ export default function SelfServicePage() {
           <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
             Está modificando la compra {editingPurchase.id}. Revise el pedido y guarde los cambios.
           </div>
+        )}
+
+        {lastPurchase && !editingPurchase && (
+          <Card className="border border-emerald-200 bg-emerald-50 shadow-sm">
+            <CardHeader className="gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-xl text-emerald-950">Última compra generada</CardTitle>
+                <CardDescription className="text-emerald-800">
+                  Presente este código en caja para consultar y confirmar el pago.
+                </CardDescription>
+              </div>
+              <div className="rounded-md bg-background px-4 py-3 text-center shadow-sm">
+                <p className="text-xs font-bold uppercase text-muted-foreground">Código</p>
+                <p className="font-mono text-2xl font-black tracking-widest text-primary">{lastPurchase.id}</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {lastPurchase.items.map(item => (
+                  <div key={`${lastPurchase.id}-${item.id}`} className="rounded-md border bg-background p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold leading-tight">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">Cantidad: {item.quantity}</p>
+                      </div>
+                      <p className="shrink-0 font-black">{formatCurrency(item.price * item.quantity)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col gap-1 border-t border-emerald-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm font-semibold text-emerald-900">{lastPurchase.date}</span>
+                <span className="text-xl font-black text-emerald-950">Total: {formatCurrency(lastPurchase.total)}</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
