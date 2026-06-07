@@ -36,7 +36,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
-import { getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
+import { allProductAvailability, getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -81,7 +81,7 @@ function ProductForm({
     const [price, setPrice] = useState(initialData?.price.toString() || '');
     const [stock, setStock] = useState(initialData?.stock.toString() || '');
     const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
-    const [availability, setAvailability] = useState<ProductAvailability[]>(initialData?.availability || []);
+    const [availability, setAvailability] = useState<ProductAvailability[]>(initialData?.availability.length ? initialData.availability : allProductAvailability);
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
@@ -90,7 +90,7 @@ function ProductForm({
             setPrice(initialData.price.toString());
             setStock(initialData.stock.toString());
             setImageUrl(initialData.imageUrl);
-            setAvailability(initialData.availability || []);
+            setAvailability(initialData.availability.length ? initialData.availability : allProductAvailability);
         }
     }, [initialData, mode]);
 
@@ -102,7 +102,7 @@ function ProductForm({
                 setPrice('');
                 setStock('');
                 setImageUrl('');
-                setAvailability([]);
+                setAvailability(allProductAvailability);
             }
         } else {
              if (mode === 'edit' && initialData) {
@@ -110,13 +110,13 @@ function ProductForm({
                 setPrice(initialData.price.toString());
                 setStock(initialData.stock.toString());
                 setImageUrl(initialData.imageUrl);
-                setAvailability(initialData.availability || []);
+                setAvailability(initialData.availability.length ? initialData.availability : allProductAvailability);
             } else {
                 setName('');
                 setPrice('');
                 setStock('');
                 setImageUrl('');
-                setAvailability([]);
+                setAvailability(allProductAvailability);
             }
         }
     };
@@ -168,7 +168,7 @@ function ProductForm({
             };
             try {
                 const savedProduct = await updateProduct(initialData.id, updatedProductData);
-                onProductUpdated(savedProduct || { ...initialData, ...updatedProductData });
+                onProductUpdated(savedProduct);
                 toast({ title: "Éxito", description: "Producto actualizado correctamente." });
                 setIsOpen(false);
             } catch (error) {
@@ -185,6 +185,7 @@ function ProductForm({
     const dialogTitle = mode === 'create' ? "Añadir Nuevo Producto" : "Editar Producto";
     const dialogDescription = mode === 'create' ? "Complete los detalles del nuevo producto." : "Actualice los detalles del producto.";
     const buttonText = mode === 'create' ? "Guardar Producto" : "Guardar Cambios";
+    const fieldPrefix = `product-${initialData?.id || 'create'}`;
 
     const trigger = mode === 'create' ? (
         <Button>
@@ -211,20 +212,20 @@ function ProductForm({
                 <form id={`product-form-${initialData?.id || 'create'}`} onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="product-name">Nombre del Producto</Label>
-                            <Input id="product-name" placeholder="Ej: Carne Asada" value={name} onChange={e => setName(e.target.value)} required />
+                            <Label htmlFor={`${fieldPrefix}-name`}>Nombre del Producto</Label>
+                            <Input id={`${fieldPrefix}-name`} placeholder="Ej: Carne Asada" value={name} onChange={e => setName(e.target.value)} required />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="product-price">Precio</Label>
-                            <Input id="product-price" type="number" placeholder="0" value={price} onChange={e => setPrice(e.target.value)} required/>
+                            <Label htmlFor={`${fieldPrefix}-price`}>Precio</Label>
+                            <Input id={`${fieldPrefix}-price`} type="number" placeholder="0" value={price} onChange={e => setPrice(e.target.value)} required/>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="product-stock">Stock Inicial</Label>
-                            <Input id="product-stock" type="number" placeholder="100" value={stock} onChange={e => setStock(e.target.value)} required/>
+                            <Label htmlFor={`${fieldPrefix}-stock`}>Stock Inicial</Label>
+                            <Input id={`${fieldPrefix}-stock`} type="number" placeholder="100" value={stock} onChange={e => setStock(e.target.value)} required/>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="product-image-url">URL de la Imagen</Label>
-                            <Input id="product-image-url" placeholder="https://ejemplo.com/imagen.jpg" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                            <Label htmlFor={`${fieldPrefix}-image-url`}>URL de la Imagen</Label>
+                            <Input id={`${fieldPrefix}-image-url`} placeholder="https://ejemplo.com/imagen.jpg" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
                         </div>
                          <div className="space-y-2">
                             <Label>Disponibilidad</Label>
@@ -232,11 +233,11 @@ function ProductForm({
                                 {Object.entries(availabilityMap).map(([key, { label }]) => (
                                     <div key={key} className="flex items-center space-x-2">
                                         <Checkbox
-                                            id={`availability-${key}`}
+                                            id={`${fieldPrefix}-availability-${key}`}
                                             checked={availability.includes(key as ProductAvailability)}
                                             onCheckedChange={() => handleAvailabilityChange(key as ProductAvailability)}
                                         />
-                                        <Label htmlFor={`availability-${key}`} className="font-normal">{label}</Label>
+                                        <Label htmlFor={`${fieldPrefix}-availability-${key}`} className="font-normal">{label}</Label>
                                     </div>
                                 ))}
                             </div>

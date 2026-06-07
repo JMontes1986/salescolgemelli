@@ -5,12 +5,13 @@ import { addAuditLog } from "./audit-service";
 export type NewProduct = Omit<Product, 'id' | 'position'>;
 export type UpdatableProduct = Partial<Omit<Product, 'id'>>;
 
-const fallbackAvailability: ProductAvailability[] = ['pos', 'self-service', 'presale'];
+export const allProductAvailability: ProductAvailability[] = ['pos', 'self-service', 'presale'];
+const fallbackAvailability = allProductAvailability;
 const availabilityValues = new Set<ProductAvailability>(fallbackAvailability);
 const missingAvailabilitySchemaMessage =
   'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
 
-function normalizeAvailabilityValue(value: unknown, hasAvailabilityColumn: boolean): ProductAvailability[] {
+function normalizeAvailabilityValue(value: unknown): ProductAvailability[] {
   const rawValues = (() => {
     if (Array.isArray(value)) {
       return value;
@@ -63,15 +64,28 @@ function normalizeAvailabilityValue(value: unknown, hasAvailabilityColumn: boole
     return normalized;
   }
 
-  return hasAvailabilityColumn ? [] : fallbackAvailability;
+  return [...fallbackAvailability];
 }
 
-function normalizeProduct(product: Product): Product {
-  const hasAvailabilityColumn = Object.prototype.hasOwnProperty.call(product, 'availability');
+function normalizeAvailabilityForWrite(value: unknown): ProductAvailability[] {
+  return normalizeAvailabilityValue(value);
+}
+
+function normalizeProductPayload<T extends Partial<Product>>(product: T): T {
+  if (!Object.prototype.hasOwnProperty.call(product, 'availability')) {
+    return product;
+  }
 
   return {
     ...product,
-    availability: normalizeAvailabilityValue(product.availability, hasAvailabilityColumn),
+    availability: normalizeAvailabilityForWrite(product.availability),
+  };
+}
+
+function normalizeProduct(product: Product): Product {
+  return {
+    ...product,
+    availability: normalizeAvailabilityValue(product.availability),
     position: product.position ?? 0,
     restockCount: product.restockCount ?? 0,
     preSaleSold: product.preSaleSold ?? 0,
@@ -144,25 +158,33 @@ export async function getProductsByAvailability(availability: ProductAvailabilit
 export async function addProduct(product: NewProduct): Promise<Product> {
   const products = await selectRows<Product>('products', { select: 'id' });
   const newPosition = products.length;
-  const newProduct = {
+  const newProduct = normalizeProductPayload({
     ...product,
     restockCount: 0,
     preSaleSold: 0,
     position: newPosition,
-  };
+  });
 
   return normalizeProduct(await withProductSchemaFallback(newProduct, (payload) => insertRow<Product>('products', payload)));
 }
 
 export async function addProductWithId(product: Product): Promise<void> {
-  const normalized = normalizeProduct(product);
+  const normalized = normalizeProductPayload(normalizeProduct(product));
 
   await withProductSchemaFallback(normalized, (payload) => upsertRow<Product>('products', payload));
 }
 
-export async function updateProduct(productId: string, product: UpdatableProduct): Promise<Product | null> {
-  const updatedProduct = await withProductSchemaFallback(product, (payload) => updateById<Product>('products', productId, payload));
-  return updatedProduct ? normalizeProduct(updatedProduct) : null;
+export async function updateProduct(productId: string, product: UpdatableProduct): Promise<Product> {
+  const updatedProduct = await withProductSchemaFallback(
+    normalizeProductPayload(product),
+    (payload) => updateById<Product>('products', productId, payload)
+  );
+
+  if (!updatedProduct) {
+    throw new Error('Supabase no confirmó la actualización del producto. Revisa permisos/RLS de la tabla products.');
+  }
+
+  return normalizeProduct(updatedProduct);
 }
 
 export async function increaseProductStock(productId: string, quantity: number, user?: User): Promise<void> {
