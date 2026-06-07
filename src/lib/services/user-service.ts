@@ -49,6 +49,7 @@ export class AuthenticationError extends Error {
 }
 
 const userRoles: UserRole[] = ['admin', 'cashier', 'seller', 'auditor'];
+const adminEmails = ['sistemas@colgemelli.edu.co'];
 
 function isUserRole(value: unknown): value is UserRole {
   return typeof value === 'string' && userRoles.includes(value as UserRole);
@@ -79,7 +80,14 @@ function buildProfileFromAuthUser(authUser: SupabaseAuthUser, fallback?: Partial
   const metadata = getAuthMetadata(authUser);
   const username = fallback?.username ?? metadata.username ?? authUser.email ?? authUser.id;
   const name = fallback?.name ?? metadata.name ?? metadata.full_name ?? username;
-  const role = isUserRole(fallback?.role) ? fallback.role : isUserRole(metadata.role) ? metadata.role : 'seller';
+  const normalizedEmail = authUser.email?.trim().toLowerCase();
+  const role = adminEmails.includes(normalizedEmail ?? '')
+    ? 'admin'
+    : isUserRole(fallback?.role)
+      ? fallback.role
+      : isUserRole(metadata.role)
+        ? metadata.role
+        : 'seller';
 
   return {
     id: authUser.id,
@@ -92,6 +100,20 @@ function buildProfileFromAuthUser(authUser: SupabaseAuthUser, fallback?: Partial
       metadata.avatarUrl ??
       metadata.avatar_url ??
       `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
+  };
+}
+
+function applyAuthOverrides(user: User, authUser: SupabaseAuthUser): User {
+  const normalizedEmail = authUser.email?.trim().toLowerCase();
+
+  if (!adminEmails.includes(normalizedEmail ?? '')) {
+    return user;
+  }
+
+  return {
+    ...user,
+    role: 'admin',
+    permissions: getPermissionsForRole('admin'),
   };
 }
 
@@ -128,20 +150,20 @@ async function getProfileForAuthUser(authUser: SupabaseAuthUser, fallback?: Part
     const existingProfile = await getUserById(authUser.id);
 
     if (existingProfile) {
-      return existingProfile;
+      return applyAuthOverrides(existingProfile, authUser);
     }
 
     const username = fallback?.username ?? authUser.email ?? getAuthMetadata(authUser).username;
     const legacyProfile = username ? await selectSingle<User>('users', { username: `eq.${username}` }) : null;
 
     if (legacyProfile) {
-      return legacyProfile;
+      return applyAuthOverrides(legacyProfile, authUser);
     }
   } catch (error) {
     console.warn("No se pudo leer el perfil público del usuario. Se usará Supabase Authentication.", error);
   }
 
-  return buildProfileFromAuthUser(authUser, fallback);
+  return applyAuthOverrides(buildProfileFromAuthUser(authUser, fallback), authUser);
 }
 
 export async function authenticateUser(username: string, password_provided: string): Promise<AuthenticatedUser | null> {
