@@ -22,6 +22,13 @@ create table if not exists public.products (
   position integer not null default 0
 );
 
+alter table public.products add column if not exists "imageUrl" text not null default '';
+alter table public.products add column if not exists "imageHint" text not null default '';
+alter table public.products add column if not exists availability text[] not null default '{}';
+alter table public.products add column if not exists "restockCount" integer not null default 0;
+alter table public.products add column if not exists "preSaleSold" integer not null default 0;
+alter table public.products add column if not exists position integer not null default 0;
+
 create table if not exists public.purchases (
   id text primary key,
   date text not null,

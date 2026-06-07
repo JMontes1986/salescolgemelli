@@ -5,14 +5,22 @@ import { addAuditLog } from "./audit-service";
 export type NewProduct = Omit<Product, 'id' | 'position'>;
 export type UpdatableProduct = Partial<Omit<Product, 'id'>>;
 
+const fallbackAvailability: ProductAvailability[] = ['pos', 'self-service', 'presale'];
+const missingAvailabilitySchemaMessage =
+  'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
+
 function normalizeProduct(product: Product): Product {
+  const hasAvailabilityColumn = Object.prototype.hasOwnProperty.call(product, 'availability');
+
   return {
     ...product,
     availability: Array.isArray(product.availability)
       ? product.availability
       : product.availability
         ? [product.availability]
-        : [],
+        : hasAvailabilityColumn
+          ? []
+          : fallbackAvailability,
     position: product.position ?? 0,
     restockCount: product.restockCount ?? 0,
     preSaleSold: product.preSaleSold ?? 0,
@@ -23,9 +31,42 @@ function isMissingPositionColumn(error: unknown) {
   return error instanceof Error && error.message.includes('products.position does not exist');
 }
 
+function isMissingAvailabilityColumn(error: unknown) {
+  return error instanceof Error && (
+    error.message.includes("'availability' column of 'products'") ||
+    error.message.includes('products.availability does not exist')
+  );
+}
+
 function withoutPosition<T extends Partial<Product>>(product: T): Omit<T, 'position'> {
   const { position, ...rest } = product;
   return rest;
+}
+
+async function withProductSchemaFallback<T extends Partial<Product>, R>(
+  product: T,
+  write: (product: Partial<Product>) => Promise<R>
+): Promise<R> {
+  let payload: Partial<Product> = product;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await write(payload);
+    } catch (error) {
+      if (isMissingPositionColumn(error) && payload.position !== undefined) {
+        payload = withoutPosition(payload);
+        continue;
+      }
+
+      if (isMissingAvailabilityColumn(error) && payload.availability !== undefined) {
+        throw new Error(missingAvailabilitySchemaMessage);
+      }
+
+      throw error;
+    }
+  }
+
+  return write(payload);
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -53,14 +94,26 @@ export async function getProductsByAvailability(availability: ProductAvailabilit
       order: 'position.asc',
     });
   } catch (error) {
+    if (isMissingAvailabilityColumn(error)) {
+      return getProducts();
+    }
+
     if (!isMissingPositionColumn(error)) {
       throw error;
     }
 
-    products = await selectRows<Product>('products', {
-      availability: `cs.{${availability}}`,
-      order: 'name.asc',
-    });
+    try {
+      products = await selectRows<Product>('products', {
+        availability: `cs.{${availability}}`,
+        order: 'name.asc',
+      });
+    } catch (fallbackError) {
+      if (isMissingAvailabilityColumn(fallbackError)) {
+        return getProducts();
+      }
+
+      throw fallbackError;
+    }
   }
 
   return products.map(normalizeProduct).sort((a, b) => a.position - b.position);
@@ -76,41 +129,17 @@ export async function addProduct(product: NewProduct): Promise<Product> {
     position: newPosition,
   };
 
-  try {
-    return await insertRow<Product>('products', newProduct);
-  } catch (error) {
-    if (!isMissingPositionColumn(error)) {
-      throw error;
-    }
-
-    return normalizeProduct(await insertRow<Product>('products', withoutPosition(newProduct)));
-  }
+  return normalizeProduct(await withProductSchemaFallback(newProduct, (payload) => insertRow<Product>('products', payload)));
 }
 
 export async function addProductWithId(product: Product): Promise<void> {
   const normalized = normalizeProduct(product);
 
-  try {
-    await upsertRow<Product>('products', normalized);
-  } catch (error) {
-    if (!isMissingPositionColumn(error)) {
-      throw error;
-    }
-
-    await upsertRow<Product>('products', withoutPosition(normalized));
-  }
+  await withProductSchemaFallback(normalized, (payload) => upsertRow<Product>('products', payload));
 }
 
 export async function updateProduct(productId: string, product: UpdatableProduct): Promise<void> {
-  try {
-    await updateById<Product>('products', productId, product);
-  } catch (error) {
-    if (!isMissingPositionColumn(error) || product.position === undefined) {
-      throw error;
-    }
-
-    await updateById<Product>('products', productId, withoutPosition(product));
-  }
+  await withProductSchemaFallback(product, (payload) => updateById<Product>('products', productId, payload));
 }
 
 export async function increaseProductStock(productId: string, quantity: number, user?: User): Promise<void> {

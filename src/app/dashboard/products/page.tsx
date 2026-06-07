@@ -150,7 +150,11 @@ function ProductForm({
                 setIsOpen(false);
             } catch (error) {
                 console.error("Error adding product:", error);
-                toast({ variant: "destructive", title: "Error", description: "No se pudo añadir el producto." });
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: error instanceof Error ? error.message : "No se pudo añadir el producto.",
+                });
             }
         } else if (mode === 'edit' && initialData) {
              const updatedProductData = {
@@ -169,7 +173,11 @@ function ProductForm({
                 setIsOpen(false);
             } catch (error) {
                 console.error("Error updating product:", error);
-                toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar el producto." });
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: error instanceof Error ? error.message : "No se pudo actualizar el producto.",
+                });
             }
         }
     };

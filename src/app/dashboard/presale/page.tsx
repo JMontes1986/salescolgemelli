@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Search, ExternalLink, Printer, Download, Pencil } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
-import { getProducts } from '@/lib/services/product-service';
+import { getProductsByAvailability } from '@/lib/services/product-service';
 import { addPreSalePurchase, getRecentPreSales, type NewPurchase, getPreSalesByCedula, getPurchases, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -96,7 +96,7 @@ export default function PreSalePage() {
     setIsLoading(true);
     try {
         const [fetchedProducts, recent, all] = await Promise.all([
-          getProducts(),
+          getProductsByAvailability('presale'),
           getRecentPreSales(),
           getPurchases("PV")
         ]);
