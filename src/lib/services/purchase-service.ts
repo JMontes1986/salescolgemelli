@@ -1,4 +1,4 @@
-import { callRpc, insertRow, selectRows, selectSingle, updateById } from "@/lib/supabase";
+import { callRpc, insertRow, insertRowMinimal, selectRows, selectSingle, updateById } from "@/lib/supabase";
 import type { Purchase, NewPurchase, Product, CartItem, User } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 
@@ -119,7 +119,9 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
   }));
 
   const itemsToSave = purchase.items.map(item => ({ ...item, returned: false }));
-  return insertRow<Purchase>('purchases', { ...purchase, id: generatedId, items: itemsToSave, status: 'pre-sale' });
+  const savedPurchase: Purchase = { ...purchase, id: generatedId, items: itemsToSave, status: 'pre-sale' };
+  await insertRowMinimal('purchases', savedPurchase);
+  return savedPurchase;
 }
 
 export async function updatePurchase(purchaseId: string, data: Partial<Purchase>): Promise<void> {

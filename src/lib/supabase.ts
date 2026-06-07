@@ -91,7 +91,12 @@ export async function supabaseRequest<T>(path: string, options: SupabaseRequestO
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  const responseBody = await response.text();
+  if (!responseBody) {
+    return undefined as T;
+  }
+
+  return JSON.parse(responseBody) as T;
 }
 
 export async function supabaseAuthRequest<T>(
@@ -141,6 +146,15 @@ export async function insertRow<T>(table: string, row: unknown, accessToken?: st
     accessToken,
   });
   return rows[0];
+}
+
+export async function insertRowMinimal(table: string, row: unknown, accessToken?: string): Promise<void> {
+  await supabaseRequest<void>(table, {
+    method: 'POST',
+    body: row,
+    prefer: 'return=minimal',
+    accessToken,
+  });
 }
 
 export async function upsertRow<T>(table: string, row: unknown, onConflict = 'id'): Promise<T> {

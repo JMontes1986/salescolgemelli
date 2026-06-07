@@ -177,11 +177,13 @@ export default function SelfServicePage() {
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Código de pago generado. Su compra está pendiente de confirmación." });
         
-        await addAuditLog({
+        addAuditLog({
           userId: cedula,
           userName: 'Cliente (Autogestión)',
           action: 'SELF_SERVICE_PURCHASE',
           details: `Nueva compra en sitio #${addedPurchase.id} por ${formatCurrency(addedPurchase.total)} iniciada por C.C. ${cedula}.`,
+        }).catch((auditError) => {
+          console.warn("No se pudo registrar auditoría de autogestión.", auditError);
         });
 
     } catch (error) {

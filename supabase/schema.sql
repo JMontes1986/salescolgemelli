@@ -99,3 +99,30 @@ $$;
 
 revoke all on function public.next_counter(text) from public;
 grant execute on function public.next_counter(text) to anon, authenticated;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'purchases'
+      and policyname = 'self_service_pre_sale_insert'
+  ) then
+    create policy "self_service_pre_sale_insert"
+      on public.purchases
+      for insert
+      to anon, authenticated
+      with check (
+        id like 'PV%'
+        and status = 'pre-sale'
+        and coalesce(cedula, '') <> ''
+        and coalesce(celular, '') <> ''
+        and "sellerId" is null
+        and "sellerName" is null
+        and total >= 0
+        and jsonb_typeof(items) = 'array'
+      );
+  end if;
+end;
+$$;
