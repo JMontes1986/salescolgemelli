@@ -1,5 +1,7 @@
 import type {Config} from 'tailwindcss';
 
+const color = (name: string) => `rgb(var(--${name}-rgb) / <alpha-value>)`;
+
 export default {
   darkMode: ['class'],
   content: [
@@ -10,60 +12,63 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['"PT Sans"', 'sans-serif'],
-        headline: ['"PT Sans"', 'sans-serif'],
-        code: ['monospace'],
+        sans: ['var(--font-sans)'],
+        serif: ['var(--font-serif)'],
+        mono: ['var(--font-mono)'],
+        body: ['var(--font-sans)'],
+        headline: ['var(--font-sans)'],
+        code: ['var(--font-mono)'],
       },
       colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        background: color('background'),
+        foreground: color('foreground'),
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: color('card'),
+          foreground: color('card-foreground'),
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: color('popover'),
+          foreground: color('popover-foreground'),
         },
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: color('primary'),
+          foreground: color('primary-foreground'),
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: color('secondary'),
+          foreground: color('secondary-foreground'),
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: color('muted'),
+          foreground: color('muted-foreground'),
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: color('accent'),
+          foreground: color('accent-foreground'),
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: color('destructive'),
+          foreground: color('destructive-foreground'),
         },
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        border: color('border'),
+        input: color('input'),
+        ring: color('ring'),
         chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
+          '1': color('chart-1'),
+          '2': color('chart-2'),
+          '3': color('chart-3'),
+          '4': color('chart-4'),
+          '5': color('chart-5'),
         },
         sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-background))',
-          foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-          accent: 'hsl(var(--sidebar-accent))',
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-          border: 'hsl(var(--sidebar-border))',
-          ring: 'hsl(var(--sidebar-ring))',
+          DEFAULT: color('sidebar'),
+          foreground: color('sidebar-foreground'),
+          primary: color('sidebar-primary'),
+          'primary-foreground': color('sidebar-primary-foreground'),
+          accent: color('sidebar-accent'),
+          'accent-foreground': color('sidebar-accent-foreground'),
+          border: color('sidebar-border'),
+          ring: color('sidebar-ring'),
         },
       },
       borderRadius: {
