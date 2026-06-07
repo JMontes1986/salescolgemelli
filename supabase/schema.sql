@@ -1,10 +1,9 @@
 create extension if not exists "pgcrypto";
 
 create table if not exists public.users (
-  id text primary key default gen_random_uuid()::text,
+  id uuid primary key references auth.users(id) on delete cascade,
   name text not null,
   username text not null unique,
-  password text,
   role text not null,
   permissions text[] not null default '{}',
   "avatarUrl" text not null default ''

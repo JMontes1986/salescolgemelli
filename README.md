@@ -16,7 +16,7 @@ Aplicación web para **gestión de ventas, preventas, caja, devoluciones, usuari
 
 ## 🧱 Arquitectura
 - **Next.js (App Router + TypeScript):** UI, rutas y componentes.
-- **Supabase:** Postgres expuesto vía REST para tablas de negocio y Storage para imágenes.
+- **Supabase:** Authentication para usuarios, Postgres vía REST para tablas de negocio y Storage para imágenes.
 - **Netlify:** build y hosting configurados en `netlify.toml`.
 
 La conexión a Supabase está centralizada en `src/lib/supabase.ts`; los módulos de negocio consumen esa capa desde `src/lib/services/`.
@@ -27,6 +27,7 @@ La conexión a Supabase está centralizada en `src/lib/supabase.ts`; los módulo
 - Node.js 18+.
 - npm.
 - Proyecto Supabase creado.
+- Usuarios creados en **Supabase → Authentication → Users**.
 - Tablas creadas en Supabase ejecutando el SQL de `supabase/schema.sql`.
 
 ---
@@ -48,6 +49,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 2. Abre **SQL Editor**.
 3. Ejecuta el contenido de `supabase/schema.sql`.
 4. Configura las políticas RLS según tu operación. Para una app interna puedes empezar permitiendo acceso autenticado y luego endurecer por rol.
+
+La autenticación de credenciales ocurre en **Supabase Authentication**. La tabla `public.users` no guarda contraseñas: solo conserva el perfil de la aplicación, rol, permisos y avatar. Su columna `id` debe coincidir con `auth.users.id`.
 
 Tablas principales:
 - `users`

@@ -20,11 +20,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { User, NewUser, ModulePermission, UserRole } from "@/lib/types";
-import { getUsers, addUser, updateUserPermissions, addSeedUsers } from "@/lib/services/user-service";
+import type { User, NewUser, UserRole } from "@/lib/types";
+import { getUsers, addUser } from "@/lib/services/user-service";
 import { useToast } from "@/hooks/use-toast";
 import { PermissionGate } from "@/components/permission-gate";
-import { PlusCircle, Database, Edit } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { useAuth } from "@/hooks/use-mock-auth";
 import {
   Select,
   SelectContent,
@@ -66,7 +64,7 @@ function UserForm({
 }) {
     const { toast } = useToast();
     const [name, setName] = useState(initialData?.name || '');
-    const [username, setUsername] = useState(initialData?.username || '');
+    const [email, setEmail] = useState(initialData?.username || '');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>('seller');
     const [isOpen, setIsOpen] = useState(false);
@@ -75,7 +73,7 @@ function UserForm({
         setIsOpen(open);
         if (open) {
             setName('');
-            setUsername('');
+            setEmail('');
             setPassword('');
             setRole('seller');
         }
@@ -86,10 +84,10 @@ function UserForm({
         
         const newUserData: NewUser = {
             name,
-            username,
+            username: email,
             password,
             role,
-            avatarUrl: `https://picsum.photos/seed/${name.replace(/\s/g, '')}/100/100`,
+            avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(email)}/100/100`,
         };
 
         try {
@@ -127,8 +125,8 @@ function UserForm({
                             <Input id="user-name" placeholder="Ej: Juan Pérez" value={name} onChange={e => setName(e.target.value)} required />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="user-username">Nombre de Usuario</Label>
-                            <Input id="user-username" placeholder="ej: juan.perez" value={username} onChange={e => setUsername(e.target.value)} required />
+                            <Label htmlFor="user-email">Correo Electrónico</Label>
+                            <Input id="user-email" type="email" placeholder="usuario@colegio.edu" value={email} onChange={e => setEmail(e.target.value)} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="user-password">Contraseña</Label>
@@ -162,18 +160,11 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { currentUser } = useAuth();
-
   useEffect(() => {
     async function loadUsers() {
       setIsLoading(true);
       try {
-        let fetchedUsers = await getUsers();
-        if (fetchedUsers.length === 0) {
-          // If no users, seed them and refetch
-          await addSeedUsers();
-          fetchedUsers = await getUsers();
-        }
+        const fetchedUsers = await getUsers();
         setUsers(fetchedUsers);
       } catch (error) {
         console.error("Error fetching users:", error);

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/use-mock-auth";
+import { useAuth } from "@/hooks/use-auth";
 import type { NavItem } from "./sidebar-nav";
 import Link from "next/link";
 import { Logo } from "../icons";

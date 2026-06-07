@@ -26,7 +26,7 @@ import { DoorOpen, DoorClosed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { CashboxSession } from "@/lib/types";
-import { useAuth } from "@/hooks/use-mock-auth";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getActiveSessionForUser, getCashboxHistory, openCashboxSession, closeCashboxSession } from "@/lib/services/cashbox-service";
 import {

@@ -2,7 +2,7 @@
 "use client";
 
 import type { ModulePermission } from "@/lib/types";
-import { useAuth } from "@/hooks/use-mock-auth";
+import { useAuth } from "@/hooks/use-auth";
 
 interface PermissionGateProps {
   requiredPermission: ModulePermission;

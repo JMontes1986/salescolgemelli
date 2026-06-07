@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-mock-auth";
+import { useAuth } from "@/hooks/use-auth";
 import type { ModulePermission } from "@/lib/types";
 
 export type NavItem = {

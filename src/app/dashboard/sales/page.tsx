@@ -28,7 +28,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
 import { addPurchase, getPurchases, type NewPurchase, cancelPurchaseAndUpdateStock } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-mock-auth';
+import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import Link from 'next/link';

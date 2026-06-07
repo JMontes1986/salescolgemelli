@@ -2,7 +2,7 @@
 "use client";
 
 import { Header } from "@/components/dashboard/header";
-import { useAuth } from "@/hooks/use-mock-auth";
+import { useAuth } from "@/hooks/use-auth";
 import type { ModulePermission } from "@/lib/types";
 import { navItems, adminNavItems } from "@/components/dashboard/sidebar-nav";
 import { useEffect, useState, useMemo } from "react";

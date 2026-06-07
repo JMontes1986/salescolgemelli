@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/use-mock-auth';
+import { useAuth } from '@/hooks/use-auth';
 import { addAuditLog } from '@/lib/services/audit-service';
 
 const statusTranslations: Record<Purchase['status'], string> = {

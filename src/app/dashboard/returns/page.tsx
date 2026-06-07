@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getReturns, addReturnAndUpdateStock } from '@/lib/services/return-service';
-import { useAuth } from '@/hooks/use-mock-auth';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Table,
   TableBody,

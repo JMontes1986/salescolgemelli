@@ -17,8 +17,8 @@ import { Label } from "@/components/ui/label";
 import { LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { authenticateUser, addUser } from "@/lib/services/user-service";
-import { useAuth } from "@/hooks/use-mock-auth";
-import type { NewUser, ModulePermission, UserRole } from "@/lib/types";
+import { useAuth } from "@/hooks/use-auth";
+import type { NewUser } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,7 @@ import { addAuditLog } from "@/lib/services/audit-service";
 function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -47,10 +47,10 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
     try {
       const newUser: NewUser = {
         name,
-        username,
+        username: email,
         password,
         role: 'seller', // Public registrations are sellers by default
-        avatarUrl: `https://picsum.photos/seed/${username}/100/100`,
+        avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(email)}/100/100`,
       };
       await addUser(newUser);
       toast({
@@ -98,11 +98,12 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-username">Nombre de Usuario</Label>
+              <Label htmlFor="new-email">Correo Electrónico</Label>
               <Input
-                id="new-username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="new-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -140,7 +141,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [key, setKey] = useState(0); // Key to force re-render if needed
@@ -150,31 +151,33 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log(`Attempting to authenticate user: ${username}`);
-      const authenticatedUser = await authenticateUser(username, password);
+      console.log(`Attempting to authenticate user: ${email}`);
+      const authenticatedUser = await authenticateUser(email, password);
       
       if (authenticatedUser) {
-        console.log("Authentication successful for:", authenticatedUser.name);
-        login(authenticatedUser);
+        const { user, session } = authenticatedUser;
+
+        console.log("Authentication successful for:", user.name);
+        login(user, session);
         toast({
           title: "Inicio de sesión exitoso",
-          description: `¡Bienvenido de nuevo, ${authenticatedUser.name}!`,
+          description: `¡Bienvenido de nuevo, ${user.name}!`,
         });
 
         await addAuditLog({
-          userId: authenticatedUser.id,
-          userName: authenticatedUser.name,
+          userId: user.id,
+          userName: user.name,
           action: 'USER_LOGIN',
-          details: `Usuario ${authenticatedUser.name} (${authenticatedUser.username}) ha iniciado sesión.`,
+          details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
         });
 
-        if (authenticatedUser.role === 'cashier') {
+        if (user.role === 'cashier') {
             router.push("/dashboard/sales");
         } else {
             router.push("/dashboard");
         }
       } else {
-        console.log(`Authentication failed for user: ${username}`);
+        console.log(`Authentication failed for user: ${email}`);
         toast({
           variant: "destructive",
           title: "Error de autenticación",
@@ -214,14 +217,14 @@ export default function LoginPage() {
         <CardContent>
           <form id="login-form" onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Usuario</Label>
+              <Label htmlFor="email">Correo Electrónico</Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="su.usuario"
+                id="email"
+                type="email"
+                placeholder="usuario@colegio.edu"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
               />
             </div>
