@@ -48,6 +48,13 @@ export async function getRecentPreSales(): Promise<Purchase[]> {
   return purchases.map(ensureReturnedFlags);
 }
 
+export async function getSelfServicePurchases(limit = 30): Promise<Purchase[]> {
+  const purchases = await getPurchases("PV");
+  return purchases
+    .filter(purchase => !purchase.sellerId)
+    .slice(0, limit);
+}
+
 export async function getPurchaseById(id: string): Promise<Purchase | null> {
   const purchase = await selectSingle<Purchase>('purchases', { id: `eq.${id}` });
   return purchase ? ensureReturnedFlags(purchase) : null;
