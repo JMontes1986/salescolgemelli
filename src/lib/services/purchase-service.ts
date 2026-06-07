@@ -15,6 +15,16 @@ function ensureReturnedFlags(purchase: Purchase): Purchase {
   };
 }
 
+export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
+  return purchases
+    .filter(purchase => !purchase.sellerId && (purchase.status === 'pending' || purchase.status === 'pre-sale'))
+    .flatMap(purchase => purchase.items)
+    .reduce<Record<string, number>>((reserved, item) => {
+      reserved[item.id] = (reserved[item.id] || 0) + item.quantity;
+      return reserved;
+    }, {});
+}
+
 async function getNextCounter(counterId: string): Promise<number> {
   try {
     return await callRpc<number>('next_counter', { counter_id: counterId });
@@ -143,6 +153,11 @@ export async function cancelPurchaseAndUpdateStock(purchaseId: string): Promise<
   await Promise.all(purchase.items.map(item => {
     const product = productMap.get(item.id);
     if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
+
+    if (purchase.status === 'pre-sale') {
+      return patchProduct(item.id, { preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0) });
+    }
+
     return patchProduct(item.id, { stock: product.stock + item.quantity });
   }));
 

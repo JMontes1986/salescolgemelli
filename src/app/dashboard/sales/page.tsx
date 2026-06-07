@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Ticket as TicketIcon, Hourglass, Search, XCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPurchase, getPurchases, type NewPurchase, cancelPurchaseAndUpdateStock } from '@/lib/services/purchase-service';
+import { addPurchase, getPurchases, type NewPurchase, cancelPurchaseAndUpdateStock, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -85,20 +85,7 @@ export default function SalesPage() {
     loadData();
   }, [loadData]);
   
-  const pendingQuantities = useMemo(() => {
-    const pending: { [productId: string]: number } = {};
-    purchases
-        .filter(p => p.status === 'pending')
-        .flatMap(p => p.items)
-        .forEach(item => {
-            if (item.id in pending) {
-                pending[item.id] += item.quantity;
-            } else {
-                pending[item.id] = item.quantity;
-            }
-        });
-    return pending;
-  }, [purchases]);
+  const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
 
 
   const pendingSelfServicePurchases = purchases.filter(
@@ -110,7 +97,7 @@ export default function SalesPage() {
     if (!product) return;
 
     const existingItem = cart.find((cartItem) => cartItem.id === item.id);
-    const availableStock = product.stock - (pendingQuantities[product.id] || 0);
+    const availableStock = Math.max(product.stock - (selfServiceReservedQuantities[product.id] || 0), 0);
 
     if (availableStock <= 0) {
       toast({ variant: "destructive", title: "Sin Stock", description: `${product.name} está agotado o reservado.` });
@@ -140,7 +127,7 @@ export default function SalesPage() {
     let finalQuantity = newQuantity;
 
     if (itemToUpdate?.type === 'product' && productInDb) {
-      const availableStock = productInDb.stock - (pendingQuantities[productInDb.id] || 0);
+      const availableStock = Math.max(productInDb.stock - (selfServiceReservedQuantities[productInDb.id] || 0), 0);
       if (finalQuantity > availableStock) {
           toast({ variant: "destructive", title: "Límite de Stock", description: `Solo quedan ${availableStock} unidades disponibles de ${itemToUpdate.name}.` });
           finalQuantity = availableStock;
@@ -198,17 +185,24 @@ export default function SalesPage() {
     }
   }
 
-  const handleCancelPurchase = async (purchaseId: string) => {
+  const handleCancelPurchase = async (purchase: Purchase) => {
     if (!currentUser) return;
     try {
-        await cancelPurchaseAndUpdateStock(purchaseId);
+        await cancelPurchaseAndUpdateStock(purchase.id);
         await addAuditLog({
             userId: currentUser.id,
             userName: currentUser.name,
             action: 'TICKET_VOID', // Reusing this for cancellation
-            details: `Compra pendiente ${purchaseId} cancelada. Stock devuelto.`,
+            details: purchase.status === 'pre-sale'
+              ? `Reserva de autogestión ${purchase.id} cancelada. Stock real sin cambios.`
+              : `Compra pendiente ${purchase.id} cancelada. Stock devuelto.`,
         });
-        toast({ title: "Compra Cancelada", description: "La compra ha sido cancelada y el stock devuelto." });
+        toast({
+            title: "Compra Cancelada",
+            description: purchase.status === 'pre-sale'
+              ? "La compra fue cancelada y la reserva de autogestión quedó liberada."
+              : "La compra ha sido cancelada y el stock devuelto.",
+        });
         loadData();
     } catch (error) {
         console.error("Error canceling purchase:", error);
@@ -252,8 +246,9 @@ export default function SalesPage() {
                                     <p className="text-muted-foreground p-3">No hay productos disponibles para la venta.</p>
                                 ) : (
                                     products.map((product) => {
-                                      const pending = pendingQuantities[product.id] || 0;
-                                      const isSoldOut = product.stock <= 0;
+                                      const selfServiceReserved = selfServiceReservedQuantities[product.id] || 0;
+                                      const availableStock = Math.max(product.stock - selfServiceReserved, 0);
+                                      const isSoldOut = availableStock <= 0;
                                       return (
                                         <div key={product.id} className={cn("flex items-center justify-between p-3 bg-muted/50 rounded-lg", isSoldOut && "opacity-50")}>
                                             <div className="flex items-center gap-3">
@@ -276,10 +271,11 @@ export default function SalesPage() {
                                                     <Badge variant="destructive">Agotado</Badge>
                                                 ) : (
                                                     <div className='flex items-center gap-2'>
-                                                        {pending > 0 && (
-                                                            <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700">Pendientes: {pending}</Badge>
-                                                        )}
                                                         <Badge variant="outline">Stock: {product.stock}</Badge>
+                                                        {selfServiceReserved > 0 && (
+                                                            <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServiceReserved}</Badge>
+                                                        )}
+                                                        <Badge variant={availableStock > 0 ? "secondary" : "destructive"}>Disp.: {availableStock}</Badge>
                                                     </div>
                                                 )}
                                                 <Button onClick={() => addToCart(product)} disabled={isSoldOut}>
@@ -346,12 +342,12 @@ export default function SalesPage() {
                                                         <AlertDialogHeader>
                                                         <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            Esta acción cancelará la compra con código <span className="font-mono font-bold">{purchase.id}</span>. Los productos reservados serán devueltos al stock. Esta acción no se puede deshacer.
+                                                            Esta acción cancelará la compra con código <span className="font-mono font-bold">{purchase.id}</span>. Los productos reservados quedarán liberados. Esta acción no se puede deshacer.
                                                         </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                         <AlertDialogCancel>Cerrar</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleCancelPurchase(purchase.id)}>
+                                                        <AlertDialogAction onClick={() => handleCancelPurchase(purchase)}>
                                                             Confirmar Cancelación
                                                         </AlertDialogAction>
                                                         </AlertDialogFooter>

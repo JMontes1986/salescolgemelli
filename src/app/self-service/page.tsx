@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Product, Purchase } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getPurchasesByCedula, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getPurchases, getPurchasesByCedula, type NewPurchase, updatePendingPurchase, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
@@ -44,6 +44,7 @@ type CartItem = {
 
 export default function SelfServicePage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -62,8 +63,12 @@ export default function SelfServicePage() {
   const loadProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-        const fetchedProducts = await getProductsByAvailability('self-service');
+        const [fetchedProducts, fetchedPurchases] = await Promise.all([
+          getProductsByAvailability('self-service'),
+          getPurchases(),
+        ]);
         setProducts(fetchedProducts);
+        setPurchases(fetchedPurchases);
     } catch (error)
         {
         console.error("Error fetching products:", error);
@@ -76,15 +81,32 @@ export default function SelfServicePage() {
     loadProducts();
   }, [loadProducts]);
 
+  const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
+
+  const getSelfServiceReserved = useCallback((productId: string) => {
+    const reserved = selfServiceReservedQuantities[productId] || 0;
+    if (!editingPurchase || (editingPurchase.status !== 'pending' && editingPurchase.status !== 'pre-sale')) {
+      return reserved;
+    }
+
+    const editingQuantity = editingPurchase.items.find(item => item.id === productId)?.quantity || 0;
+    return Math.max(reserved - editingQuantity, 0);
+  }, [editingPurchase, selfServiceReservedQuantities]);
+
+  const getAvailableStock = useCallback((product: Product) => {
+    return Math.max(product.stock - getSelfServiceReserved(product.id), 0);
+  }, [getSelfServiceReserved]);
+
   const addToCart = (item: Product) => {
+    const availableStock = getAvailableStock(item);
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
       
-      if (item.stock <= 0) {
-          toast({ variant: "destructive", title: "Sin Stock", description: `${item.name} está agotado.` });
+      if (availableStock <= 0) {
+          toast({ variant: "destructive", title: "Sin Stock", description: `${item.name} está agotado o reservado en autogestión.` });
           return prevCart;
       }
-       if (existingItem && existingItem.quantity >= item.stock) {
+       if (existingItem && existingItem.quantity >= availableStock) {
           toast({ variant: "destructive", title: "Límite de Stock", description: `No puedes agregar más ${item.name}.` });
           return prevCart;
       }
@@ -96,7 +118,7 @@ export default function SelfServicePage() {
             : cartItem
         );
       }
-      return [...prevCart, { id: item.id, name: item.name, price: item.price, quantity: 1, type: 'product', stock: item.stock }];
+      return [...prevCart, { id: item.id, name: item.name, price: item.price, quantity: 1, type: 'product', stock: availableStock }];
     });
   };
 
@@ -107,8 +129,10 @@ export default function SelfServicePage() {
       }
 
       const itemToUpdate = prevCart.find(item => item.id === id);
-      if (itemToUpdate && itemToUpdate.stock < newQuantity) {
-        toast({ variant: "destructive", title: "Límite de Stock", description: `Solo quedan ${itemToUpdate.stock} unidades de ${itemToUpdate.name}.` });
+      const product = products.find(product => product.id === id);
+      const availableStock = product ? getAvailableStock(product) : itemToUpdate?.stock || 0;
+      if (itemToUpdate && availableStock < newQuantity) {
+        toast({ variant: "destructive", title: "Límite de Stock", description: `Solo quedan ${availableStock} unidades disponibles de ${itemToUpdate.name}.` });
         return prevCart;
       }
 
@@ -240,7 +264,7 @@ export default function SelfServicePage() {
         return {
             ...item,
             type: 'product',
-            stock: product ? product.stock + item.quantity : item.quantity, // Temporarily add back stock for validation
+            stock: product ? getAvailableStock(product) + item.quantity : item.quantity,
         }
     });
     setCart(cartItems);
@@ -338,10 +362,12 @@ export default function SelfServicePage() {
           ) : products.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {products.map((product) => {
-                const isSoldOut = product.stock <= 0;
+                const selfServiceReserved = getSelfServiceReserved(product.id);
+                const availableStock = Math.max(product.stock - selfServiceReserved, 0);
+                const isSoldOut = availableStock <= 0;
                 const cartItem = cart.find(item => item.id === product.id);
                 const quantityInCart = cartItem ? cartItem.quantity : 0;
-                const hasReachedLimit = quantityInCart >= product.stock;
+                const hasReachedLimit = quantityInCart >= availableStock;
                 const productImageUrl = product.imageUrl?.trim()
                   || `https://placehold.co/600x400/e0f2fe/1e3a8a?text=${encodeURIComponent(product.name)}`;
 
@@ -392,7 +418,11 @@ export default function SelfServicePage() {
                           <h3 className="text-lg font-bold leading-snug">{product.name}</h3>
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-2xl font-black">{formatCurrency(product.price)}</span>
-                            <span className="text-xs font-semibold text-muted-foreground">{product.stock} disp.</span>
+                            <span className="text-right text-xs font-semibold text-muted-foreground">
+                              Stock {product.stock}
+                              {selfServiceReserved > 0 && ` | Autogestión ${selfServiceReserved}`}
+                              {` | Disp. ${availableStock}`}
+                            </span>
                           </div>
                         </div>
 

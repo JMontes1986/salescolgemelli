@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,7 @@ import { PlusCircle, MoreHorizontal, Database, Trash2, Pencil, ShoppingCart, Sto
 import { PermissionGate } from "@/components/permission-gate";
 import Image from "next/image";
 import { mockProducts } from "@/lib/placeholder-data";
-import type { Product, User, ProductAvailability } from "@/lib/types";
+import type { Product, User, ProductAvailability, Purchase } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
 import { allProductAvailability, getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
+import { getPurchases, getSelfServiceReservedQuantities } from "@/lib/services/purchase-service";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -346,8 +347,19 @@ function RestockForm({ product, onStockUpdated }: { product: Product; onStockUpd
     )
 }
 
-function SortableProductCard({ product, onProductUpdated, onProductAdded }: { product: Product; onProductUpdated: (p: Product) => void; onProductAdded: (p: Product) => void; }) {
+function SortableProductCard({
+    product,
+    selfServiceReserved,
+    onProductUpdated,
+    onProductAdded
+}: {
+    product: Product;
+    selfServiceReserved: number;
+    onProductUpdated: (p: Product) => void;
+    onProductAdded: (p: Product) => void;
+}) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: product.id });
+    const availableStock = Math.max(product.stock - selfServiceReserved, 0);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -418,11 +430,13 @@ function SortableProductCard({ product, onProductUpdated, onProductAdded }: { pr
                             })}
                         </div>
                     </div>
-                    <div className="flex justify-between items-center mt-2">
+                    <div className="flex justify-between items-center mt-2 gap-3">
                         <span className="text-xl font-bold">{formatCurrency(product.price)}</span>
-                        <span className="text-sm font-medium text-muted-foreground">
-                            Stock: {product.stock}
-                        </span>
+                        <div className="flex flex-col items-end text-sm font-medium text-muted-foreground">
+                            <span>Stock: {product.stock}</span>
+                            {selfServiceReserved > 0 && <span>Autogestión: {selfServiceReserved}</span>}
+                            <span className={cn("font-bold", availableStock <= 0 && "text-destructive")}>Disponible: {availableStock}</span>
+                        </div>
                     </div>
                     <div className="flex justify-start items-center mt-2 gap-2">
                         <Badge variant="outline" className="flex items-center gap-1">
@@ -442,6 +456,7 @@ function SortableProductCard({ product, onProductUpdated, onProductAdded }: { pr
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasSeeded, setHasSeeded] = useState(false);
   const { toast } = useToast();
@@ -457,8 +472,12 @@ export default function ProductsPage() {
     async function loadProducts() {
       setIsLoading(true);
       try {
-        const fetchedProducts = await getProducts();
+        const [fetchedProducts, fetchedPurchases] = await Promise.all([
+          getProducts(),
+          getPurchases(),
+        ]);
         setProducts(fetchedProducts);
+        setPurchases(fetchedPurchases);
         if (fetchedProducts.length > 0) {
             setHasSeeded(true);
         }
@@ -471,6 +490,8 @@ export default function ProductsPage() {
     }
     loadProducts();
   }, []);
+
+  const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
 
   const handleProductAdded = (newProduct: Product) => {
     setProducts(prevProducts => [...prevProducts, newProduct].sort((a,b) => a.position - b.position));
@@ -543,6 +564,7 @@ export default function ProductsPage() {
                         <SortableProductCard
                             key={product.id}
                             product={product}
+                            selfServiceReserved={selfServiceReservedQuantities[product.id] || 0}
                             onProductAdded={handleProductAdded}
                             onProductUpdated={handleProductUpdated}
                         />
