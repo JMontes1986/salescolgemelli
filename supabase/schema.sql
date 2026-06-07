@@ -77,3 +77,25 @@ create table if not exists public.counters (
   id text primary key,
   count integer not null default 0
 );
+
+create or replace function public.next_counter(counter_id text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  next_count integer;
+begin
+  insert into public.counters (id, count)
+  values (counter_id, 1)
+  on conflict (id) do update
+    set count = public.counters.count + 1
+  returning count into next_count;
+
+  return next_count;
+end;
+$$;
+
+revoke all on function public.next_counter(text) from public;
+grant execute on function public.next_counter(text) to anon, authenticated;

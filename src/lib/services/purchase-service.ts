@@ -1,4 +1,4 @@
-import { insertRow, selectRows, selectSingle, updateById, upsertRow } from "@/lib/supabase";
+import { callRpc, insertRow, selectRows, selectSingle, updateById } from "@/lib/supabase";
 import type { Purchase, NewPurchase, Product, CartItem, User } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 
@@ -16,10 +16,15 @@ function ensureReturnedFlags(purchase: Purchase): Purchase {
 }
 
 async function getNextCounter(counterId: string): Promise<number> {
-  const current = await selectSingle<{ id: string; count: number }>('counters', { id: `eq.${counterId}` });
-  const next = (current?.count ?? 0) + 1;
-  await upsertRow('counters', { id: counterId, count: next });
-  return next;
+  try {
+    return await callRpc<number>('next_counter', { counter_id: counterId });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('next_counter')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para habilitar la generación de códigos.');
+    }
+
+    throw error;
+  }
 }
 
 async function getProductsByIds(ids: string[]): Promise<Map<string, Product>> {
@@ -78,6 +83,9 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
     }
   }
 
+  const next = await getNextCounter('purchaseCounter');
+  const generatedId = `CG${firstItemInitial}${String(next).padStart(4, '0')}`;
+
   if (purchase.status !== 'pre-sale') {
     await Promise.all(purchase.items.map(item => {
       const product = productMap.get(item.id)!;
@@ -85,8 +93,6 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
     }));
   }
 
-  const next = await getNextCounter('purchaseCounter');
-  const generatedId = `CG${firstItemInitial}${String(next).padStart(4, '0')}`;
   const itemsToSave = purchase.items.map(item => ({ ...item, returned: false }));
   return insertRow<Purchase>('purchases', { ...purchase, id: generatedId, items: itemsToSave });
 }
@@ -97,14 +103,21 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     : 'X';
 
   const productMap = await getProductsByIds(purchase.items.map(item => item.id));
-  await Promise.all(purchase.items.map(item => {
-    const product = productMap.get(item.id);
-    if (!product) throw new Error(`Producto con ID ${item.id} no encontrado.`);
-    return patchProduct(item.id, { preSaleSold: (product.preSaleSold ?? 0) + item.quantity });
-  }));
+
+  for (const item of purchase.items) {
+    if (!productMap.has(item.id)) {
+      throw new Error(`Producto con ID ${item.id} no encontrado.`);
+    }
+  }
 
   const next = await getNextCounter('preSaleCounter');
   const generatedId = `PV${firstItemInitial}${String(next).padStart(4, '0')}`;
+
+  await Promise.all(purchase.items.map(item => {
+    const product = productMap.get(item.id)!;
+    return patchProduct(item.id, { preSaleSold: (product.preSaleSold ?? 0) + item.quantity });
+  }));
+
   const itemsToSave = purchase.items.map(item => ({ ...item, returned: false }));
   return insertRow<Purchase>('purchases', { ...purchase, id: generatedId, items: itemsToSave, status: 'pre-sale' });
 }

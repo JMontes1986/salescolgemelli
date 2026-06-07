@@ -153,6 +153,13 @@ export async function upsertRow<T>(table: string, row: unknown, onConflict = 'id
   return rows[0];
 }
 
+export async function callRpc<T>(functionName: string, body: unknown): Promise<T> {
+  return supabaseRequest<T>(`rpc/${functionName}`, {
+    method: 'POST',
+    body,
+  });
+}
+
 export async function updateRows<T>(table: string, query: SupabaseRequestOptions['query'], patch: unknown): Promise<T[]> {
   return supabaseRequest<T[]>(table, {
     method: 'PATCH',
