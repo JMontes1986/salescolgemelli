@@ -50,7 +50,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 3. Ejecuta el contenido de `supabase/schema.sql`.
 4. Configura las políticas RLS según tu operación. Para una app interna puedes empezar permitiendo acceso autenticado y luego endurecer por rol.
 
-La autenticación de credenciales ocurre en **Supabase Authentication**. La tabla `public.users` no guarda contraseñas: solo conserva el perfil de la aplicación, rol, permisos y avatar. Su columna `id` debe coincidir con `auth.users.id`.
+La autenticación de credenciales ocurre en **Supabase Authentication**. La tabla `public.users` no guarda contraseñas y ya no es requisito para iniciar sesión: si existe, solo conserva perfil de la aplicación, rol, permisos y avatar. Si no hay perfil público, la app toma `name`, `role` y `avatarUrl` desde `user_metadata` de Supabase Auth; sin metadata, el rol por defecto es `seller`.
 
 Tablas principales:
 - `users`

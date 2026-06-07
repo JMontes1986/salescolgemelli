@@ -1,4 +1,4 @@
-import { insertRow, selectRows, selectSingle, supabaseAuthRequest, updateById } from "@/lib/supabase";
+import { selectRows, selectSingle, supabaseAuthRequest, updateById } from "@/lib/supabase";
 import type { User, NewUser, ModulePermission, UserRole } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 import { getPermissionsForRole } from "@/lib/roles";
@@ -35,6 +35,18 @@ export type AuthenticatedUser = {
   user: User;
   session: SupabaseAuthSession;
 };
+
+export type AuthenticationErrorCode = 'invalid_credentials' | 'email_not_confirmed' | 'auth_error';
+
+export class AuthenticationError extends Error {
+  code: AuthenticationErrorCode;
+
+  constructor(code: AuthenticationErrorCode, message: string) {
+    super(message);
+    this.name = 'AuthenticationError';
+    this.code = code;
+  }
+}
 
 const userRoles: UserRole[] = ['admin', 'cashier', 'seller', 'auditor'];
 
@@ -83,27 +95,53 @@ function buildProfileFromAuthUser(authUser: SupabaseAuthUser, fallback?: Partial
   };
 }
 
-async function getOrCreateProfileForAuthUser(authUser: SupabaseAuthUser, fallback?: Partial<NewUser>): Promise<User> {
-  const existingProfile = await getUserById(authUser.id);
-
-  if (existingProfile) {
-    return existingProfile;
+function getAuthenticationError(error: unknown): AuthenticationError | null {
+  if (!(error instanceof Error)) {
+    return null;
   }
 
-  const username = fallback?.username ?? authUser.email ?? getAuthMetadata(authUser).username;
-  const legacyProfile = username ? await selectSingle<User>('users', { username: `eq.${username}` }) : null;
+  const message = error.message.toLowerCase();
 
-  if (legacyProfile) {
-    const migratedProfile = await updateById<User>('users', legacyProfile.id, {
-      id: authUser.id,
-    });
+  if (message.includes('email not confirmed') || message.includes('email_not_confirmed')) {
+    return new AuthenticationError(
+      'email_not_confirmed',
+      'El correo existe en Supabase Authentication, pero todavía no está confirmado.'
+    );
+  }
 
-    if (migratedProfile) {
-      return migratedProfile;
+  if (
+    message.includes('invalid login credentials') ||
+    message.includes('invalid_credentials') ||
+    message.includes('(400)')
+  ) {
+    return new AuthenticationError(
+      'invalid_credentials',
+      'El correo o la contraseña no coinciden con Supabase Authentication.'
+    );
+  }
+
+  return null;
+}
+
+async function getProfileForAuthUser(authUser: SupabaseAuthUser, fallback?: Partial<NewUser>): Promise<User> {
+  try {
+    const existingProfile = await getUserById(authUser.id);
+
+    if (existingProfile) {
+      return existingProfile;
     }
+
+    const username = fallback?.username ?? authUser.email ?? getAuthMetadata(authUser).username;
+    const legacyProfile = username ? await selectSingle<User>('users', { username: `eq.${username}` }) : null;
+
+    if (legacyProfile) {
+      return legacyProfile;
+    }
+  } catch (error) {
+    console.warn("No se pudo leer el perfil público del usuario. Se usará Supabase Authentication.", error);
   }
 
-  return insertRow<User>('users', buildProfileFromAuthUser(authUser, fallback));
+  return buildProfileFromAuthUser(authUser, fallback);
 }
 
 export async function authenticateUser(username: string, password_provided: string): Promise<AuthenticatedUser | null> {
@@ -119,8 +157,10 @@ export async function authenticateUser(username: string, password_provided: stri
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('(400)')) {
-      return null;
+    const authenticationError = getAuthenticationError(error);
+
+    if (authenticationError) {
+      throw authenticationError;
     }
 
     throw error;
@@ -132,14 +172,14 @@ export async function authenticateUser(username: string, password_provided: stri
     return null;
   }
 
-  const user = await getOrCreateProfileForAuthUser(response.user, { username: response.user.email ?? username.trim() });
+  const user = await getProfileForAuthUser(response.user, { username: response.user.email ?? username.trim() });
 
   return { user, session };
 }
 
 export async function getAuthenticatedUser(accessToken: string): Promise<User | null> {
   const authUser = await supabaseAuthRequest<SupabaseAuthUser>('user', { accessToken });
-  return getOrCreateProfileForAuthUser(authUser);
+  return getProfileForAuthUser(authUser);
 }
 
 export async function refreshAuthenticatedSession(refreshToken: string): Promise<AuthenticatedUser | null> {
@@ -157,7 +197,7 @@ export async function refreshAuthenticatedSession(refreshToken: string): Promise
     return null;
   }
 
-  const user = await getOrCreateProfileForAuthUser(response.user);
+  const user = await getProfileForAuthUser(response.user);
   return { user, session };
 }
 
@@ -192,18 +232,7 @@ export async function addUser(user: NewUser): Promise<User> {
     },
   });
 
-  const permissions = getPermissionsForRole(user.role);
-  const session = getAuthSession(response);
-  const created = await insertRow<User>('users', {
-    id: response.user.id,
-    name: user.name,
-    username: response.user.email ?? user.username.trim(),
-    role: user.role,
-    permissions,
-    avatarUrl: user.avatarUrl,
-  }, session?.access_token);
-
-  return created;
+  return buildProfileFromAuthUser(response.user, user);
 }
 
 export async function addSeedUsers(): Promise<void> {

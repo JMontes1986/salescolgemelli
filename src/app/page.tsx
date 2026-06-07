@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { authenticateUser, addUser } from "@/lib/services/user-service";
+import { AuthenticationError, authenticateUser, addUser } from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
 import type { NewUser } from "@/lib/types";
 import {
@@ -164,11 +164,13 @@ export default function LoginPage() {
           description: `¡Bienvenido de nuevo, ${user.name}!`,
         });
 
-        await addAuditLog({
+        addAuditLog({
           userId: user.id,
           userName: user.name,
           action: 'USER_LOGIN',
           details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
+        }).catch((error) => {
+          console.warn("No se pudo registrar auditoría de login.", error);
         });
 
         if (user.role === 'cashier') {
@@ -185,6 +187,15 @@ export default function LoginPage() {
         });
       }
     } catch (error) {
+      if (error instanceof AuthenticationError) {
+        toast({
+          variant: "destructive",
+          title: "Error de autenticación",
+          description: error.message,
+        });
+        return;
+      }
+
       console.error("Login system error:", error);
       toast({
         variant: "destructive",
