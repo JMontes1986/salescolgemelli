@@ -28,10 +28,11 @@ export function TopNav({
           href={item.href}
           target={item.external ? '_blank' : '_self'}
           className={cn(
-            "text-sm font-medium transition-colors hover:text-primary",
-            pathname === item.href ? "text-primary" : "text-muted-foreground"
+            "inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-secondary hover:text-foreground",
+            pathname === item.href ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground" : "text-muted-foreground"
           )}
         >
+          <item.icon className="h-4 w-4" />
           {item.label}
         </Link>
       ))}
