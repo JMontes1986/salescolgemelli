@@ -107,6 +107,49 @@ begin
     from pg_policies
     where schemaname = 'public'
       and tablename = 'purchases'
+      and policyname = 'dashboard_purchases_select'
+  ) then
+    create policy "dashboard_purchases_select"
+      on public.purchases
+      for select
+      to authenticated
+      using (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'purchases'
+      and policyname = 'dashboard_purchases_insert'
+  ) then
+    create policy "dashboard_purchases_insert"
+      on public.purchases
+      for insert
+      to authenticated
+      with check (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'purchases'
+      and policyname = 'dashboard_purchases_update'
+  ) then
+    create policy "dashboard_purchases_update"
+      on public.purchases
+      for update
+      to authenticated
+      using (true)
+      with check (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'purchases'
       and policyname = 'self_service_pre_sale_insert'
   ) then
     create policy "self_service_pre_sale_insert"

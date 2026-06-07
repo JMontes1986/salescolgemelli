@@ -101,7 +101,9 @@ export default function SalesPage() {
   }, [purchases]);
 
 
-  const pendingSelfServicePurchases = purchases.filter(p => p.status === 'pending' && !p.sellerId);
+  const pendingSelfServicePurchases = purchases.filter(
+    p => (p.status === 'pending' || p.status === 'pre-sale') && !p.sellerId
+  );
 
   const addToCart = (item: Product) => {
     const product = products.find(p => p.id === item.id);
