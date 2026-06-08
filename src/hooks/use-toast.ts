@@ -183,13 +183,16 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
-  return {
+  const showToast = React.useCallback((props: Toast) => toast({ ...props, duration: 1000 }), [])
+  const dismiss = React.useCallback((toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }), [])
+
+  return React.useMemo(() => ({
     ...state,
-    toast: (props: Toast) => toast({ ...props, duration: 1000 }),
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  }
+    toast: showToast,
+    dismiss,
+  }), [dismiss, showToast, state])
 }
 
 export { useToast, toast }
