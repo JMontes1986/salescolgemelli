@@ -152,7 +152,7 @@ begin
 
     select * into product_record
     from public.products
-    where id = normalized_item.id
+    where id::text = normalized_item.id
     for update;
 
     if not found then
@@ -178,11 +178,11 @@ begin
 
     update public.products
     set stock = stock - normalized_item.quantity
-    where id = normalized_item.id;
+    where id::text = normalized_item.id;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
-      'id', product_record.id,
+      'id', product_record.id::text,
       'name', product_record.name,
       'price', product_record.price,
       'quantity', normalized_item.quantity,
@@ -311,7 +311,7 @@ begin
 
       select * into product_record
       from public.products
-      where id = item_record.id
+      where id::text = item_record.id
       for update;
 
       if not found then
@@ -324,7 +324,7 @@ begin
 
       update public.products
       set stock = stock - item_record.quantity
-      where id = item_record.id;
+      where id::text = item_record.id;
     end loop;
   elsif p_target_status = 'pre-sale-confirmed' then
     if purchase_record.status <> 'pre-sale' then
@@ -346,7 +346,7 @@ begin
 
       select * into product_record
       from public.products
-      where id = item_record.id
+      where id::text = item_record.id
       for update;
 
       if not found then
@@ -361,7 +361,7 @@ begin
       set
         stock = stock - item_record.quantity,
         "preSaleSold" = greatest("preSaleSold" - item_record.quantity, 0)
-      where id = item_record.id;
+      where id::text = item_record.id;
     end loop;
   elsif p_target_status = 'delivered' then
     if purchase_record.status not in ('paid', 'pre-sale-confirmed') then
