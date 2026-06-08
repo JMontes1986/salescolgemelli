@@ -11,7 +11,7 @@ const availabilityValues = new Set<ProductAvailability>(fallbackAvailability);
 const missingAvailabilitySchemaMessage =
   'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
 
-function normalizeAvailabilityValue(value: unknown): ProductAvailability[] {
+export function normalizeProductAvailability(value: unknown): ProductAvailability[] {
   const rawValues = (() => {
     if (Array.isArray(value)) {
       return value;
@@ -68,7 +68,7 @@ function normalizeAvailabilityValue(value: unknown): ProductAvailability[] {
 }
 
 function normalizeAvailabilityForWrite(value: unknown): ProductAvailability[] {
-  return normalizeAvailabilityValue(value);
+  return normalizeProductAvailability(value);
 }
 
 function normalizeProductPayload<T extends Partial<Product>>(product: T): T {
@@ -85,7 +85,7 @@ function normalizeProductPayload<T extends Partial<Product>>(product: T): T {
 function normalizeProduct(product: Product): Product {
   return {
     ...product,
-    availability: normalizeAvailabilityValue(product.availability),
+    availability: normalizeProductAvailability(product.availability),
     position: product.position ?? 0,
     restockCount: product.restockCount ?? 0,
     preSaleSold: product.preSaleSold ?? 0,

@@ -1,6 +1,7 @@
 import { callRpc, insertRow, insertRowMinimal, selectRows, selectSingle, updateById } from "@/lib/supabase";
 import type { Purchase, NewPurchase, Product, CartItem, User, ProductAvailability } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
+import { normalizeProductAvailability } from "./product-service";
 
 export type { NewPurchase } from "@/lib/types";
 
@@ -132,7 +133,8 @@ async function buildVerifiedCartItems(
       throw new Error(`Producto con ID ${item.id} no encontrado.`);
     }
 
-    if (requiredAvailability && !product.availability?.includes(requiredAvailability)) {
+    const productAvailability = normalizeProductAvailability(product.availability);
+    if (requiredAvailability && !productAvailability.includes(requiredAvailability)) {
       throw new Error(`${product.name} no está disponible para este canal de venta.`);
     }
 
