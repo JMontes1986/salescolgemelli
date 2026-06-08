@@ -163,7 +163,7 @@ export default function SelfServicePage() {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
       
       if (availableStock <= 0) {
-          toast({ variant: "destructive", title: "Sin Stock", description: `${item.name} está agotado o reservado en autogestión.` });
+          toast({ variant: "destructive", title: "Sin Stock", description: `${item.name} está agotado.` });
           return prevCart;
       }
        if (existingItem && existingItem.quantity >= availableStock) {
@@ -260,7 +260,7 @@ export default function SelfServicePage() {
         items: cart.map(({ stock, ...item }) => item),
         cedula,
         celular,
-        status: 'pre-sale', // Self-service purchases are treated as pre-sales
+        status: 'pending', // Autogestión descuenta stock al generar el código y queda pendiente de pago
     };
     
     try {
@@ -272,7 +272,7 @@ export default function SelfServicePage() {
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
-        toast({ title: "Éxito", description: "Código de pago generado. Su compra está pendiente de confirmación." });
+        toast({ title: "Éxito", description: "Código de pago generado. El inventario quedó descontado y la compra está pendiente de pago." });
         
         addAuditLog({
           userId: addedPurchase.cedula,

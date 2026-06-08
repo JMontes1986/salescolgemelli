@@ -167,6 +167,29 @@ begin
         and jsonb_typeof(items) = 'array'
       );
   end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'purchases'
+      and policyname = 'self_service_purchase_insert'
+  ) then
+    create policy "self_service_purchase_insert"
+      on public.purchases
+      for insert
+      to anon, authenticated
+      with check (
+        id like 'PV%'
+        and status = 'pending'
+        and coalesce(cedula, '') <> ''
+        and coalesce(celular, '') <> ''
+        and "sellerId" is null
+        and "sellerName" is null
+        and total >= 0
+        and jsonb_typeof(items) = 'array'
+      );
+  end if;
 end;
 $$;
 

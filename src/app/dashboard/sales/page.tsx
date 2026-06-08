@@ -133,7 +133,7 @@ export default function SalesPage() {
     const availableStock = Math.max(product.stock - (selfServiceReservedQuantities[product.id] || 0), 0);
 
     if (availableStock <= 0) {
-      toast({ variant: "destructive", title: "Sin Stock", description: `${product.name} está agotado o reservado.` });
+      toast({ variant: "destructive", title: "Sin Stock", description: `${product.name} está agotado.` });
       return;
     }
     if (existingItem && existingItem.quantity >= availableStock) {
@@ -227,13 +227,13 @@ export default function SalesPage() {
             userName: currentUser.name,
             action: 'TICKET_VOID', // Reusing this for cancellation
             details: purchase.status === 'pre-sale'
-              ? `Reserva de autogestión ${purchase.id} cancelada. Stock real sin cambios.`
+              ? `Reserva anterior de autogestión ${purchase.id} cancelada. Stock real sin cambios.`
               : `Compra pendiente ${purchase.id} cancelada. Stock devuelto.`,
         });
         toast({
             title: "Compra Cancelada",
             description: purchase.status === 'pre-sale'
-              ? "La compra fue cancelada y la reserva de autogestión quedó liberada."
+              ? "La reserva anterior fue cancelada sin mover el stock real."
               : "La compra ha sido cancelada y el stock devuelto.",
         });
         loadData();
@@ -375,7 +375,7 @@ export default function SalesPage() {
                                                         <AlertDialogHeader>
                                                         <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            Esta acción cancelará la compra con código <span className="font-mono font-bold">{purchase.id}</span>. Los productos reservados quedarán liberados. Esta acción no se puede deshacer.
+                                                            Esta acción cancelará la compra con código <span className="font-mono font-bold">{purchase.id}</span>. El stock descontado quedará reintegrado. Esta acción no se puede deshacer.
                                                         </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
