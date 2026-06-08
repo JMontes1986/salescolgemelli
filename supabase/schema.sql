@@ -381,134 +381,79 @@ $$;
 revoke all on function public.update_purchase_status_with_stock(text, text) from public;
 grant execute on function public.update_purchase_status_with_stock(text, text) to authenticated;
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'purchases'
-      and policyname = 'dashboard_purchases_select'
-  ) then
-    create policy "dashboard_purchases_select"
-      on public.purchases
-      for select
-      to authenticated
-      using (true);
-  end if;
+drop policy if exists "dashboard_purchases_select" on public.purchases;
+drop policy if exists "dashboard_purchases_insert" on public.purchases;
+drop policy if exists "dashboard_purchases_update" on public.purchases;
+drop policy if exists "self_service_pre_sale_insert" on public.purchases;
+drop policy if exists "self_service_purchase_insert" on public.purchases;
 
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'purchases'
-      and policyname = 'dashboard_purchases_insert'
-  ) then
-    create policy "dashboard_purchases_insert"
-      on public.purchases
-      for insert
-      to authenticated
-      with check (true);
-  end if;
+create policy "dashboard_purchases_select"
+  on public.purchases
+  for select
+  to authenticated
+  using (true);
 
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'purchases'
-      and policyname = 'dashboard_purchases_update'
-  ) then
-    create policy "dashboard_purchases_update"
-      on public.purchases
-      for update
-      to authenticated
-      using (true)
-      with check (true);
-  end if;
+create policy "dashboard_purchases_insert"
+  on public.purchases
+  for insert
+  to authenticated
+  with check (true);
 
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'purchases'
-      and policyname = 'self_service_pre_sale_insert'
-  ) then
-    create policy "self_service_pre_sale_insert"
-      on public.purchases
-      for insert
-      to anon, authenticated
-      with check (
-        id like 'PV%'
-        and status = 'pre-sale'
-        and coalesce(cedula, '') <> ''
-        and coalesce(celular, '') <> ''
-        and "sellerId" is null
-        and "sellerName" is null
-        and total >= 0
-        and jsonb_typeof(items) = 'array'
-      );
-  end if;
+create policy "dashboard_purchases_update"
+  on public.purchases
+  for update
+  to authenticated
+  using (true)
+  with check (true);
 
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'purchases'
-      and policyname = 'self_service_purchase_insert'
-  ) then
-    create policy "self_service_purchase_insert"
-      on public.purchases
-      for insert
-      to anon, authenticated
-      with check (
-        id like 'PV%'
-        and status = 'pending'
-        and coalesce(cedula, '') <> ''
-        and coalesce(celular, '') <> ''
-        and "sellerId" is null
-        and "sellerName" is null
-        and total >= 0
-        and jsonb_typeof(items) = 'array'
-      );
-  end if;
-end;
-$$;
+create policy "self_service_pre_sale_insert"
+  on public.purchases
+  for insert
+  to anon, authenticated
+  with check (
+    id like 'PV%'
+    and status = 'pre-sale'
+    and coalesce(cedula, '') <> ''
+    and coalesce(celular, '') <> ''
+    and "sellerId" is null
+    and "sellerName" is null
+    and total >= 0
+    and jsonb_typeof(items) = 'array'
+  );
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'returns'
-      and policyname = 'dashboard_returns_select'
-  ) then
-    create policy "dashboard_returns_select"
-      on public.returns
-      for select
-      to authenticated
-      using (true);
-  end if;
+create policy "self_service_purchase_insert"
+  on public.purchases
+  for insert
+  to anon, authenticated
+  with check (
+    id like 'PV%'
+    and status = 'pending'
+    and coalesce(cedula, '') <> ''
+    and coalesce(celular, '') <> ''
+    and "sellerId" is null
+    and "sellerName" is null
+    and total >= 0
+    and jsonb_typeof(items) = 'array'
+  );
 
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'returns'
-      and policyname = 'dashboard_returns_insert'
-  ) then
-    create policy "dashboard_returns_insert"
-      on public.returns
-      for insert
-      to authenticated
-      with check (
-        auth.uid() is not null
-        and "processedByUserId" = auth.uid()::text
-        and quantity > 0
-      );
-  end if;
-end;
-$$;
+drop policy if exists "dashboard_returns_select" on public.returns;
+drop policy if exists "dashboard_returns_insert" on public.returns;
+
+create policy "dashboard_returns_select"
+  on public.returns
+  for select
+  to authenticated
+  using (true);
+
+create policy "dashboard_returns_insert"
+  on public.returns
+  for insert
+  to authenticated
+  with check (
+    auth.uid() is not null
+    and "processedByUserId" = auth.uid()::text
+    and quantity > 0
+  );
 
 alter table public.products replica identity full;
 alter table public.purchases replica identity full;
