@@ -260,7 +260,7 @@ export default function SelfServicePage() {
         items: cart.map(({ stock, ...item }) => item),
         cedula,
         celular,
-        status: 'pending', // Autogestión descuenta stock al generar el código y queda pendiente de pago
+        status: 'pending', // Autogestión reserva disponibilidad y descuenta stock al confirmar el pago.
     };
     
     try {
@@ -272,7 +272,7 @@ export default function SelfServicePage() {
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
-        toast({ title: "Éxito", description: "Código de pago generado. El inventario quedó descontado y la compra está pendiente de pago." });
+        toast({ title: "Éxito", description: "Código de pago generado. La disponibilidad quedó reservada y la compra está pendiente de pago." });
         
         addAuditLog({
           userId: addedPurchase.cedula,

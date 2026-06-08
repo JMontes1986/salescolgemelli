@@ -360,7 +360,7 @@ function SortableProductCard({
     onProductAdded: (p: Product) => void;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: product.id });
-    const availableStock = product.stock;
+    const availableStock = Math.max(product.stock - selfServicePending, 0);
 
     const style = {
         transform: CSS.Transform.toString(transform),

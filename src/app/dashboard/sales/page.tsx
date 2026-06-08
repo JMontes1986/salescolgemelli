@@ -226,13 +226,13 @@ export default function SalesPage() {
             userId: currentUser.id,
             userName: currentUser.name,
             action: 'TICKET_VOID', // Reusing this for cancellation
-            details: purchase.status === 'pre-sale'
+            details: purchase.status === 'pre-sale' || (!purchase.sellerId && purchase.status === 'pending')
               ? `Reserva anterior de autogestión ${purchase.id} cancelada. Stock real sin cambios.`
               : `Compra pendiente ${purchase.id} cancelada. Stock devuelto.`,
         });
         toast({
             title: "Compra Cancelada",
-            description: purchase.status === 'pre-sale'
+            description: purchase.status === 'pre-sale' || (!purchase.sellerId && purchase.status === 'pending')
               ? "La reserva anterior fue cancelada sin mover el stock real."
               : "La compra ha sido cancelada y el stock devuelto.",
         });
@@ -376,7 +376,7 @@ export default function SalesPage() {
                                                         <AlertDialogHeader>
                                                         <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            Esta acción cancelará la compra con código <span className="font-mono font-bold">{purchase.id}</span>. El stock descontado quedará reintegrado. Esta acción no se puede deshacer.
+                                                            Esta acción cancelará la compra con código <span className="font-mono font-bold">{purchase.id}</span>. La disponibilidad reservada quedará liberada. Esta acción no se puede deshacer.
                                                         </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>

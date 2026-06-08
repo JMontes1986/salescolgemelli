@@ -30,13 +30,7 @@ function ensureReturnedFlags(purchase: Purchase): Purchase {
   };
 }
 
-export function getSelfServiceReservedQuantities(_purchases: Purchase[]): Record<string, number> {
-  // Autogestión ahora descuenta el inventario al crear o editar la compra.
-  // No se deben volver a restar esas unidades como "reservadas" al calcular disponibilidad.
-  return {};
-}
-
-export function getSelfServicePendingQuantities(purchases: Purchase[]): Record<string, number> {
+export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
   return purchases
     .filter(purchase => !purchase.sellerId && purchase.status === 'pending')
     .reduce<Record<string, number>>((acc, purchase) => {
@@ -46,6 +40,8 @@ export function getSelfServicePendingQuantities(purchases: Purchase[]): Record<s
       return acc;
     }, {});
 }
+
+export const getSelfServicePendingQuantities = getSelfServiceReservedQuantities;
 
 function isDashboardPreSale(purchase: Purchase) {
   return Boolean(purchase.sellerId) && (purchase.status === 'pre-sale' || purchase.status === 'pre-sale-confirmed');
@@ -179,16 +175,27 @@ async function buildVerifiedCartItems(
 
 function assertAvailableStock(
   items: Pick<CartItem, 'id' | 'quantity'>[],
-  productMap: Map<string, Product>
+  productMap: Map<string, Product>,
+  reservedQuantities: Record<string, number> = {}
 ) {
   for (const item of items) {
     const product = productMap.get(item.id);
     if (!product) throw new Error(`Producto con ID ${item.id} no encontrado.`);
 
-    if (product.stock < item.quantity) {
+    const availableStock = product.stock - (reservedQuantities[item.id] || 0);
+    if (availableStock < item.quantity) {
       throw new Error(`Stock insuficiente para ${product.name}.`);
     }
   }
+}
+
+async function getSelfServiceReservations(excludePurchaseId?: string) {
+  const purchases = await getPurchases('PV');
+  return getSelfServiceReservedQuantities(
+    excludePurchaseId
+      ? purchases.filter(purchase => purchase.id !== excludePurchaseId)
+      : purchases
+  );
 }
 
 function getCurrentDateLabel() {
@@ -275,7 +282,8 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     isSelfService ? 'self-service' : 'presale'
   );
   if (isSelfService) {
-    assertAvailableStock(verifiedCart.items, verifiedCart.productMap);
+    const reservedQuantities = await getSelfServiceReservations();
+    assertAvailableStock(verifiedCart.items, verifiedCart.productMap, reservedQuantities);
   }
 
   const cedula = sanitizeCustomerIdentifier(purchase.cedula, 'La cédula');
@@ -287,15 +295,12 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
   const next = await getNextCounter('preSaleCounter');
   const generatedId = `PV${firstItemInitial}${String(next).padStart(4, '0')}`;
 
-  await Promise.all(verifiedCart.items.map(item => {
-    const product = verifiedCart.productMap.get(item.id)!;
-
-    if (isSelfService) {
-      return patchProduct(item.id, { stock: product.stock - item.quantity });
-    }
-
-    return patchProduct(item.id, { preSaleSold: (product.preSaleSold ?? 0) + item.quantity });
-  }));
+  if (!isSelfService) {
+    await Promise.all(verifiedCart.items.map(item => {
+      const product = verifiedCart.productMap.get(item.id)!;
+      return patchProduct(item.id, { preSaleSold: (product.preSaleSold ?? 0) + item.quantity });
+    }));
+  }
 
   const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false }));
   const savedPurchase: Purchase = {
@@ -333,6 +338,10 @@ export async function cancelPurchaseAndUpdateStock(purchaseId: string): Promise<
         return patchProduct(item.id, { preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0) });
       }
 
+      return Promise.resolve();
+    }
+
+    if (purchase.status === 'pending' && !purchase.sellerId) {
       return Promise.resolve();
     }
 
@@ -378,6 +387,11 @@ export async function updatePendingPurchase(
   const allProductIds = [...new Set([...originalItemMap.keys(), ...newItemMap.keys()])];
   const productMap = await getProductsByIds(allProductIds);
 
+  if (isSelfService) {
+    const reservedQuantities = await getSelfServiceReservations(safePurchaseId);
+    assertAvailableStock(verifiedCart.items, productMap, reservedQuantities);
+  }
+
   await Promise.all(allProductIds.map(productId => {
     const origQty = originalItemMap.get(productId) || 0;
     const newQty = newItemMap.get(productId) || 0;
@@ -389,6 +403,10 @@ export async function updatePendingPurchase(
 
     if (isPreSale) {
       return patchProduct(productId, { preSaleSold: (product.preSaleSold ?? 0) + diff });
+    }
+
+    if (isSelfService) {
+      return Promise.resolve();
     }
 
     const newStock = product.stock - diff;
@@ -456,18 +474,16 @@ export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, c
   if (!purchase) throw new Error("Compra pendiente no encontrada.");
   if (purchase.status !== 'pending') throw new Error("Esta compra ya ha sido confirmada o procesada.");
 
-  if (purchase.sellerId) {
-    const productMap = await getProductsByIds(purchase.items.map(item => item.id));
-    await Promise.all(purchase.items.map(item => {
-      const product = productMap.get(item.id);
-      if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
+  const productMap = await getProductsByIds(purchase.items.map(item => item.id));
+  await Promise.all(purchase.items.map(item => {
+    const product = productMap.get(item.id);
+    if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
 
-      const newStock = product.stock - item.quantity;
-      if (newStock < 0) throw new Error(`Stock insuficiente para ${product.name}.`);
+    const newStock = product.stock - item.quantity;
+    if (newStock < 0) throw new Error(`Stock insuficiente para ${product.name}.`);
 
-      return patchProduct(item.id, { stock: newStock });
-    }));
-  }
+    return patchProduct(item.id, { stock: newStock });
+  }));
 
   await updateById<Purchase>('purchases', safePurchaseId, { status: 'paid' });
 
@@ -477,6 +493,6 @@ export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, c
     action: 'PAYMENT_CONFIRM',
     details: purchase.sellerId
       ? `Compra pendiente ${safePurchaseId} pagada. Stock descontado.`
-      : `Compra de autogestión ${safePurchaseId} pagada. El stock ya estaba descontado desde la generación del código.`,
+      : `Compra de autogestión ${safePurchaseId} pagada. Stock descontado al confirmar el pago.`,
   });
 }
