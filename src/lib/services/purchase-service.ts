@@ -72,7 +72,12 @@ async function getProductsByIds(ids: string[]): Promise<Map<string, Product>> {
 }
 
 async function patchProduct(productId: string, patch: Partial<Product>) {
-  await updateById<Product>('products', sanitizeRecordId(productId, 'El producto'), patch);
+  const safeProductId = sanitizeRecordId(productId, 'El producto');
+  const updatedProduct = await updateById<Product>('products', safeProductId, patch);
+
+  if (!updatedProduct) {
+    throw new Error(`No se pudo actualizar el stock del producto ${safeProductId}. Revisa permisos/RLS de la tabla products.`);
+  }
 }
 
 function sanitizeRecordId(value: string, fieldName: string) {
@@ -242,30 +247,25 @@ export async function getPurchasesByCelular(celular: string): Promise<Purchase[]
 }
 
 export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
-  const verifiedCart = await buildVerifiedCartItems(purchase.items, 'pos');
-  assertAvailableStock(verifiedCart.items, verifiedCart.productMap);
+  const rpcPayload = {
+    p_items: purchase.items.map(item => ({ id: item.id, quantity: item.quantity })),
+    p_cedula: purchase.cedula,
+    p_celular: purchase.celular,
+    p_seller_id: purchase.sellerId,
+    p_seller_name: purchase.sellerName,
+    p_date: getCurrentDateLabel(),
+    p_status: purchase.status === 'delivered' ? 'delivered' : 'paid',
+  };
 
-  const firstItemInitial = verifiedCart.items.length > 0
-    ? verifiedCart.items[0].name.charAt(0).toUpperCase()
-    : 'X';
+  try {
+    return ensureReturnedFlags(await callRpc<Purchase>('create_pos_purchase', rpcPayload));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('create_pos_purchase')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para descontar stock al registrar ventas de forma segura.');
+    }
 
-  const next = await getNextCounter('purchaseCounter');
-  const generatedId = `CG${firstItemInitial}${String(next).padStart(4, '0')}`;
-
-  await Promise.all(verifiedCart.items.map(item => {
-    const product = verifiedCart.productMap.get(item.id)!;
-    return patchProduct(item.id, { stock: product.stock - item.quantity });
-  }));
-
-  const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false }));
-  return insertRow<Purchase>('purchases', {
-    ...purchase,
-    id: generatedId,
-    date: getCurrentDateLabel(),
-    total: verifiedCart.total,
-    items: itemsToSave,
-    status: purchase.status === 'delivered' ? 'delivered' : 'paid',
-  });
+    throw error;
+  }
 }
 
 export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchase> {
