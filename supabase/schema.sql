@@ -100,7 +100,7 @@ $$;
 revoke all on function public.next_counter(text) from public;
 grant execute on function public.next_counter(text) to anon, authenticated;
 
-create or replace function public.create_pos_purchase(
+create or replace function public.create_pos_purchase_with_stock(
   p_items jsonb,
   p_cedula text default 'N/A',
   p_celular text default 'N/A',
@@ -227,6 +227,34 @@ begin
 
   return saved_purchase;
 end;
+$$;
+
+revoke all on function public.create_pos_purchase_with_stock(jsonb, text, text, text, text, text, text) from public;
+grant execute on function public.create_pos_purchase_with_stock(jsonb, text, text, text, text, text, text) to authenticated;
+
+create or replace function public.create_pos_purchase(
+  p_items jsonb,
+  p_cedula text default 'N/A',
+  p_celular text default 'N/A',
+  p_seller_id text default null,
+  p_seller_name text default null,
+  p_date text default null,
+  p_status text default 'paid'
+)
+returns public.purchases
+language sql
+security definer
+set search_path = public
+as $$
+  select public.create_pos_purchase_with_stock(
+    p_items,
+    p_cedula,
+    p_celular,
+    p_seller_id,
+    p_seller_name,
+    p_date,
+    p_status
+  );
 $$;
 
 revoke all on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) from public;

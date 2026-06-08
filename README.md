@@ -114,6 +114,7 @@ Pasos:
 - **Supabase no está configurado:** revisa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 - **Errores 401/403:** revisa políticas RLS y permisos de la anon key.
 - **Tablas o columnas no encontradas:** vuelve a ejecutar `supabase/schema.sql` en el proyecto correcto.
+- **Aparecen artículos vendidos pero el stock no baja:** vuelve a ejecutar `supabase/schema.sql`. Las ventas POS deben usar la RPC `create_pos_purchase_with_stock`; si esa función no existe en Supabase, la app bloqueará la venta para evitar inventario inconsistente. Si ya hay compras registradas antes de aplicar el SQL, corrige una sola vez el stock real del producto en `products`.
 - **Imágenes remotas bloqueadas:** agrega el host de Supabase Storage en `next.config.ts` si cambias de proyecto.
 
 ---

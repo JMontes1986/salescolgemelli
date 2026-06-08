@@ -258,9 +258,9 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
   };
 
   try {
-    return ensureReturnedFlags(await callRpc<Purchase>('create_pos_purchase', rpcPayload));
+    return ensureReturnedFlags(await callRpc<Purchase>('create_pos_purchase_with_stock', rpcPayload));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('create_pos_purchase')) {
+    if (error instanceof Error && error.message.includes('create_pos_purchase_with_stock')) {
       throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para descontar stock al registrar ventas de forma segura.');
     }
 
