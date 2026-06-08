@@ -323,6 +323,21 @@ export async function updatePurchase(purchaseId: string, data: Partial<Purchase>
   await updateById<Purchase>('purchases', sanitizeRecordId(purchaseId, 'La compra'), data);
 }
 
+async function updatePurchaseStatusWithStock(purchaseId: string, targetStatus: Purchase['status']): Promise<Purchase> {
+  try {
+    return ensureReturnedFlags(await callRpc<Purchase>('update_purchase_status_with_stock', {
+      p_purchase_id: sanitizeRecordId(purchaseId, 'La compra'),
+      p_target_status: targetStatus,
+    }));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('update_purchase_status_with_stock')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para confirmar pagos y descontar stock con permisos seguros.');
+    }
+
+    throw error;
+  }
+}
+
 export async function cancelPurchaseAndUpdateStock(purchaseId: string): Promise<void> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
   const purchase = await getPurchaseById(safePurchaseId);
@@ -444,21 +459,7 @@ export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUs
   if (!purchase) throw new Error("Preventa no encontrada.");
   if (purchase.status !== 'pre-sale') throw new Error("Esta preventa ya ha sido confirmada o procesada.");
 
-  const productMap = await getProductsByIds(purchase.items.map(item => item.id));
-  await Promise.all(purchase.items.map(item => {
-    const product = productMap.get(item.id);
-    if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
-
-    const newStock = product.stock - item.quantity;
-    if (newStock < 0) throw new Error(`Stock insuficiente para ${product.name}.`);
-
-    return patchProduct(item.id, {
-      stock: newStock,
-      preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0),
-    });
-  }));
-
-  await updateById<Purchase>('purchases', safePurchaseId, { status: 'pre-sale-confirmed' });
+  await updatePurchaseStatusWithStock(safePurchaseId, 'pre-sale-confirmed');
 
   await addAuditLog({
     userId: currentUser.id,
@@ -474,18 +475,7 @@ export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, c
   if (!purchase) throw new Error("Compra pendiente no encontrada.");
   if (purchase.status !== 'pending') throw new Error("Esta compra ya ha sido confirmada o procesada.");
 
-  const productMap = await getProductsByIds(purchase.items.map(item => item.id));
-  await Promise.all(purchase.items.map(item => {
-    const product = productMap.get(item.id);
-    if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
-
-    const newStock = product.stock - item.quantity;
-    if (newStock < 0) throw new Error(`Stock insuficiente para ${product.name}.`);
-
-    return patchProduct(item.id, { stock: newStock });
-  }));
-
-  await updateById<Purchase>('purchases', safePurchaseId, { status: 'paid' });
+  await updatePurchaseStatusWithStock(safePurchaseId, 'paid');
 
   await addAuditLog({
     userId: currentUser.id,

@@ -260,6 +260,127 @@ $$;
 revoke all on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) from public;
 grant execute on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) to authenticated;
 
+create or replace function public.update_purchase_status_with_stock(
+  p_purchase_id text,
+  p_target_status text
+)
+returns public.purchases
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  purchase_record public.purchases%rowtype;
+  item_record record;
+  product_record public.products%rowtype;
+begin
+  if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
+    raise exception 'La compra tiene un identificador inválido.';
+  end if;
+
+  if p_target_status not in ('paid', 'pre-sale-confirmed', 'delivered') then
+    raise exception 'Estado de compra no permitido.';
+  end if;
+
+  select * into purchase_record
+  from public.purchases
+  where id = trim(p_purchase_id)
+  for update;
+
+  if not found then
+    raise exception 'Compra no encontrada.';
+  end if;
+
+  if p_target_status = 'paid' then
+    if purchase_record.status <> 'pending' then
+      raise exception 'Esta compra ya ha sido confirmada o procesada.';
+    end if;
+
+    for item_record in
+      select trim(item->>'id') as id, sum((item->>'quantity')::integer) as quantity
+      from jsonb_array_elements(purchase_record.items) as input(item)
+      group by trim(item->>'id')
+    loop
+      if item_record.id is null or item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+        raise exception 'La compra contiene un producto inválido.';
+      end if;
+
+      if item_record.quantity is null or item_record.quantity < 1 or item_record.quantity > 99 then
+        raise exception 'La compra contiene una cantidad inválida.';
+      end if;
+
+      select * into product_record
+      from public.products
+      where id = item_record.id
+      for update;
+
+      if not found then
+        raise exception 'Producto con ID % no encontrado.', item_record.id;
+      end if;
+
+      if product_record.stock < item_record.quantity then
+        raise exception 'Stock insuficiente para %.', product_record.name;
+      end if;
+
+      update public.products
+      set stock = stock - item_record.quantity
+      where id = item_record.id;
+    end loop;
+  elsif p_target_status = 'pre-sale-confirmed' then
+    if purchase_record.status <> 'pre-sale' then
+      raise exception 'Esta preventa ya ha sido confirmada o procesada.';
+    end if;
+
+    for item_record in
+      select trim(item->>'id') as id, sum((item->>'quantity')::integer) as quantity
+      from jsonb_array_elements(purchase_record.items) as input(item)
+      group by trim(item->>'id')
+    loop
+      if item_record.id is null or item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+        raise exception 'La compra contiene un producto inválido.';
+      end if;
+
+      if item_record.quantity is null or item_record.quantity < 1 or item_record.quantity > 99 then
+        raise exception 'La compra contiene una cantidad inválida.';
+      end if;
+
+      select * into product_record
+      from public.products
+      where id = item_record.id
+      for update;
+
+      if not found then
+        raise exception 'Producto con ID % no encontrado.', item_record.id;
+      end if;
+
+      if product_record.stock < item_record.quantity then
+        raise exception 'Stock insuficiente para %.', product_record.name;
+      end if;
+
+      update public.products
+      set
+        stock = stock - item_record.quantity,
+        "preSaleSold" = greatest("preSaleSold" - item_record.quantity, 0)
+      where id = item_record.id;
+    end loop;
+  elsif p_target_status = 'delivered' then
+    if purchase_record.status not in ('paid', 'pre-sale-confirmed') then
+      raise exception 'Solo se pueden entregar compras pagadas o preventas confirmadas.';
+    end if;
+  end if;
+
+  update public.purchases
+  set status = p_target_status
+  where id = purchase_record.id
+  returning * into purchase_record;
+
+  return purchase_record;
+end;
+$$;
+
+revoke all on function public.update_purchase_status_with_stock(text, text) from public;
+grant execute on function public.update_purchase_status_with_stock(text, text) to authenticated;
+
 do $$
 begin
   if not exists (
