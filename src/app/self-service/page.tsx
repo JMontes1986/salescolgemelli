@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getPurchases, getPurchasesByCedula, type NewPurchase, updatePendingPurchase, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getPurchases, getSelfServicePurchasesByCustomer, type NewPurchase, updatePendingPurchase, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
@@ -85,6 +85,7 @@ export default function SelfServicePage() {
   const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
   const [searchCedula, setSearchCedula] = useState('');
+  const [searchCelular, setSearchCelular] = useState('');
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -198,13 +199,11 @@ export default function SelfServicePage() {
     
     try {
         const updatedItems = cart.map(({ stock, ...item }) => item);
-        await updatePendingPurchase(editingPurchase.id, updatedItems);
-        const updatedPurchase: Purchase = {
-          ...editingPurchase,
-          items: updatedItems.map(item => ({ ...item, returned: false })),
-          total: subtotal,
-          date: new Date().toLocaleString('es-CO'),
-        };
+        const updatedPurchase = await updatePendingPurchase(editingPurchase.id, updatedItems, {
+          customerCedula: searchCedula || editingPurchase.cedula,
+          customerCelular: searchCelular || editingPurchase.celular,
+          selfServiceOnly: true,
+        });
         
         setPaymentCode(editingPurchase.id);
         setLastPurchase(updatedPurchase);
@@ -241,16 +240,17 @@ export default function SelfServicePage() {
         setPaymentCode(addedPurchase.id);
         setLastPurchase(addedPurchase);
         setSearchCedula(addedPurchase.cedula);
+        setSearchCelular(addedPurchase.celular);
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Código de pago generado. Su compra está pendiente de confirmación." });
         
         addAuditLog({
-          userId: cedula,
+          userId: addedPurchase.cedula,
           userName: 'Cliente (Autogestión)',
           action: 'SELF_SERVICE_PURCHASE',
-          details: `Nueva compra en sitio #${addedPurchase.id} por ${formatCurrency(addedPurchase.total)} iniciada por C.C. ${cedula}.`,
+          details: `Nueva compra en sitio #${addedPurchase.id} por ${formatCurrency(addedPurchase.total)} iniciada por C.C. ${addedPurchase.cedula}.`,
         }).catch((auditError) => {
           console.warn("No se pudo registrar auditoría de autogestión.", auditError);
         });
@@ -264,13 +264,13 @@ export default function SelfServicePage() {
   };
 
   const handleSearchHistory = async () => {
-    if (!searchCedula) {
-        toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese una cédula para buscar." });
+    if (!searchCedula || !searchCelular) {
+        toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese cédula y celular para buscar." });
         return;
     }
     setIsHistoryLoading(true);
     try {
-        const history = await getPurchasesByCedula(searchCedula);
+        const history = await getSelfServicePurchasesByCustomer(searchCedula, searchCelular);
         setPurchaseHistory(history);
     } catch (error) {
         console.error("Error fetching purchase history:", error);
@@ -300,14 +300,18 @@ export default function SelfServicePage() {
     });
     setCart(cartItems);
     setEditingPurchase(purchase);
+    setSearchCedula(purchase.cedula);
+    setSearchCelular(purchase.celular);
     toast({ title: "Modo Edición", description: "Los artículos de su compra han sido cargados en el carrito." });
   }
 
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const daviplataPaymentHref = buildDaviplataPaymentHref(paymentCode, subtotal);
-  const daviplataQrPayload = buildDaviplataQrPayload(paymentCode, subtotal);
+  const paymentTotal = lastPurchase?.id === paymentCode ? lastPurchase.total : subtotal;
+  const paymentItems = lastPurchase?.id === paymentCode ? lastPurchase.items : cart;
+  const daviplataPaymentHref = buildDaviplataPaymentHref(paymentCode, paymentTotal);
+  const daviplataQrPayload = buildDaviplataQrPayload(paymentCode, paymentTotal);
   const daviplataQrImageUrl = buildQrImageUrl(daviplataQrPayload);
 
   return (
@@ -643,7 +647,7 @@ export default function SelfServicePage() {
               Mi Historial de Compras
             </CardTitle>
             <CardDescription>
-              Ingrese su número de cédula para ver su historial y modificar compras pendientes.
+              Ingrese su cédula y celular para ver su historial y modificar compras pendientes.
             </CardDescription>
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end">
               <div className="flex-grow">
@@ -657,6 +661,20 @@ export default function SelfServicePage() {
                   placeholder="Ingrese su número de cédula"
                   value={searchCedula}
                   onChange={(e) => setSearchCedula(e.target.value)}
+                />
+              </div>
+              <div className="flex-grow">
+                <Label htmlFor="search-celular">Celular</Label>
+                <Input
+                  id="search-celular"
+                  name="searchCelular"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className="mt-1 h-12 text-base"
+                  placeholder="Ingrese su celular"
+                  value={searchCelular}
+                  onChange={(e) => setSearchCelular(e.target.value)}
                 />
               </div>
                 <Button className="h-12 w-full sm:w-auto" onClick={handleSearchHistory}>Buscar</Button>
@@ -680,7 +698,7 @@ export default function SelfServicePage() {
                             {purchase.status === 'pre-sale' ? 'Preventa' : purchase.status === 'pending' ? 'Pendiente' : purchase.status === 'paid' ? 'Pagado' : purchase.status === 'delivered' ? 'Entregado' : 'Cancelado'}
                          </Badge>
                           <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
-                        {purchase.status === 'pending' && (
+                        {(purchase.status === 'pending' || purchase.status === 'pre-sale') && (
                             <Button variant="outline" className="h-11" onClick={() => handleEditPurchase(purchase)}>
                                 <Pencil className="h-4 w-4" />
                                 Modificar
@@ -692,7 +710,7 @@ export default function SelfServicePage() {
                   ))}
               </div>
             ) : (
-                <p className="rounded-md border border-dashed bg-muted p-6 text-center text-muted-foreground">Ingrese una cédula y haga clic en buscar para ver el historial.</p>
+                <p className="rounded-md border border-dashed bg-muted p-6 text-center text-muted-foreground">Ingrese cédula y celular para ver el historial.</p>
             )}
           </CardContent>
         </Card>
@@ -817,7 +835,7 @@ export default function SelfServicePage() {
                 Toque el QR desde este celular para abrir el pago por DaviPlata.
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Use el código {paymentCode} como referencia y pague exactamente {formatCurrency(subtotal)}.
+                Use el código {paymentCode} como referencia y pague exactamente {formatCurrency(paymentTotal)}.
               </p>
               {DAVIPLATA_BREB_KEY ? (
                 <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs font-semibold">
@@ -834,7 +852,7 @@ export default function SelfServicePage() {
                 <h4 className="font-semibold mb-2 text-center">Resumen de la Compra</h4>
                 <div className="max-h-32 overflow-y-auto border rounded-md p-2">
                     <ul className="text-sm space-y-1">
-                        {cart.map(item => (
+                        {paymentItems.map(item => (
                             <li key={item.id} className="flex justify-between">
                                 <span>{item.name} (x{item.quantity})</span>
                                 <span>{formatCurrency(item.price * item.quantity)}</span>
@@ -844,7 +862,7 @@ export default function SelfServicePage() {
                 </div>
                  <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t">
                     <span>Total a Pagar:</span>
-                    <span>{formatCurrency(subtotal)}</span>
+                    <span>{formatCurrency(paymentTotal)}</span>
                 </div>
             </div>
 
