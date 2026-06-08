@@ -170,6 +170,42 @@ begin
 end;
 $$;
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'returns'
+      and policyname = 'dashboard_returns_select'
+  ) then
+    create policy "dashboard_returns_select"
+      on public.returns
+      for select
+      to authenticated
+      using (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'returns'
+      and policyname = 'dashboard_returns_insert'
+  ) then
+    create policy "dashboard_returns_insert"
+      on public.returns
+      for insert
+      to authenticated
+      with check (
+        auth.uid() is not null
+        and "processedByUserId" = auth.uid()::text
+        and quantity > 0
+      );
+  end if;
+end;
+$$;
+
 alter table public.products replica identity full;
 alter table public.purchases replica identity full;
 
