@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
 import { allProductAvailability, getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
-import { getPurchases, getSelfServiceReservedQuantities } from "@/lib/services/purchase-service";
+import { getPurchases, getSelfServicePendingQuantities } from "@/lib/services/purchase-service";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -59,6 +59,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 
 const availabilityMap: Record<ProductAvailability, { label: string; icon: React.ElementType }> = {
     'pos': { label: 'Punto de Venta', icon: Store },
@@ -349,17 +350,17 @@ function RestockForm({ product, onStockUpdated }: { product: Product; onStockUpd
 
 function SortableProductCard({
     product,
-    selfServiceReserved,
+    selfServicePending,
     onProductUpdated,
     onProductAdded
 }: {
     product: Product;
-    selfServiceReserved: number;
+    selfServicePending: number;
     onProductUpdated: (p: Product) => void;
     onProductAdded: (p: Product) => void;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: product.id });
-    const availableStock = Math.max(product.stock - selfServiceReserved, 0);
+    const availableStock = product.stock;
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -434,7 +435,7 @@ function SortableProductCard({
                         <span className="text-xl font-bold">{formatCurrency(product.price)}</span>
                         <div className="flex flex-col items-end text-sm font-medium text-muted-foreground">
                             <span>Stock: {product.stock}</span>
-                            {selfServiceReserved > 0 && <span>Autogestión: {selfServiceReserved}</span>}
+                            {selfServicePending > 0 && <span>Autogestión: {selfServicePending}</span>}
                             <span className={cn("font-bold", availableStock <= 0 && "text-destructive")}>Disponible: {availableStock}</span>
                         </div>
                     </div>
@@ -460,6 +461,7 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasSeeded, setHasSeeded] = useState(false);
   const { toast } = useToast();
+  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -468,30 +470,40 @@ export default function ProductsPage() {
     })
   );
 
-  useEffect(() => {
-    async function loadProducts() {
+  const loadProducts = useCallback(async (showLoading = true) => {
+    if (showLoading) {
       setIsLoading(true);
-      try {
-        const [fetchedProducts, fetchedPurchases] = await Promise.all([
-          getProducts(),
-          getPurchases(),
-        ]);
-        setProducts(fetchedProducts);
-        setPurchases(fetchedPurchases);
-        if (fetchedProducts.length > 0) {
-            setHasSeeded(true);
-        }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar los productos." });
-      } finally {
+    }
+    try {
+      const [fetchedProducts, fetchedPurchases] = await Promise.all([
+        getProducts(),
+        getPurchases(),
+      ]);
+      setProducts(fetchedProducts);
+      setPurchases(fetchedPurchases);
+      if (fetchedProducts.length > 0) {
+          setHasSeeded(true);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar los productos." });
+    } finally {
+      if (showLoading) {
         setIsLoading(false);
       }
     }
-    loadProducts();
-  }, []);
+  }, [toast]);
 
-  const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  useSupabaseRealtime({
+    tables: realtimeTables,
+    onChange: () => loadProducts(false),
+  });
+
+  const selfServicePendingQuantities = useMemo(() => getSelfServicePendingQuantities(purchases), [purchases]);
 
   const handleProductAdded = (newProduct: Product) => {
     setProducts(prevProducts => [...prevProducts, newProduct].sort((a,b) => a.position - b.position));
@@ -564,7 +576,7 @@ export default function ProductsPage() {
                         <SortableProductCard
                             key={product.id}
                             product={product}
-                            selfServiceReserved={selfServiceReservedQuantities[product.id] || 0}
+                            selfServicePending={selfServicePendingQuantities[product.id] || 0}
                             onProductAdded={handleProductAdded}
                             onProductUpdated={handleProductUpdated}
                         />

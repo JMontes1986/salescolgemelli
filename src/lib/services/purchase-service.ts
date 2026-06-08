@@ -36,6 +36,21 @@ export function getSelfServiceReservedQuantities(_purchases: Purchase[]): Record
   return {};
 }
 
+export function getSelfServicePendingQuantities(purchases: Purchase[]): Record<string, number> {
+  return purchases
+    .filter(purchase => !purchase.sellerId && purchase.status === 'pending')
+    .reduce<Record<string, number>>((acc, purchase) => {
+      purchase.items.forEach((item) => {
+        acc[item.id] = (acc[item.id] || 0) + item.quantity;
+      });
+      return acc;
+    }, {});
+}
+
+function isDashboardPreSale(purchase: Purchase) {
+  return Boolean(purchase.sellerId) && (purchase.status === 'pre-sale' || purchase.status === 'pre-sale-confirmed');
+}
+
 
 async function getNextCounter(counterId: string): Promise<number> {
   try {
@@ -181,8 +196,8 @@ export async function getPurchases(idPrefix?: string): Promise<Purchase[]> {
 }
 
 export async function getRecentPreSales(): Promise<Purchase[]> {
-  const purchases = await selectRows<Purchase>('purchases', { id: 'like.PV%', order: 'date.desc', limit: 5 });
-  return purchases.map(ensureReturnedFlags);
+  const purchases = await getPurchases('PV');
+  return purchases.filter(isDashboardPreSale).slice(0, 5);
 }
 
 export async function getSelfServicePurchases(limit = 30): Promise<Purchase[]> {
@@ -204,7 +219,12 @@ export async function getPurchasesByCedula(cedula: string): Promise<Purchase[]> 
 
 export async function getPreSalesByCedula(cedula: string): Promise<Purchase[]> {
   const purchases = await selectRows<Purchase>('purchases', { cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}`, id: 'like.PV%' });
-  return sortByNewest(purchases.map(ensureReturnedFlags));
+  return sortByNewest(purchases.map(ensureReturnedFlags)).filter(isDashboardPreSale);
+}
+
+export async function getDashboardPreSales(): Promise<Purchase[]> {
+  const purchases = await getPurchases('PV');
+  return purchases.filter(isDashboardPreSale);
 }
 
 export async function getSelfServicePurchasesByCustomer(cedula: string, celular: string): Promise<Purchase[]> {

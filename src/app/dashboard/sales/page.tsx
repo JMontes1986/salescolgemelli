@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Ticket as TicketIcon, Hourglass, Search, XCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPurchase, getPurchases, type NewPurchase, cancelPurchaseAndUpdateStock, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
+import { addPurchase, getPurchases, type NewPurchase, cancelPurchaseAndUpdateStock, getSelfServiceReservedQuantities, getSelfServicePendingQuantities } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -97,7 +97,7 @@ export default function SalesPage() {
   });
   
   const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
-
+  const selfServicePendingQuantities = useMemo(() => getSelfServicePendingQuantities(purchases), [purchases]);
 
   const pendingSelfServicePurchases = purchases.filter(
     p => (p.status === 'pending' || p.status === 'pre-sale') && !p.sellerId
@@ -280,6 +280,7 @@ export default function SalesPage() {
                                 ) : (
                                     products.map((product) => {
                                       const selfServiceReserved = selfServiceReservedQuantities[product.id] || 0;
+                                      const selfServicePending = selfServicePendingQuantities[product.id] || 0;
                                       const availableStock = Math.max(product.stock - selfServiceReserved, 0);
                                       const isSoldOut = availableStock <= 0;
                                       return (
@@ -305,8 +306,8 @@ export default function SalesPage() {
                                                 ) : (
                                                     <div className='flex items-center gap-2'>
                                                         <Badge variant="outline">Stock: {product.stock}</Badge>
-                                                        {selfServiceReserved > 0 && (
-                                                            <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServiceReserved}</Badge>
+                                                        {selfServicePending > 0 && (
+                                                            <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServicePending}</Badge>
                                                         )}
                                                         <Badge variant={availableStock > 0 ? "secondary" : "destructive"}>Disp.: {availableStock}</Badge>
                                                     </div>

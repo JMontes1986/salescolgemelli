@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Search, ExternalLink, Printer, Download, Pencil } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getRecentPreSales, type NewPurchase, getPreSalesByCedula, getPurchases, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getRecentPreSales, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -98,7 +98,7 @@ export default function PreSalePage() {
         const [fetchedProducts, recent, all] = await Promise.all([
           getProductsByAvailability('presale'),
           getRecentPreSales(),
-          getPurchases("PV")
+          getDashboardPreSales()
         ]);
         setProducts(fetchedProducts);
         setRecentPreSales(recent);
@@ -454,7 +454,7 @@ export default function PreSalePage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Consultar Preventas</CardTitle>
-                    <CardDescription>Busque por cédula o vea las preventas más recientes.</CardDescription>
+                    <CardDescription>Busque por cédula o vea las preventas registradas por vendedores.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 mb-4">
@@ -482,7 +482,7 @@ export default function PreSalePage() {
                                 {isLoading || isHistoryLoading ? (
                                 <TableRow><TableCell colSpan={4} className="h-24 text-center">Cargando...</TableCell></TableRow>
                                 ) : displayHistory.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">No se encontraron preventas.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">No se encontraron preventas de vendedores.</TableCell></TableRow>
                                 ) : (
                                     displayHistory.map(ps => (
                                         <TableRow key={ps.id}>
