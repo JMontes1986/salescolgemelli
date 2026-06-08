@@ -44,6 +44,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { addAuditLog } from '@/lib/services/audit-service';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
 
 type CartItem = {
@@ -64,9 +65,12 @@ export default function SalesPage() {
   const { toast } = useToast();
   const { currentUser, isMounted } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
         const [fetchedProducts, fetchedPurchases] = await Promise.all([
             getProductsByAvailability('pos'),
@@ -77,13 +81,20 @@ export default function SalesPage() {
     } catch (error) {
         console.error("Error fetching data:", error);
     } finally {
-        setIsLoading(false);
+        if (showLoading) {
+          setIsLoading(false);
+        }
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useSupabaseRealtime({
+    tables: realtimeTables,
+    onChange: () => loadData(false),
+  });
   
   const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
 
@@ -91,6 +102,28 @@ export default function SalesPage() {
   const pendingSelfServicePurchases = purchases.filter(
     p => (p.status === 'pending' || p.status === 'pre-sale') && !p.sellerId
   );
+
+  useEffect(() => {
+    setCart((prevCart) => prevCart.reduce<CartItem[]>((nextCart, item) => {
+      if (item.type !== 'product') {
+        nextCart.push(item);
+        return nextCart;
+      }
+
+      const product = products.find((currentProduct) => currentProduct.id === item.id);
+      if (!product) return nextCart;
+
+      const availableStock = Math.max(product.stock - (selfServiceReservedQuantities[product.id] || 0), 0);
+      if (availableStock <= 0) return nextCart;
+
+      nextCart.push({
+        ...item,
+        stock: availableStock,
+        quantity: Math.min(item.quantity, availableStock),
+      });
+      return nextCart;
+    }, []));
+  }, [products, selfServiceReservedQuantities]);
 
   const addToCart = (item: Product) => {
     const product = products.find(p => p.id === item.id);

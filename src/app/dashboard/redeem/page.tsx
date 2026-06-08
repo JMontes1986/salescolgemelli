@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
 import { addAuditLog } from '@/lib/services/audit-service';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
 const statusTranslations: Record<Purchase['status'], string> = {
     pending: 'Pendiente',
@@ -52,9 +53,12 @@ function RedeemPageComponent() {
     const [isRecentLoading, setIsRecentLoading] = useState(true);
     const [searchPerformed, setSearchPerformed] = useState(false);
     const { toast } = useToast();
+    const realtimeTables = React.useMemo(() => ['products', 'purchases'] as const, []);
 
-    const loadRecentPurchases = useCallback(async () => {
-        setIsRecentLoading(true);
+    const loadRecentPurchases = useCallback(async (showLoading = true) => {
+        if (showLoading) {
+            setIsRecentLoading(true);
+        }
         try {
             const purchases = await getSelfServicePurchases();
             setRecentPurchases(purchases);
@@ -66,9 +70,35 @@ function RedeemPageComponent() {
                 description: 'No se pudieron cargar las compras de autogestión.'
             });
         } finally {
-            setIsRecentLoading(false);
+            if (showLoading) {
+                setIsRecentLoading(false);
+            }
         }
     }, []);
+
+    const refreshSearchResults = useCallback(async () => {
+        const normalizedCode = searchCode.trim().toUpperCase();
+        const normalizedCedula = searchCedula.trim();
+        const normalizedCelular = searchCelular.trim();
+
+        if (!searchPerformed || (!normalizedCode && !normalizedCedula && !normalizedCelular)) {
+            return;
+        }
+
+        let results: Purchase[] = [];
+        if (normalizedCode) {
+            const purchase = await getPurchaseById(normalizedCode);
+            if (purchase) {
+                results.push(purchase);
+            }
+        } else if (normalizedCedula) {
+            results = await getPurchasesByCedula(normalizedCedula);
+        } else if (normalizedCelular) {
+            results = await getPurchasesByCelular(normalizedCelular);
+        }
+
+        setSearchResults(results);
+    }, [searchCedula, searchCelular, searchCode, searchPerformed]);
 
      const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -91,9 +121,11 @@ function RedeemPageComponent() {
         setSearchResults([]);
 
         try {
-            let results: Purchase[] = [];
             if (normalizedCode) {
                 setSearchCode(normalizedCode);
+            }
+            let results: Purchase[] = [];
+            if (normalizedCode) {
                 const purchase = await getPurchaseById(normalizedCode);
                 if (purchase) {
                     results.push(purchase);
@@ -119,6 +151,16 @@ function RedeemPageComponent() {
     useEffect(() => {
         loadRecentPurchases();
     }, [loadRecentPurchases]);
+
+    useSupabaseRealtime({
+        tables: realtimeTables,
+        onChange: async () => {
+            await Promise.all([
+                loadRecentPurchases(false),
+                refreshSearchResults(),
+            ]);
+        },
+    });
 
     useEffect(() => {
         if (codeFromUrl) {
@@ -261,7 +303,7 @@ function RedeemPageComponent() {
                             Consulte las compras generadas y su estado sin buscar por cliente o código.
                         </CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={loadRecentPurchases} disabled={isRecentLoading}>
+                    <Button variant="outline" size="sm" onClick={() => loadRecentPurchases()} disabled={isRecentLoading}>
                         <RefreshCw className={cn("mr-2 h-4 w-4", isRecentLoading && "animate-spin")} />
                         Actualizar
                     </Button>

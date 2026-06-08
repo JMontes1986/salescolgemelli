@@ -31,6 +31,7 @@ import { addPreSalePurchase, getPurchases, getSelfServicePurchasesByCustomer, ty
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
 
 
@@ -91,9 +92,12 @@ export default function SelfServicePage() {
   const { toast } = useToast();
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
+  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
 
-  const loadProducts = useCallback(async () => {
-    setIsLoading(true);
+  const loadProducts = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
         const [fetchedProducts, fetchedPurchases] = await Promise.all([
           getProductsByAvailability('self-service'),
@@ -105,13 +109,20 @@ export default function SelfServicePage() {
         {
         console.error("Error fetching products:", error);
     } finally {
-        setIsLoading(false);
+        if (showLoading) {
+          setIsLoading(false);
+        }
     }
   }, []);
 
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
+
+  useSupabaseRealtime({
+    tables: realtimeTables,
+    onChange: () => loadProducts(false),
+  });
 
   const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
 
@@ -128,6 +139,23 @@ export default function SelfServicePage() {
   const getAvailableStock = useCallback((product: Product) => {
     return Math.max(product.stock - getSelfServiceReserved(product.id), 0);
   }, [getSelfServiceReserved]);
+
+  useEffect(() => {
+    setCart((prevCart) => prevCart.reduce<CartItem[]>((nextCart, item) => {
+      const product = products.find((currentProduct) => currentProduct.id === item.id);
+      if (!product) return nextCart;
+
+      const availableStock = getAvailableStock(product);
+      if (availableStock <= 0) return nextCart;
+
+      nextCart.push({
+        ...item,
+        stock: availableStock,
+        quantity: Math.min(item.quantity, availableStock),
+      });
+      return nextCart;
+    }, []));
+  }, [getAvailableStock, products]);
 
   const addToCart = (item: Product) => {
     const availableStock = getAvailableStock(item);
