@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Trash2, Plus, Minus, ShoppingCart, History, Pencil } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, History, Pencil, QrCode, Smartphone } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -32,6 +32,37 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
 
+
+
+const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || '';
+const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || '';
+
+const buildDaviplataPaymentHref = (paymentCode: string | null, total: number) => {
+  if (!DAVIPLATA_BREB_LINK_TEMPLATE) return '';
+
+  return DAVIPLATA_BREB_LINK_TEMPLATE
+    .replaceAll('{code}', encodeURIComponent(paymentCode || ''))
+    .replaceAll('{amount}', encodeURIComponent(String(total)))
+    .replaceAll('{amount_cents}', encodeURIComponent(String(Math.round(total * 100))))
+    .replaceAll('{key}', encodeURIComponent(DAVIPLATA_BREB_KEY));
+};
+
+const buildDaviplataQrPayload = (paymentCode: string | null, total: number) => {
+  const paymentHref = buildDaviplataPaymentHref(paymentCode, total);
+
+  if (paymentHref) return paymentHref;
+
+  return [
+    'Pago por DaviPlata / Bre-B',
+    DAVIPLATA_BREB_KEY ? `Llave: ${DAVIPLATA_BREB_KEY}` : 'Llave Bre-B no configurada',
+    paymentCode ? `Referencia: ${paymentCode}` : '',
+    `Valor: ${formatCurrency(total)}`,
+  ].filter(Boolean).join('\n');
+};
+
+const buildQrImageUrl = (payload: string) => (
+  `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(payload)}`
+);
 
 type CartItem = {
   id: string;
@@ -275,6 +306,9 @@ export default function SelfServicePage() {
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const daviplataPaymentHref = buildDaviplataPaymentHref(paymentCode, subtotal);
+  const daviplataQrPayload = buildDaviplataQrPayload(paymentCode, subtotal);
+  const daviplataQrImageUrl = buildQrImageUrl(daviplataQrPayload);
 
   return (
     <div className="min-h-screen bg-[#f7f8fb] pb-32 lg:pb-10">
@@ -285,7 +319,7 @@ export default function SelfServicePage() {
               <p className="text-xs font-bold uppercase tracking-wide text-primary">Autogestión</p>
               <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">Compra rápida</h1>
               <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-                Elija sus productos, genere el código y muéstrelo en caja para pagar.
+                Elija sus productos, genere el código y pague en caja o por DaviPlata usando la llave Bre-B del colegio.
               </p>
             </div>
             <div className="flex min-h-12 min-w-12 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
@@ -295,7 +329,7 @@ export default function SelfServicePage() {
           <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-muted-foreground sm:max-w-xl sm:text-sm">
             <div className="rounded-md border bg-muted px-2 py-2">1. Escoge</div>
             <div className="rounded-md border bg-muted px-2 py-2">2. Genera código</div>
-            <div className="rounded-md border bg-muted px-2 py-2">3. Paga en caja</div>
+            <div className="rounded-md border bg-muted px-2 py-2">3. Paga en caja o DaviPlata</div>
           </div>
         </header>
 
@@ -311,7 +345,7 @@ export default function SelfServicePage() {
               <div>
                 <CardTitle className="text-xl text-emerald-950">Última compra generada</CardTitle>
                 <CardDescription className="text-emerald-800">
-                  Presente este código en caja para consultar y confirmar el pago.
+                  Presente este código en caja o úselo como referencia al pagar por DaviPlata.
                 </CardDescription>
               </div>
               <div className="rounded-md bg-background px-4 py-3 text-center shadow-sm">
@@ -336,6 +370,40 @@ export default function SelfServicePage() {
               <div className="flex flex-col gap-1 border-t border-emerald-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm font-semibold text-emerald-900">{lastPurchase.date}</span>
                 <span className="text-xl font-black text-emerald-950">Total: {formatCurrency(lastPurchase.total)}</span>
+              </div>
+              <div className="rounded-md border border-emerald-200 bg-background p-3">
+                <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+                  <a
+                    href={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) || undefined}
+                    target={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) ? "_blank" : undefined}
+                    rel={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) ? "noopener noreferrer" : undefined}
+                    aria-label="Abrir pago por DaviPlata Bre-B"
+                    className={cn(
+                      "flex shrink-0 rounded-md border bg-white p-2 shadow-sm",
+                      buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) ? "cursor-pointer hover:ring-2 hover:ring-primary" : "cursor-default"
+                    )}
+                  >
+                    <img
+                      src={buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))}
+                      alt="QR de pago DaviPlata Bre-B"
+                      width={116}
+                      height={116}
+                      className="h-28 w-28"
+                    />
+                  </a>
+                  <div className="space-y-1 text-center sm:text-left">
+                    <p className="flex items-center justify-center gap-2 text-sm font-black uppercase text-emerald-900 sm:justify-start">
+                      <QrCode className="h-4 w-4" />
+                      Pago por DaviPlata / Bre-B
+                    </p>
+                    <p className="text-sm text-emerald-800">
+                      Toque el QR desde el celular para abrir el pago y use el código {lastPurchase.id} como referencia.
+                    </p>
+                    {DAVIPLATA_BREB_KEY && (
+                      <p className="text-xs font-semibold text-muted-foreground">Llave Bre-B: {DAVIPLATA_BREB_KEY}</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -712,7 +780,7 @@ export default function SelfServicePage() {
           <div className="py-4 space-y-4">
             <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-md border border-yellow-200 dark:border-yellow-800">
                 <p className="text-base font-semibold">
-                    Su compra está pendiente. Por favor, presente este código en la caja para confirmar el pago y recibir sus productos.
+                    Su compra está pendiente. Puede pagar en caja o por DaviPlata/Bre-B; después presente este código para confirmar y recibir sus productos.
                 </p>
             </div>
             <div className="text-center">
@@ -720,6 +788,46 @@ export default function SelfServicePage() {
                 <div className="my-2 p-4 bg-muted rounded-md">
                 <p className="text-2xl sm:text-3xl font-bold font-mono tracking-widest text-primary">{paymentCode}</p>
                 </div>
+            </div>
+
+            <div className="rounded-md border bg-background p-4 text-center">
+              <div className="mb-3 flex items-center justify-center gap-2 font-black text-primary">
+                <Smartphone className="h-5 w-5" />
+                Pago por DaviPlata / Bre-B
+              </div>
+              <a
+                href={daviplataPaymentHref || undefined}
+                target={daviplataPaymentHref ? "_blank" : undefined}
+                rel={daviplataPaymentHref ? "noopener noreferrer" : undefined}
+                aria-label="Abrir pago por DaviPlata Bre-B"
+                className={cn(
+                  "mx-auto flex w-fit rounded-md border bg-white p-3 shadow-sm",
+                  daviplataPaymentHref ? "cursor-pointer hover:ring-2 hover:ring-primary" : "cursor-default"
+                )}
+              >
+                <img
+                  src={daviplataQrImageUrl}
+                  alt="QR de pago DaviPlata Bre-B"
+                  width={220}
+                  height={220}
+                  className="h-52 w-52"
+                />
+              </a>
+              <p className="mt-3 text-sm font-semibold">
+                Toque el QR desde este celular para abrir el pago por DaviPlata.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use el código {paymentCode} como referencia y pague exactamente {formatCurrency(subtotal)}.
+              </p>
+              {DAVIPLATA_BREB_KEY ? (
+                <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs font-semibold">
+                  Llave Bre-B DaviPlata del colegio: {DAVIPLATA_BREB_KEY}
+                </p>
+              ) : (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                  Configure NEXT_PUBLIC_DAVIPLATA_BREB_KEY para mostrar la llave Bre-B real del colegio.
+                </p>
+              )}
             </div>
 
             <div>

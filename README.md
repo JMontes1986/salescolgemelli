@@ -38,7 +38,13 @@ Crea `.env.local` para desarrollo y configura las mismas variables en **Netlify 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+NEXT_PUBLIC_ENABLE_CLIENT_AUDIT_LOGS=false
+NEXT_PUBLIC_DAVIPLATA_BREB_KEY=llave-breb-daviplata-del-colegio
+NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL=daviplata://pagar?llave={key}&valor={amount}&referencia={code}
 ```
+
+
+`NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL` puede ser un enlace profundo o URL provista por DaviPlata/Bre-B. Soporta los placeholders `{key}`, `{amount}`, `{amount_cents}` y `{code}` para construir el enlace/QR de pago de autogestión.
 
 > ⚠️ No subas claves privadas ni archivos `.env.local` al repositorio.
 
