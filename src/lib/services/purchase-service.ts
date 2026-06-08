@@ -424,7 +424,8 @@ export async function updatePendingPurchase(
 }
 
 export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUser: User): Promise<void> {
-  const purchase = await getPurchaseById(purchaseId);
+  const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  const purchase = await getPurchaseById(safePurchaseId);
   if (!purchase) throw new Error("Preventa no encontrada.");
   if (purchase.status !== 'pre-sale') throw new Error("Esta preventa ya ha sido confirmada o procesada.");
 
@@ -432,15 +433,49 @@ export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUs
   await Promise.all(purchase.items.map(item => {
     const product = productMap.get(item.id);
     if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
-    return patchProduct(item.id, { stock: product.stock + item.quantity });
+
+    const newStock = product.stock - item.quantity;
+    if (newStock < 0) throw new Error(`Stock insuficiente para ${product.name}.`);
+
+    return patchProduct(item.id, {
+      stock: newStock,
+      preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0),
+    });
   }));
 
-  await updateById<Purchase>('purchases', purchaseId, { status: 'pre-sale-confirmed' });
+  await updateById<Purchase>('purchases', safePurchaseId, { status: 'pre-sale-confirmed' });
 
   await addAuditLog({
     userId: currentUser.id,
     userName: currentUser.name,
-    action: 'STOCK_RESTOCK',
-    details: `Preventa ${purchaseId} confirmada. Stock actualizado.`,
+    action: 'PAYMENT_CONFIRM',
+    details: `Preventa ${safePurchaseId} confirmada. Stock descontado.`,
+  });
+}
+
+export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, currentUser: User): Promise<void> {
+  const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  const purchase = await getPurchaseById(safePurchaseId);
+  if (!purchase) throw new Error("Compra pendiente no encontrada.");
+  if (purchase.status !== 'pending') throw new Error("Esta compra ya ha sido confirmada o procesada.");
+
+  const productMap = await getProductsByIds(purchase.items.map(item => item.id));
+  await Promise.all(purchase.items.map(item => {
+    const product = productMap.get(item.id);
+    if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
+
+    const newStock = product.stock - item.quantity;
+    if (newStock < 0) throw new Error(`Stock insuficiente para ${product.name}.`);
+
+    return patchProduct(item.id, { stock: newStock });
+  }));
+
+  await updateById<Purchase>('purchases', safePurchaseId, { status: 'paid' });
+
+  await addAuditLog({
+    userId: currentUser.id,
+    userName: currentUser.name,
+    action: 'PAYMENT_CONFIRM',
+    details: `Compra pendiente ${safePurchaseId} pagada. Stock descontado.`,
   });
 }

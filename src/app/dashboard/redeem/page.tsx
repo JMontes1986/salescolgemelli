@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, Info, CheckCircle, AlertTriangle, CreditCard, PackagePlus, RefreshCw, ClipboardList } from "lucide-react";
-import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, getSelfServicePurchases } from '@/lib/services/purchase-service';
+import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases } from '@/lib/services/purchase-service';
 import type { Purchase, User } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -186,6 +186,8 @@ function RedeemPageComponent() {
 
             if (newStatus === 'pre-sale-confirmed') {
                 await confirmPreSaleAndUpdateStock(purchaseId, currentUser);
+            } else if (newStatus === 'paid' && purchaseToLog.status === 'pending') {
+                await confirmPendingPurchaseAndUpdateStock(purchaseId, currentUser);
             } else {
                  await updatePurchase(purchaseId, { status: newStatus });
             }
@@ -197,8 +199,8 @@ function RedeemPageComponent() {
                 description: `El estado de la compra ha sido actualizado a ${statusTranslations[newStatus]}.`
             });
 
-            // Add audit log for payment confirmation
-            if (newStatus === 'paid') {
+            // Add audit log for payment confirmation when no stock-moving service already logged it.
+            if (newStatus === 'paid' && purchaseToLog.status !== 'pending') {
                  await addAuditLog({
                     userId: currentUser.id,
                     userName: currentUser.name,
