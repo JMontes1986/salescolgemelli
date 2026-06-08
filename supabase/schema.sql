@@ -381,6 +381,41 @@ $$;
 revoke all on function public.update_purchase_status_with_stock(text, text) from public;
 grant execute on function public.update_purchase_status_with_stock(text, text) to authenticated;
 
+alter table public.products enable row level security;
+
+grant select on public.products to anon, authenticated;
+grant insert, update, delete on public.products to authenticated;
+
+drop policy if exists "public_products_select" on public.products;
+drop policy if exists "dashboard_products_insert" on public.products;
+drop policy if exists "dashboard_products_update" on public.products;
+drop policy if exists "dashboard_products_delete" on public.products;
+
+create policy "public_products_select"
+  on public.products
+  for select
+  to anon, authenticated
+  using (true);
+
+create policy "dashboard_products_insert"
+  on public.products
+  for insert
+  to authenticated
+  with check (auth.uid() is not null);
+
+create policy "dashboard_products_update"
+  on public.products
+  for update
+  to authenticated
+  using (auth.uid() is not null)
+  with check (auth.uid() is not null);
+
+create policy "dashboard_products_delete"
+  on public.products
+  for delete
+  to authenticated
+  using (auth.uid() is not null);
+
 drop policy if exists "dashboard_purchases_select" on public.purchases;
 drop policy if exists "dashboard_purchases_insert" on public.purchases;
 drop policy if exists "dashboard_purchases_update" on public.purchases;

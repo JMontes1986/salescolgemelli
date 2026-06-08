@@ -181,7 +181,7 @@ export async function updateProduct(productId: string, product: UpdatableProduct
   );
 
   if (!updatedProduct) {
-    throw new Error('Supabase no confirmó la actualización del producto. Revisa permisos/RLS de la tabla products.');
+    throw new Error('Supabase no confirmó la actualización del producto. Revisa que hayas iniciado sesión y vuelve a ejecutar supabase/schema.sql para aplicar las políticas RLS de la tabla products.');
   }
 
   return normalizeProduct(updatedProduct);

@@ -228,6 +228,9 @@ function ProductForm({
                         <div className="space-y-2">
                             <Label htmlFor={`${fieldPrefix}-image-url`}>URL de la Imagen</Label>
                             <Input id={`${fieldPrefix}-image-url`} placeholder="https://ejemplo.com/imagen.jpg" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">
+                                Si usas Supabase Storage, el bucket debe ser público o debes pegar una URL firmada vigente; las URLs públicas de buckets privados no cargan la imagen.
+                            </p>
                         </div>
                          <div className="space-y-2">
                             <Label>Disponibilidad</Label>
