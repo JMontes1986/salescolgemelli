@@ -16,6 +16,7 @@ create table if not exists public.products (
   stock integer not null default 0,
   "imageUrl" text not null default '',
   "imageHint" text not null default '',
+  category text not null default 'general',
   availability text[] not null default '{}',
   "restockCount" integer not null default 0,
   "preSaleSold" integer not null default 0,
@@ -24,6 +25,10 @@ create table if not exists public.products (
 
 alter table public.products add column if not exists "imageUrl" text not null default '';
 alter table public.products add column if not exists "imageHint" text not null default '';
+alter table public.products add column if not exists category text not null default 'general';
+update public.products set category = 'general' where category is null or btrim(category) = '';
+alter table public.products alter column category set default 'general';
+alter table public.products alter column category set not null;
 alter table public.products add column if not exists availability text[] not null default '{}';
 alter table public.products add column if not exists "restockCount" integer not null default 0;
 alter table public.products add column if not exists "preSaleSold" integer not null default 0;

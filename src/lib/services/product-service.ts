@@ -10,6 +10,7 @@ const fallbackAvailability = allProductAvailability;
 const availabilityValues = new Set<ProductAvailability>(fallbackAvailability);
 const missingAvailabilitySchemaMessage =
   'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
+const defaultProductCategory = 'general';
 
 export function normalizeProductAvailability(value: unknown): ProductAvailability[] {
   const rawValues = (() => {
@@ -72,12 +73,19 @@ function normalizeAvailabilityForWrite(value: unknown): ProductAvailability[] {
 }
 
 function normalizeProductPayload<T extends Partial<Product>>(product: T): T {
+  const normalizedProduct = {
+    ...product,
+    category: typeof product.category === 'string' && product.category.trim()
+      ? product.category.trim()
+      : defaultProductCategory,
+  };
+
   if (!Object.prototype.hasOwnProperty.call(product, 'availability')) {
-    return product;
+    return normalizedProduct;
   }
 
   return {
-    ...product,
+    ...normalizedProduct,
     availability: normalizeAvailabilityForWrite(product.availability),
   };
 }
@@ -86,6 +94,7 @@ function normalizeProduct(product: Product): Product {
   return {
     ...product,
     availability: normalizeProductAvailability(product.availability),
+    category: product.category || defaultProductCategory,
     position: product.position ?? 0,
     restockCount: product.restockCount ?? 0,
     preSaleSold: product.preSaleSold ?? 0,
@@ -103,8 +112,20 @@ function isMissingAvailabilityColumn(error: unknown) {
   );
 }
 
+function isMissingCategoryColumn(error: unknown) {
+  return error instanceof Error && (
+    error.message.includes("'category' column of 'products'") ||
+    error.message.includes('products.category does not exist')
+  );
+}
+
 function withoutPosition<T extends Partial<Product>>(product: T): Omit<T, 'position'> {
   const { position, ...rest } = product;
+  return rest;
+}
+
+function withoutCategory<T extends Partial<Product>>(product: T): Omit<T, 'category'> {
+  const { category, ...rest } = product;
   return rest;
 }
 
@@ -125,6 +146,11 @@ async function withProductSchemaFallback<T extends Partial<Product>, R>(
 
       if (isMissingAvailabilityColumn(error) && payload.availability !== undefined) {
         throw new Error(missingAvailabilitySchemaMessage);
+      }
+
+      if (isMissingCategoryColumn(error) && payload.category !== undefined) {
+        payload = withoutCategory(payload);
+        continue;
       }
 
       throw error;
