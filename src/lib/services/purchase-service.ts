@@ -239,10 +239,9 @@ export async function getDashboardPreSales(): Promise<Purchase[]> {
   return purchases.filter(isDashboardPreSale);
 }
 
-export async function getSelfServicePurchasesByCustomer(cedula: string, celular: string): Promise<Purchase[]> {
+export async function getSelfServicePurchasesByCedula(cedula: string): Promise<Purchase[]> {
   const purchases = await selectRows<Purchase>('purchases', {
     cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}`,
-    celular: `eq.${sanitizeCustomerPhone(celular)}`,
     id: 'like.PV%',
   });
   return sortByNewest(purchases.map(ensureReturnedFlags));
