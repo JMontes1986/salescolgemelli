@@ -355,13 +355,13 @@ export default function SelfServicePage() {
                 Elija sus productos, genere el código y pague en caja o por DaviPlata usando la llave Bre-B del colegio.
               </p>
             </div>
-            <div className="flex min-h-16 min-w-16 items-center justify-center rounded-md border bg-background p-2 shadow-sm">
+            <div className="flex min-h-24 min-w-24 shrink-0 items-center justify-center rounded-md border bg-background p-3 shadow-sm sm:min-h-28 sm:min-w-32 lg:min-h-32 lg:min-w-36">
               <Image
                 src={MOLLY_LOGO_URL}
                 alt="Logo de Molly Ventas"
-                width={96}
-                height={96}
-                className="h-14 w-auto object-contain sm:h-16"
+                width={180}
+                height={180}
+                className="h-20 w-auto object-contain sm:h-24 lg:h-28"
                 priority
               />
             </div>
