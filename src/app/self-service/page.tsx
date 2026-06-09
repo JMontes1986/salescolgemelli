@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import { MOLLY_LOGO_URL } from '@/components/icons';
 
 
 
@@ -354,8 +355,15 @@ export default function SelfServicePage() {
                 Elija sus productos, genere el código y pague en caja o por DaviPlata usando la llave Bre-B del colegio.
               </p>
             </div>
-            <div className="flex min-h-12 min-w-12 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
-              <ShoppingCart className="h-6 w-6" />
+            <div className="flex min-h-16 min-w-16 items-center justify-center rounded-md border bg-background p-2 shadow-sm">
+              <Image
+                src={MOLLY_LOGO_URL}
+                alt="Logo de Molly Ventas"
+                width={96}
+                height={96}
+                className="h-14 w-auto object-contain sm:h-16"
+                priority
+              />
             </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-muted-foreground sm:max-w-xl sm:text-sm">
