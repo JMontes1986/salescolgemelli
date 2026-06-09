@@ -284,16 +284,22 @@ export default function SalesPage() {
                                       const availableStock = Math.max(product.stock - selfServiceReserved, 0);
                                       const isSoldOut = availableStock <= 0;
                                       return (
-                                        <div key={product.id} className={cn("flex items-center justify-between p-3 bg-muted/50 rounded-lg", isSoldOut && "opacity-50")}>
+                                        <div key={product.id} className={cn("group flex items-center justify-between rounded-xl border bg-card p-3 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-md", isSoldOut && "opacity-60")}>
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 bg-secondary rounded-md flex-shrink-0 relative">
+                                                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border bg-muted shadow-sm">
                                                    <Image 
-                                                        src={product.imageUrl}
+                                                        src={product.imageUrl?.trim() || `https://placehold.co/400x400/e0f2fe/1e3a8a?text=${encodeURIComponent(product.name)}`}
                                                         alt={product.name}
-                                                        width={200}
-                                                        height={200}
-                                                        className="object-cover rounded-md"
+                                                        fill
+                                                        sizes="64px"
+                                                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                                        data-ai-hint={product.imageHint}
                                                     />
+                                                    {isSoldOut && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-bold uppercase tracking-wide text-white">
+                                                            Agotado
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold">{product.name}</p>
