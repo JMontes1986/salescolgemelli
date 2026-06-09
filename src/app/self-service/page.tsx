@@ -494,16 +494,15 @@ export default function SelfServicePage() {
                         disabled={isSoldOut || hasReachedLimit}
                         aria-label={`Agregar ${product.name}`}
                       >
-                        <div className="relative aspect-square overflow-hidden rounded-b-2xl bg-muted shadow-inner">
+                        <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                           <Image
                             src={productImageUrl}
                             alt={product.name}
                             fill
                             sizes="(min-width: 1280px) 280px, (min-width: 640px) 50vw, 100vw"
-                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            className="object-cover transition-transform group-hover:scale-105"
                             data-ai-hint={product.imageHint}
                           />
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10 opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                         </div>
                         <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
                           {quantityInCart > 0 && (
