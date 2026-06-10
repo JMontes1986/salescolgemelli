@@ -475,13 +475,13 @@ export default function SelfServicePage() {
             </div>
 
           {isLoading ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-48 animate-pulse rounded-3xl border-2 border-[#0eb9c3]/22 bg-white/70" />
+                  <div key={item} className="h-40 animate-pulse rounded-2xl border-2 border-[#0eb9c3]/22 bg-white/70 sm:h-48 sm:rounded-3xl" />
                 ))}
               </div>
           ) : products.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
               {products.map((product) => {
                 const selfServiceReserved = getSelfServiceReserved(product.id);
                 const availableStock = Math.max(product.stock - selfServiceReserved, 0);
@@ -496,7 +496,7 @@ export default function SelfServicePage() {
                     <Card
                       key={product.id}
                       className={cn(
-                        "group overflow-hidden rounded-3xl border-2 border-[#0eb9c3]/22 bg-white/88 text-[#232328] shadow-[0_16px_34px_rgba(35,35,40,0.10)] transition hover:-translate-y-1 hover:border-[#d2528d]/60 hover:shadow-[0_20px_42px_rgba(35,35,40,0.14)] active:scale-[0.99]",
+                        "group overflow-hidden rounded-2xl border-2 border-[#0eb9c3]/22 bg-white/88 text-[#232328] shadow-[0_10px_22px_rgba(35,35,40,0.10)] transition hover:-translate-y-1 hover:border-[#d2528d]/60 hover:shadow-[0_20px_42px_rgba(35,35,40,0.14)] active:scale-[0.99] sm:rounded-3xl sm:shadow-[0_16px_34px_rgba(35,35,40,0.10)]",
                         isSoldOut && "opacity-60"
                       )}
                     >
@@ -512,34 +512,34 @@ export default function SelfServicePage() {
                             src={productImageUrl}
                             alt={product.name}
                             fill
-                            sizes="(min-width: 1280px) 280px, (min-width: 640px) 50vw, 100vw"
+                            sizes="(min-width: 1280px) 280px, (min-width: 640px) 50vw, 50vw"
                             className="object-cover saturate-100 transition-transform group-hover:scale-105"
                             data-ai-hint={product.imageHint}
                           />
                         </div>
-                        <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+                        <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1 sm:left-3 sm:top-3 sm:gap-2">
                           {quantityInCart > 0 && (
-                              <Badge className="bg-[#0eb9c3] px-3 py-1 text-sm font-black text-[#0f1720] hover:bg-[#0eb9c3]">
+                              <Badge className="bg-[#0eb9c3] px-2 py-0.5 text-[10px] font-black text-[#0f1720] hover:bg-[#0eb9c3] sm:px-3 sm:py-1 sm:text-sm">
                                 {quantityInCart} en pedido
                               </Badge>
                           )}
                           {hasReachedLimit && !isSoldOut && (
-                              <Badge variant="destructive" className="px-3 py-1 text-sm">Límite</Badge>
+                              <Badge variant="destructive" className="px-2 py-0.5 text-[10px] sm:px-3 sm:py-1 sm:text-sm">Límite</Badge>
                           )}
                         </div>
                         {isSoldOut && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-                            <Badge variant="destructive" className="px-4 py-2 text-base">Agotado</Badge>
+                            <Badge variant="destructive" className="px-3 py-1 text-xs sm:px-4 sm:py-2 sm:text-base">Agotado</Badge>
                           </div>
                         )}
                       </button>
 
-                      <CardContent className="space-y-3 p-4">
-                        <div className="min-h-[72px] space-y-1">
-                          <h3 className="text-lg font-black uppercase leading-snug tracking-wide text-[#232328]">{product.name}</h3>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-2xl font-black text-[#b23178]">{formatCurrency(product.price)}</span>
-                            <span className="text-right text-xs font-bold text-[#5f686a]">
+                      <CardContent className="space-y-2 p-2.5 sm:space-y-3 sm:p-4">
+                        <div className="min-h-[58px] space-y-1 sm:min-h-[72px]">
+                          <h3 className="text-sm font-black uppercase leading-snug tracking-wide text-[#232328] sm:text-lg">{product.name}</h3>
+                          <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                            <span className="text-lg font-black text-[#b23178] sm:text-2xl">{formatCurrency(product.price)}</span>
+                            <span className="text-[10px] font-bold leading-tight text-[#5f686a] sm:text-right sm:text-xs">
                               Stock {product.stock}
                               {selfServiceReserved > 0 && ` | Autogestión ${selfServiceReserved}`}
                               {` | Disp. ${availableStock}`}
@@ -548,36 +548,36 @@ export default function SelfServicePage() {
                         </div>
 
                         {quantityInCart > 0 ? (
-                          <div className="grid grid-cols-[52px_1fr_52px] items-center gap-2">
+                          <div className="grid grid-cols-[40px_1fr_40px] items-center gap-1.5 sm:grid-cols-[52px_1fr_52px] sm:gap-2">
                             <Button
                               size="icon"
                               variant="outline"
-                              className="h-12 w-12 rounded-2xl bg-[#b23178] text-white hover:bg-[#d2528d]"
+                              className="h-10 w-10 rounded-xl bg-[#b23178] text-white hover:bg-[#d2528d] sm:h-12 sm:w-12 sm:rounded-2xl"
                               onClick={() => updateQuantity(product.id, quantityInCart - 1)}
                               aria-label={`Quitar una unidad de ${product.name}`}
                             >
-                              <Minus className="h-5 w-5" />
+                              <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
-                            <div className="flex h-12 items-center justify-center rounded-2xl border border-[#d2528d]/45 bg-[#b23178]/10 text-lg font-black text-[#232328]">
+                            <div className="flex h-10 items-center justify-center rounded-xl border border-[#d2528d]/45 bg-[#b23178]/10 text-base font-black text-[#232328] sm:h-12 sm:rounded-2xl sm:text-lg">
                               {quantityInCart}
                             </div>
                             <Button
                               size="icon"
-                              className="h-12 w-12 rounded-2xl bg-[#b23178] text-white hover:bg-[#d2528d]"
+                              className="h-10 w-10 rounded-xl bg-[#b23178] text-white hover:bg-[#d2528d] sm:h-12 sm:w-12 sm:rounded-2xl"
                               onClick={() => updateQuantity(product.id, quantityInCart + 1)}
                               disabled={hasReachedLimit}
                               aria-label={`Agregar una unidad de ${product.name}`}
                             >
-                              <Plus className="h-5 w-5" />
+                              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
                           </div>
                         ) : (
                           <Button
-                            className="h-12 w-full rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-base font-black uppercase text-[#101016] shadow-[0_14px_32px_rgba(6,7,10,0.24)] hover:opacity-95"
+                            className="h-10 w-full rounded-xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-xs font-black uppercase text-[#101016] shadow-[0_10px_22px_rgba(6,7,10,0.20)] hover:opacity-95 sm:h-12 sm:rounded-2xl sm:text-base sm:shadow-[0_14px_32px_rgba(6,7,10,0.24)]"
                             onClick={() => addToCart(product)}
                             disabled={isSoldOut || hasReachedLimit}
                           >
-                            <ShoppingCart className="h-5 w-5" />
+                            <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                             Agregar
                           </Button>
                         )}
