@@ -38,10 +38,11 @@ import { MOLLY_LOGO_URL } from '@/components/icons';
 
 const DEFAULT_DAVIPLATA_BREB_KEY = '3206766574';
 const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || DEFAULT_DAVIPLATA_BREB_KEY;
-const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || '';
+const DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE = 'daviplata://pagar?llave={key}&valor={amount}&referencia={code}';
+const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE;
 
 const buildDaviplataPaymentHref = (paymentCode: string | null, total: number) => {
-  if (!DAVIPLATA_BREB_LINK_TEMPLATE) return '';
+  if (!DAVIPLATA_BREB_KEY || !DAVIPLATA_BREB_LINK_TEMPLATE) return '';
 
   return DAVIPLATA_BREB_LINK_TEMPLATE
     .replaceAll('{code}', encodeURIComponent(paymentCode || ''))
@@ -340,6 +341,10 @@ export default function SelfServicePage() {
   const daviplataPaymentHref = buildDaviplataPaymentHref(paymentCode, paymentTotal);
   const daviplataQrPayload = buildDaviplataQrPayload(paymentCode, paymentTotal);
   const daviplataQrImageUrl = buildQrImageUrl(daviplataQrPayload);
+  const lastPurchaseDaviplataPaymentHref = lastPurchase ? buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) : '';
+  const lastPurchaseDaviplataQrImageUrl = lastPurchase
+    ? buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))
+    : '';
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f6f7f2] pb-32 text-[#232328] lg:pb-10">
@@ -427,17 +432,17 @@ export default function SelfServicePage() {
               <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
                   <a
-                    href={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) || undefined}
-                    target={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) ? "_blank" : undefined}
-                    rel={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) ? "noopener noreferrer" : undefined}
+                    href={lastPurchaseDaviplataPaymentHref || undefined}
+                    target={lastPurchaseDaviplataPaymentHref ? "_blank" : undefined}
+                    rel={lastPurchaseDaviplataPaymentHref ? "noopener noreferrer" : undefined}
                     aria-label="Abrir pago por DaviPlata Bre-B"
                     className={cn(
                       "flex shrink-0 rounded-md border bg-white p-2 shadow-sm",
-                      buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) ? "cursor-pointer hover:ring-2 hover:ring-primary" : "cursor-default"
+                      lastPurchaseDaviplataPaymentHref ? "cursor-pointer hover:ring-2 hover:ring-primary" : "cursor-default"
                     )}
                   >
                     <img
-                      src={buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))}
+                      src={lastPurchaseDaviplataQrImageUrl}
                       alt="QR de pago DaviPlata Bre-B"
                       width={116}
                       height={116}

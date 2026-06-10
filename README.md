@@ -228,7 +228,7 @@ NEXT_PUBLIC_DAVIPLATA_BREB_KEY=3206766574
 NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL=daviplata://pagar?llave={key}&valor={amount}&referencia={code}
 ```
 
-`NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL` puede ser un enlace profundo o URL provista por DaviPlata/Bre-B. Soporta los placeholders `{key}`, `{amount}`, `{amount_cents}` y `{code}`.
+`NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL` puede ser un enlace profundo o URL provista por DaviPlata/Bre-B. Soporta los placeholders `{key}`, `{amount}`, `{amount_cents}` y `{code}`. Si no se configura, el autoservicio usa por defecto `daviplata://pagar?llave={key}&valor={amount}&referencia={code}` con la llave Bre-B `3206766574`.
 
 > ⚠️ No subas claves privadas ni archivos `.env.local` al repositorio.
 
