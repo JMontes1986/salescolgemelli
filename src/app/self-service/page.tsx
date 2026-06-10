@@ -36,7 +36,8 @@ import { MOLLY_LOGO_URL } from '@/components/icons';
 
 
 
-const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || '';
+const DEFAULT_DAVIPLATA_BREB_KEY = '3206766574';
+const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || DEFAULT_DAVIPLATA_BREB_KEY;
 const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || '';
 
 const buildDaviplataPaymentHref = (paymentCode: string | null, total: number) => {

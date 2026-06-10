@@ -224,7 +224,7 @@ Crea `.env.local` para desarrollo y configura las mismas variables en **Netlify 
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 NEXT_PUBLIC_ENABLE_CLIENT_AUDIT_LOGS=false
-NEXT_PUBLIC_DAVIPLATA_BREB_KEY=llave-breb-daviplata-del-colegio
+NEXT_PUBLIC_DAVIPLATA_BREB_KEY=3206766574
 NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL=daviplata://pagar?llave={key}&valor={amount}&referencia={code}
 ```
 
