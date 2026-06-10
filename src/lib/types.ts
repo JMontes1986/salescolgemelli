@@ -86,7 +86,7 @@ export type AuditLog = {
 
 export type NewAuditLog = Omit<AuditLog, 'id' | 'timestamp'>;
 
-export type ProductAvailability = 'pos' | 'self-service' | 'presale';
+export type ProductAvailability = 'pos' | 'self-service' | 'presale' | 'unavailable';
 
 export type Product = {
     id: string;

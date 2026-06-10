@@ -6,8 +6,9 @@ export type NewProduct = Omit<Product, 'id' | 'position'>;
 export type UpdatableProduct = Partial<Omit<Product, 'id'>>;
 
 export const allProductAvailability: ProductAvailability[] = ['pos', 'self-service', 'presale'];
+export const unavailableProductAvailability: ProductAvailability = 'unavailable';
 const fallbackAvailability = allProductAvailability;
-const availabilityValues = new Set<ProductAvailability>(fallbackAvailability);
+const availabilityValues = new Set<ProductAvailability>([...fallbackAvailability, unavailableProductAvailability]);
 const missingAvailabilitySchemaMessage =
   'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
 const defaultProductCategory = 'general';
@@ -60,6 +61,10 @@ export function normalizeProductAvailability(value: unknown): ProductAvailabilit
 
     return acc;
   }, []);
+
+  if (normalized.includes(unavailableProductAvailability)) {
+    return [unavailableProductAvailability];
+  }
 
   if (normalized.length > 0) {
     return normalized;

@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal, Database, Trash2, Pencil, ShoppingCart, Store, Plus, PackagePlus, ClipboardCheck, GripVertical, Ticket } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Database, Trash2, Pencil, ShoppingCart, Store, Plus, PackagePlus, ClipboardCheck, GripVertical, Ticket, Ban, CheckCircle2 } from "lucide-react";
 import { PermissionGate } from "@/components/permission-gate";
 import Image from "next/image";
 import { mockProducts } from "@/lib/placeholder-data";
@@ -36,7 +36,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
-import { allProductAvailability, getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
+import { allProductAvailability, unavailableProductAvailability, getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
 import { getPurchases, getSelfServicePendingQuantities } from "@/lib/services/purchase-service";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,7 @@ const availabilityMap: Record<ProductAvailability, { label: string; icon: React.
     'pos': { label: 'Punto de Venta', icon: Store },
     'self-service': { label: 'Autogestión', icon: ShoppingCart },
     'presale': { label: 'Preventa', icon: Ticket },
+    'unavailable': { label: 'No disponible', icon: Ban },
 };
 
 function ProductForm({ 
@@ -124,11 +125,17 @@ function ProductForm({
     };
 
     const handleAvailabilityChange = (value: ProductAvailability) => {
-        setAvailability(prev => 
-            prev.includes(value)
+        setAvailability(prev => {
+            if (value === unavailableProductAvailability) {
+                return prev.includes(unavailableProductAvailability) ? allProductAvailability : [unavailableProductAvailability];
+            }
+
+            const nextAvailability = prev.includes(value)
                 ? prev.filter(item => item !== value)
-                : [...prev, value]
-        );
+                : [...prev.filter(item => item !== unavailableProductAvailability), value];
+
+            return nextAvailability.length > 0 ? nextAvailability : [unavailableProductAvailability];
+        });
     };
 
 
@@ -235,11 +242,20 @@ function ProductForm({
                          <div className="space-y-2">
                             <Label>Disponibilidad</Label>
                             <div className="space-y-2 rounded-md border p-4">
-                                {Object.entries(availabilityMap).map(([key, { label }]) => (
+                                <div className="flex items-center space-x-2 rounded-md border border-dashed p-2">
+                                    <Checkbox
+                                        id={`${fieldPrefix}-availability-${unavailableProductAvailability}`}
+                                        checked={availability.includes(unavailableProductAvailability)}
+                                        onCheckedChange={() => handleAvailabilityChange(unavailableProductAvailability)}
+                                    />
+                                    <Label htmlFor={`${fieldPrefix}-availability-${unavailableProductAvailability}`} className="font-normal">No disponible para este evento</Label>
+                                </div>
+                                {Object.entries(availabilityMap).filter(([key]) => key !== unavailableProductAvailability).map(([key, { label }]) => (
                                     <div key={key} className="flex items-center space-x-2">
                                         <Checkbox
                                             id={`${fieldPrefix}-availability-${key}`}
                                             checked={availability.includes(key as ProductAvailability)}
+                                            disabled={availability.includes(unavailableProductAvailability)}
                                             onCheckedChange={() => handleAvailabilityChange(key as ProductAvailability)}
                                         />
                                         <Label htmlFor={`${fieldPrefix}-availability-${key}`} className="font-normal">{label}</Label>
@@ -363,11 +379,38 @@ function SortableProductCard({
     onProductAdded: (p: Product) => void;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: product.id });
-    const availableStock = Math.max(product.stock - selfServicePending, 0);
+    const { toast } = useToast();
+    const isUnavailable = product.availability.includes(unavailableProductAvailability);
+    const availableStock = isUnavailable ? 0 : Math.max(product.stock - selfServicePending, 0);
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+    };
+
+    const handleAvailabilityToggle = async () => {
+        const nextAvailability = isUnavailable ? allProductAvailability : [unavailableProductAvailability];
+
+        try {
+            const updatedProduct = await updateProduct(product.id, {
+                availability: nextAvailability,
+                position: product.position,
+            });
+            onProductUpdated(updatedProduct);
+            toast({
+                title: "Éxito",
+                description: isUnavailable
+                    ? `${product.name} quedó disponible para todos los canales.`
+                    : `${product.name} quedó marcado como no disponible.`,
+            });
+        } catch (error) {
+            console.error("Error updating product availability:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "No se pudo actualizar la disponibilidad del producto.",
+            });
+        }
     };
 
     return (
@@ -375,7 +418,8 @@ function SortableProductCard({
             <Card
                 className={cn(
                     "overflow-hidden relative group",
-                    product.stock <= 0 && "bg-yellow-100 border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-800"
+                    isUnavailable && "bg-muted/60 border-dashed opacity-80",
+                    !isUnavailable && product.stock <= 0 && "bg-yellow-100 border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-800"
                 )}
             >
                 <PermissionGate requiredPermission="products">
@@ -398,6 +442,14 @@ function SortableProductCard({
                                     onProductUpdated={onProductUpdated}
                                 />
                                 <RestockForm product={product} onStockUpdated={onProductUpdated} />
+                                <DropdownMenuItem onSelect={handleAvailabilityToggle}>
+                                    {isUnavailable ? (
+                                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    ) : (
+                                        <Ban className="mr-2 h-4 w-4" />
+                                    )}
+                                    {isUnavailable ? 'Marcar disponible' : 'Marcar no disponible'}
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive">
                                     <Trash2 className="mr-2 h-4 w-4" />
@@ -438,8 +490,10 @@ function SortableProductCard({
                         <span className="text-xl font-bold">{formatCurrency(product.price)}</span>
                         <div className="flex flex-col items-end text-sm font-medium text-muted-foreground">
                             <span>Stock: {product.stock}</span>
-                            {selfServicePending > 0 && <span>Autogestión: {selfServicePending}</span>}
-                            <span className={cn("font-bold", availableStock <= 0 && "text-destructive")}>Disponible: {availableStock}</span>
+                            {selfServicePending > 0 && !isUnavailable && <span>Autogestión: {selfServicePending}</span>}
+                            <span className={cn("font-bold", (isUnavailable || availableStock <= 0) && "text-destructive")}>
+                                {isUnavailable ? 'No disponible' : `Disponible: ${availableStock}`}
+                            </span>
                         </div>
                     </div>
                     <div className="flex justify-start items-center mt-2 gap-2">
