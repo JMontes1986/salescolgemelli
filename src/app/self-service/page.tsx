@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react';
 import type { Product, Purchase } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,7 @@ const DEFAULT_DAVIPLATA_BREB_KEY = '3206766574';
 const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || DEFAULT_DAVIPLATA_BREB_KEY;
 const DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE = 'daviplata://pagar?llave={key}&valor={amount}&referencia={code}';
 const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE;
+const DAVIPLATA_DEEP_LINK_PREFIX = 'daviplata:';
 
 const buildDaviplataPaymentHref = (paymentCode: string | null, total: number) => {
   if (!DAVIPLATA_BREB_KEY || !DAVIPLATA_BREB_LINK_TEMPLATE) return '';
@@ -66,6 +67,20 @@ const buildDaviplataQrPayload = (paymentCode: string | null, total: number) => {
 
 const buildQrImageUrl = (payload: string) => (
   `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(payload)}`
+);
+
+const isDaviplataDeepLink = (href: string) => href.toLowerCase().startsWith(DAVIPLATA_DEEP_LINK_PREFIX);
+
+const isMobileDevice = () => (
+  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+);
+
+const getPaymentLinkTarget = (href: string) => (
+  href && !isDaviplataDeepLink(href) ? '_blank' : undefined
+);
+
+const getPaymentLinkRel = (href: string) => (
+  getPaymentLinkTarget(href) ? 'noopener noreferrer' : undefined
 );
 
 type CartItem = {
@@ -95,6 +110,21 @@ export default function SelfServicePage() {
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
   const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
+
+  const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
+    if (!paymentHref) {
+      event.preventDefault();
+      return;
+    }
+
+    if (isDaviplataDeepLink(paymentHref) && !isMobileDevice()) {
+      event.preventDefault();
+      toast({
+        title: "Escanee el QR desde el celular",
+        description: `Este pago se abre en la app DaviPlata del telefono. Desde computador use la llave Bre-B ${DAVIPLATA_BREB_KEY}.`,
+      });
+    }
+  }, [toast]);
 
   const loadProducts = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -433,8 +463,9 @@ export default function SelfServicePage() {
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
                   <a
                     href={lastPurchaseDaviplataPaymentHref || undefined}
-                    target={lastPurchaseDaviplataPaymentHref ? "_blank" : undefined}
-                    rel={lastPurchaseDaviplataPaymentHref ? "noopener noreferrer" : undefined}
+                    target={getPaymentLinkTarget(lastPurchaseDaviplataPaymentHref)}
+                    rel={getPaymentLinkRel(lastPurchaseDaviplataPaymentHref)}
+                    onClick={(event) => handleDaviplataPaymentClick(event, lastPurchaseDaviplataPaymentHref)}
                     aria-label="Abrir pago por DaviPlata Bre-B"
                     className={cn(
                       "flex shrink-0 rounded-md border bg-white p-2 shadow-sm",
@@ -455,7 +486,7 @@ export default function SelfServicePage() {
                       Pago por DaviPlata / Bre-B
                     </p>
                     <p className="text-sm text-[#4b4b52]">
-                      Toque el QR desde el celular para abrir el pago y use el código {lastPurchase.id} como referencia.
+                      Escanee el QR desde el celular o toquelo desde el telefono para abrir DaviPlata. Use el codigo {lastPurchase.id} como referencia.
                     </p>
                     {DAVIPLATA_BREB_KEY && (
                       <p className="text-xs font-semibold text-[#5f686a]">Llave Bre-B: {DAVIPLATA_BREB_KEY}</p>
@@ -855,8 +886,9 @@ export default function SelfServicePage() {
               </div>
               <a
                 href={daviplataPaymentHref || undefined}
-                target={daviplataPaymentHref ? "_blank" : undefined}
-                rel={daviplataPaymentHref ? "noopener noreferrer" : undefined}
+                target={getPaymentLinkTarget(daviplataPaymentHref)}
+                rel={getPaymentLinkRel(daviplataPaymentHref)}
+                onClick={(event) => handleDaviplataPaymentClick(event, daviplataPaymentHref)}
                 aria-label="Abrir pago por DaviPlata Bre-B"
                 className={cn(
                   "mx-auto flex w-fit rounded-md border bg-white p-3 shadow-sm",
@@ -872,7 +904,7 @@ export default function SelfServicePage() {
                 />
               </a>
               <p className="mt-3 text-sm font-semibold">
-                Toque el QR desde este celular para abrir el pago por DaviPlata.
+                En computador, escanee el QR desde el celular. En el telefono, toque el QR para intentar abrir DaviPlata.
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Use el código {paymentCode} como referencia y pague exactamente {formatCurrency(paymentTotal)}.
