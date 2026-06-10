@@ -341,28 +341,28 @@ export default function SelfServicePage() {
   const daviplataQrImageUrl = buildQrImageUrl(daviplataQrPayload);
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#171721] pb-32 text-white lg:pb-10">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_16%_18%,rgba(178,49,120,0.16),transparent_30%),radial-gradient(circle_at_88%_14%,rgba(14,185,195,0.14),transparent_28%),linear-gradient(180deg,#232328_0%,#171721_50%,#101016_100%)]" />
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(rgba(236,198,67,0.10)_1px,transparent_1px),linear-gradient(90deg,rgba(14,185,195,0.10)_1px,transparent_1px)] bg-[size:58px_58px] opacity-70 [transform:perspective(480px)_rotateX(58deg)] [transform-origin:bottom]" />
+    <div className="min-h-screen overflow-hidden bg-[#f6f7f2] pb-32 text-[#232328] lg:pb-10">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_12%,rgba(14,185,195,0.20),transparent_30%),radial-gradient(circle_at_86%_16%,rgba(236,198,67,0.18),transparent_28%),radial-gradient(circle_at_50%_88%,rgba(178,49,120,0.10),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f6f7f2_54%,#edf3f2_100%)]" />
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(rgba(14,185,195,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(178,49,120,0.09)_1px,transparent_1px)] bg-[size:58px_58px] opacity-60 [transform:perspective(480px)_rotateX(58deg)] [transform-origin:bottom]" />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 py-4 sm:px-6 lg:px-8">
-        <header className="relative overflow-hidden rounded-[2rem] border-2 border-[#0eb9c3]/45 bg-[#232328]/85 px-4 py-5 shadow-[0_24px_60px_rgba(6,7,10,0.28)] backdrop-blur sm:px-6">
-          <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[#b23178]/18 blur-3xl" />
-          <div className="absolute -bottom-24 left-8 h-48 w-48 rounded-full bg-[#0eb9c3]/16 blur-3xl" />
+        <header className="relative overflow-hidden rounded-[2rem] border-2 border-[#0eb9c3]/35 bg-white/88 px-4 py-5 shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur sm:px-6">
+          <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[#ecc643]/24 blur-3xl" />
+          <div className="absolute -bottom-24 left-8 h-48 w-48 rounded-full bg-[#0eb9c3]/18 blur-3xl" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[#0eb9c3]/60 bg-[#0eb9c3]/12 px-3 py-1 text-xs font-black uppercase tracking-[0.35em] text-[#d8fbff]">Autogestión</span>
-                <span className="rounded-full border border-[#d2528d]/60 bg-[#b23178]/14 px-3 py-1 text-xs font-black uppercase tracking-[0.25em] text-[#ffd7e8]">Bingo Gemellista</span>
+                <span className="rounded-full border border-[#0eb9c3]/50 bg-[#0eb9c3]/12 px-3 py-1 text-xs font-black uppercase tracking-[0.35em] text-[#126d74]">Autogestión</span>
+                <span className="rounded-full border border-[#d2528d]/50 bg-[#b23178]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.25em] text-[#8d2460]">Bingo Gemellista</span>
               </div>
-              <h1 className="max-w-3xl text-4xl font-black uppercase leading-none tracking-tight text-white sm:text-6xl">
+              <h1 className="max-w-3xl text-4xl font-black uppercase leading-none tracking-tight text-[#232328] sm:text-6xl">
                 Compra rápida 80&apos;s / 90&apos;s
               </h1>
-              <p className="max-w-2xl text-sm font-semibold text-slate-100/90 sm:text-base">
+              <p className="max-w-2xl text-sm font-semibold text-[#4b4b52] sm:text-base">
                 Elija sus productos en modo arcade, genere el código y pague en caja o por DaviPlata usando la llave Bre-B del colegio.
               </p>
-              <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-widest text-white/90">
+              <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-widest text-[#232328]">
                 <span className="rounded-full bg-[#ecc643] px-3 py-1 text-[#232328]">Logo 2026</span>
-                <span className="rounded-full bg-[#b23178] px-3 py-1">Arcade</span>
+                <span className="rounded-full bg-[#b23178] px-3 py-1 text-white">Arcade</span>
                 <span className="rounded-full bg-[#0eb9c3] px-3 py-1 text-[#0f1720]">Retro suave</span>
               </div>
             </div>
@@ -378,7 +378,7 @@ export default function SelfServicePage() {
               />
             </div>
           </div>
-          <div className="relative mt-5 grid grid-cols-3 gap-2 text-center text-xs font-black uppercase tracking-wide text-white sm:max-w-2xl sm:text-sm">
+          <div className="relative mt-5 grid grid-cols-3 gap-2 text-center text-xs font-black uppercase tracking-wide text-[#232328] sm:max-w-2xl sm:text-sm">
             <div className="rounded-2xl border border-[#0eb9c3]/55 bg-[#0eb9c3]/12 px-2 py-3">1. Escoge</div>
             <div className="rounded-2xl border border-[#d2528d]/55 bg-[#b23178]/14 px-2 py-3">2. Genera código</div>
             <div className="rounded-2xl border border-[#ecc643]/60 bg-[#ecc643]/14 px-2 py-3">3. Paga en caja o DaviPlata</div>
@@ -386,44 +386,44 @@ export default function SelfServicePage() {
         </header>
 
         {editingPurchase && (
-          <div className="rounded-2xl border-2 border-[#ecc643]/80 bg-[#ecc643]/16 px-4 py-3 text-sm font-bold text-amber-50 shadow-[0_18px_40px_rgba(6,7,10,0.22)] backdrop-blur">
+          <div className="rounded-2xl border-2 border-[#ecc643]/80 bg-[#fff7cf]/80 px-4 py-3 text-sm font-bold text-[#5d4b10] shadow-[0_18px_36px_rgba(35,35,40,0.10)] backdrop-blur">
             Está modificando la compra {editingPurchase.id}. Revise el pedido y guarde los cambios.
           </div>
         )}
 
         {lastPurchase && !editingPurchase && (
-          <Card className="border-2 border-[#0eb9c3]/45 bg-[#1f3b3f]/78 text-emerald-50 shadow-[0_22px_55px_rgba(6,7,10,0.26)] backdrop-blur">
+          <Card className="border-2 border-[#0eb9c3]/35 bg-white/88 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur">
             <CardHeader className="gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle className="text-xl font-black uppercase tracking-wide text-emerald-50">Última compra generada</CardTitle>
-                <CardDescription className="text-emerald-100/80">
+                <CardTitle className="text-xl font-black uppercase tracking-wide text-[#232328]">Última compra generada</CardTitle>
+                <CardDescription className="text-[#4b4b52]">
                   Presente este código en caja o úselo como referencia al pagar por DaviPlata.
                 </CardDescription>
               </div>
-              <div className="rounded-2xl border border-[#0eb9c3]/50 bg-[#171721]/65 px-4 py-3 text-center">
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-100/70">Código</p>
-                <p className="font-mono text-2xl font-black tracking-widest text-[#ecc643]">{lastPurchase.id}</p>
+              <div className="rounded-2xl border border-[#0eb9c3]/40 bg-[#edfafa] px-4 py-3 text-center">
+                <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código</p>
+                <p className="font-mono text-2xl font-black tracking-widest text-[#b23178]">{lastPurchase.id}</p>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {lastPurchase.items.map(item => (
-                  <div key={`${lastPurchase.id}-${item.id}`} className="rounded-2xl border border-emerald-300/40 bg-white/10 p-3">
+                  <div key={`${lastPurchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-bold leading-tight">{item.name}</p>
-                        <p className="text-sm font-semibold text-emerald-100/70">Cantidad: {item.quantity}</p>
+                        <p className="text-sm font-semibold text-[#5f686a]">Cantidad: {item.quantity}</p>
                       </div>
                       <p className="shrink-0 font-black">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="flex flex-col gap-1 border-t border-emerald-300/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm font-semibold text-emerald-100/80">{lastPurchase.date}</span>
-                <span className="text-xl font-black text-[#ecc643]">Total: {formatCurrency(lastPurchase.total)}</span>
+              <div className="flex flex-col gap-1 border-t border-[#0eb9c3]/25 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm font-semibold text-[#5f686a]">{lastPurchase.date}</span>
+                <span className="text-xl font-black text-[#b23178]">Total: {formatCurrency(lastPurchase.total)}</span>
               </div>
-              <div className="rounded-2xl border border-emerald-300/40 bg-white/10 p-3">
+              <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
                   <a
                     href={buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) || undefined}
@@ -444,15 +444,15 @@ export default function SelfServicePage() {
                     />
                   </a>
                   <div className="space-y-1 text-center sm:text-left">
-                    <p className="flex items-center justify-center gap-2 text-sm font-black uppercase text-emerald-50 sm:justify-start">
+                    <p className="flex items-center justify-center gap-2 text-sm font-black uppercase text-[#126d74] sm:justify-start">
                       <QrCode className="h-4 w-4" />
                       Pago por DaviPlata / Bre-B
                     </p>
-                    <p className="text-sm text-emerald-100/80">
+                    <p className="text-sm text-[#4b4b52]">
                       Toque el QR desde el celular para abrir el pago y use el código {lastPurchase.id} como referencia.
                     </p>
                     {DAVIPLATA_BREB_KEY && (
-                      <p className="text-xs font-semibold text-emerald-100/70">Llave Bre-B: {DAVIPLATA_BREB_KEY}</p>
+                      <p className="text-xs font-semibold text-[#5f686a]">Llave Bre-B: {DAVIPLATA_BREB_KEY}</p>
                     )}
                   </div>
                 </div>
@@ -465,10 +465,10 @@ export default function SelfServicePage() {
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tight text-white">Productos disponibles</h2>
-                <p className="text-sm font-semibold text-slate-100/80">Toque un producto para agregarlo al pedido.</p>
+                <h2 className="text-2xl font-black uppercase tracking-tight text-[#232328]">Productos disponibles</h2>
+                <p className="text-sm font-semibold text-[#5f686a]">Toque un producto para agregarlo al pedido.</p>
               </div>
-              <Badge variant="secondary" className="shrink-0 border border-[#0eb9c3]/55 bg-[#0eb9c3]/12 px-3 py-1 text-sm font-black uppercase text-[#d8fbff] hover:bg-[#0eb9c3]/18">
+              <Badge variant="secondary" className="shrink-0 border border-[#0eb9c3]/45 bg-white/80 px-3 py-1 text-sm font-black uppercase text-[#126d74] hover:bg-[#edfafa]">
                 {products.length} opciones
               </Badge>
             </div>
@@ -476,7 +476,7 @@ export default function SelfServicePage() {
           {isLoading ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-48 animate-pulse rounded-3xl border-2 border-[#0eb9c3]/30 bg-white/10" />
+                  <div key={item} className="h-48 animate-pulse rounded-3xl border-2 border-[#0eb9c3]/22 bg-white/70" />
                 ))}
               </div>
           ) : products.length > 0 ? (
@@ -495,7 +495,7 @@ export default function SelfServicePage() {
                     <Card
                       key={product.id}
                       className={cn(
-                        "group overflow-hidden rounded-3xl border-2 border-[#0eb9c3]/30 bg-[#232328]/82 text-white shadow-[0_18px_42px_rgba(6,7,10,0.22)] transition hover:-translate-y-1 hover:border-[#d2528d]/75 hover:shadow-[0_22px_48px_rgba(6,7,10,0.28)] active:scale-[0.99]",
+                        "group overflow-hidden rounded-3xl border-2 border-[#0eb9c3]/22 bg-white/88 text-[#232328] shadow-[0_16px_34px_rgba(35,35,40,0.10)] transition hover:-translate-y-1 hover:border-[#d2528d]/60 hover:shadow-[0_20px_42px_rgba(35,35,40,0.14)] active:scale-[0.99]",
                         isSoldOut && "opacity-60"
                       )}
                     >
@@ -506,7 +506,7 @@ export default function SelfServicePage() {
                         disabled={isSoldOut || hasReachedLimit}
                         aria-label={`Agregar ${product.name}`}
                       >
-                        <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                        <div className="relative aspect-[16/10] overflow-hidden bg-[#e8eeee]">
                           <Image
                             src={productImageUrl}
                             alt={product.name}
@@ -535,10 +535,10 @@ export default function SelfServicePage() {
 
                       <CardContent className="space-y-3 p-4">
                         <div className="min-h-[72px] space-y-1">
-                          <h3 className="text-lg font-black uppercase leading-snug tracking-wide text-slate-50">{product.name}</h3>
+                          <h3 className="text-lg font-black uppercase leading-snug tracking-wide text-[#232328]">{product.name}</h3>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-2xl font-black text-[#ecc643]">{formatCurrency(product.price)}</span>
-                            <span className="text-right text-xs font-bold text-slate-100/70">
+                            <span className="text-2xl font-black text-[#b23178]">{formatCurrency(product.price)}</span>
+                            <span className="text-right text-xs font-bold text-[#5f686a]">
                               Stock {product.stock}
                               {selfServiceReserved > 0 && ` | Autogestión ${selfServiceReserved}`}
                               {` | Disp. ${availableStock}`}
@@ -557,7 +557,7 @@ export default function SelfServicePage() {
                             >
                               <Minus className="h-5 w-5" />
                             </Button>
-                            <div className="flex h-12 items-center justify-center rounded-2xl border border-[#d2528d]/60 bg-[#b23178]/14 text-lg font-black text-white">
+                            <div className="flex h-12 items-center justify-center rounded-2xl border border-[#d2528d]/45 bg-[#b23178]/10 text-lg font-black text-[#232328]">
                               {quantityInCart}
                             </div>
                             <Button
@@ -586,19 +586,19 @@ export default function SelfServicePage() {
               })}
             </div>
           ) : (
-              <div className="rounded-3xl border-2 border-dashed border-[#0eb9c3]/40 bg-[#232328]/74 p-8 text-center font-semibold text-slate-100/75">
+              <div className="rounded-3xl border-2 border-dashed border-[#0eb9c3]/35 bg-white/72 p-8 text-center font-semibold text-[#5f686a]">
                 No hay productos disponibles para autoservicio en este momento.
               </div>
           )}
           </section>
 
           <aside className="space-y-4 lg:sticky lg:top-5">
-          <Card className="border-2 border-[#d2528d]/42 bg-[#232328]/88 text-white shadow-[0_22px_55px_rgba(6,7,10,0.28)] backdrop-blur">
+          <Card className="border-2 border-[#d2528d]/28 bg-white/90 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur">
             <CardHeader>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="text-xl font-black uppercase tracking-wide text-white">{editingPurchase ? 'Modificar pedido' : 'Tu pedido'}</CardTitle>
-                    <CardDescription className="text-slate-100/70">
+                    <CardTitle className="text-xl font-black uppercase tracking-wide text-[#232328]">{editingPurchase ? 'Modificar pedido' : 'Tu pedido'}</CardTitle>
+                    <CardDescription className="text-[#5f686a]">
                       {cartItemCount > 0 ? `${cartItemCount} producto${cartItemCount === 1 ? '' : 's'} seleccionado${cartItemCount === 1 ? '' : 's'}` : 'El carrito está vacío'}
                     </CardDescription>
                   </div>
@@ -606,21 +606,21 @@ export default function SelfServicePage() {
                     {cartItemCount}
                   </div>
                 </div>
-                {editingPurchase && <CardDescription className="text-slate-100/70">Código: {editingPurchase.id}</CardDescription>}
+                {editingPurchase && <CardDescription className="text-[#5f686a]">Código: {editingPurchase.id}</CardDescription>}
             </CardHeader>
               <CardContent className="space-y-4">
                 {cart.length === 0 ? (
-                  <div className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-white/10 p-6 text-center text-sm font-semibold text-slate-100/75">
+                  <div className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center text-sm font-semibold text-[#5f686a]">
                     Agregue productos para generar su código de pago.
                   </div>
                 ) : (
                   <div className="space-y-3">
                       {cart.map(item => (
-                      <div key={item.id} className="rounded-2xl border border-[#0eb9c3]/28 bg-white/10 p-3">
+                      <div key={item.id} className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-bold leading-tight">{item.name}</p>
-                            <p className="text-sm font-semibold text-slate-100/70">{formatCurrency(item.price)} c/u</p>
+                            <p className="text-sm font-semibold text-[#5f686a]">{formatCurrency(item.price)} c/u</p>
                           </div>
                           <p className="shrink-0 text-right font-black">{formatCurrency(item.price * item.quantity)}</p>
                         </div>
@@ -629,7 +629,7 @@ export default function SelfServicePage() {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-11 w-11 rounded-2xl border-[#0eb9c3]/55 bg-white/10 text-white hover:bg-[#0eb9c3]/18"
+                                className="h-11 w-11 rounded-2xl border-[#0eb9c3]/45 bg-white text-[#126d74] hover:bg-[#edfafa]"
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                 aria-label={`Quitar una unidad de ${item.name}`}
                               >
@@ -639,7 +639,7 @@ export default function SelfServicePage() {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-11 w-11 rounded-2xl border-[#0eb9c3]/55 bg-white/10 text-white hover:bg-[#0eb9c3]/18"
+                                className="h-11 w-11 rounded-2xl border-[#0eb9c3]/45 bg-white text-[#126d74] hover:bg-[#edfafa]"
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 aria-label={`Agregar una unidad de ${item.name}`}
                               >
@@ -649,7 +649,7 @@ export default function SelfServicePage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-11 w-11 rounded-2xl text-[#ffd7e8] hover:bg-[#b23178]/20 hover:text-white"
+                              className="h-11 w-11 rounded-2xl text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]"
                               onClick={() => removeFromCart(item.id)}
                               aria-label={`Eliminar ${item.name}`}
                             >
@@ -666,8 +666,8 @@ export default function SelfServicePage() {
                     <span>{cartItemCount} producto{cartItemCount === 1 ? '' : 's'}</span>
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-3">
-                    <span className="text-2xl font-black text-white">TOTAL</span>
-                    <span className="text-3xl font-black text-[#ecc643]">{formatCurrency(subtotal)}</span>
+                    <span className="text-2xl font-black text-[#232328]">TOTAL</span>
+                    <span className="text-3xl font-black text-[#8d2460]">{formatCurrency(subtotal)}</span>
                   </div>
                 </div>
             </CardContent>
@@ -679,7 +679,7 @@ export default function SelfServicePage() {
               >
                 {isProcessing ? 'Procesando...' : (editingPurchase ? 'Guardar Cambios' : 'Generar Código de Pago')}
               </Button>
-                <Button variant="outline" className="h-12 w-full rounded-2xl border-[#d2528d]/60 bg-white/10 text-base font-bold text-[#ffd7e8] hover:bg-[#b23178]/20 hover:text-white" onClick={clearCart} disabled={cart.length === 0 && !editingPurchase}>
+                <Button variant="outline" className="h-12 w-full rounded-2xl border-[#d2528d]/45 bg-white text-base font-bold text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={clearCart} disabled={cart.length === 0 && !editingPurchase}>
                 {editingPurchase ? 'Cancelar Edición' : 'Vaciar'}
               </Button>
             </CardFooter>
@@ -688,13 +688,13 @@ export default function SelfServicePage() {
         </div>
 
         <section className="mt-2">
-        <Card className="border-2 border-[#0eb9c3]/35 bg-[#232328]/82 text-white shadow-[0_22px_55px_rgba(6,7,10,0.24)] backdrop-blur">
+        <Card className="border-2 border-[#0eb9c3]/25 bg-white/88 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.10)] backdrop-blur">
           <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-wide text-white">
+              <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-wide text-[#232328]">
                 <History className="h-5 w-5" />
               Mi Historial de Compras
             </CardTitle>
-            <CardDescription className="text-slate-100/70">
+            <CardDescription className="text-[#5f686a]">
               Ingrese su cédula para ver su historial y modificar compras pendientes.
             </CardDescription>
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end">
@@ -716,16 +716,16 @@ export default function SelfServicePage() {
           </CardHeader>
           <CardContent>
             {isHistoryLoading ? (
-              <p className="text-center text-slate-100/70">Buscando...</p>
+              <p className="text-center text-[#5f686a]">Buscando...</p>
             ) : purchaseHistory.length > 0 ? (
                 <div className="space-y-3">
                   {purchaseHistory.map((purchase) => (
-                    <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/28 bg-white/10 p-4">
+                    <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
-                          <p className="text-xs font-black uppercase tracking-wide text-slate-100/65">Código de pago</p>
+                          <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código de pago</p>
                           <p className="font-mono text-base font-bold">{purchase.id}</p>
-                          <p className="text-sm font-semibold text-slate-100/70">{purchase.date}</p>
+                          <p className="text-sm font-semibold text-[#5f686a]">{purchase.date}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                           <Badge variant={purchase.status === 'paid' || purchase.status === 'delivered' ? 'default' : 'secondary'} className={purchase.status === 'paid' || purchase.status === 'delivered' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : ''}>
@@ -733,7 +733,7 @@ export default function SelfServicePage() {
                          </Badge>
                           <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
                         {(purchase.status === 'pending' || purchase.status === 'pre-sale') && (
-                            <Button variant="outline" className="h-11 rounded-2xl border-[#d2528d]/60 bg-white/10 text-[#ffd7e8] hover:bg-[#b23178]/20 hover:text-white" onClick={() => handleEditPurchase(purchase)}>
+                            <Button variant="outline" className="h-11 rounded-2xl border-[#d2528d]/45 bg-white text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={() => handleEditPurchase(purchase)}>
                                 <Pencil className="h-4 w-4" />
                                 Modificar
                             </Button>
@@ -744,18 +744,18 @@ export default function SelfServicePage() {
                   ))}
               </div>
             ) : (
-                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-white/10 p-6 text-center font-semibold text-slate-100/70">Ingrese la cédula para ver el historial.</p>
+                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Ingrese la cédula para ver el historial.</p>
             )}
           </CardContent>
         </Card>
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#0eb9c3]/45 bg-[#171721]/95 p-3 shadow-[0_-12px_32px_rgba(6,7,10,0.32)] backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#0eb9c3]/35 bg-white/94 p-3 shadow-[0_-12px_32px_rgba(35,35,40,0.14)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-[1fr_auto] items-center gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-100/75">{cartItemCount} producto{cartItemCount === 1 ? '' : 's'} en el pedido</p>
-            <p className="text-xl font-black text-[#ecc643]">{formatCurrency(subtotal)}</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#5f686a]">{cartItemCount} producto{cartItemCount === 1 ? '' : 's'} en el pedido</p>
+            <p className="text-xl font-black text-[#b23178]">{formatCurrency(subtotal)}</p>
           </div>
           <Button
             className="h-14 rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] px-5 text-sm font-black uppercase text-[#101016]"
