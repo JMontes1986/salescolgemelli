@@ -8,7 +8,7 @@ export type { NewPurchase } from "@/lib/types";
 const MAX_DISTINCT_ITEMS_PER_PURCHASE = 30;
 const MAX_QUANTITY_PER_ITEM = 99;
 const recordIdPattern = /^[0-9A-Za-z_-]{1,80}$/;
-const customerIdPattern = /^[0-9A-Za-z.-]{5,30}$/;
+const customerIdPattern = /^[0-9A-Za-z.-]{4,30}$/;
 const colombianPhonePattern = /^[0-9+()\s-]{7,20}$/;
 
 type PurchaseCartInput = Pick<CartItem, 'id' | 'quantity'> & Partial<Pick<CartItem, 'name' | 'price'>>;
@@ -86,8 +86,8 @@ function sanitizeRecordId(value: string, fieldName: string) {
   return normalized;
 }
 
-function sanitizeCustomerIdentifier(value: string, fieldName: string) {
-  const normalized = value.trim();
+export function sanitizeCustomerIdentifier(value: string, fieldName: string) {
+  const normalized = String(value ?? '').trim();
 
   if (!customerIdPattern.test(normalized)) {
     throw new Error(`${fieldName} no tiene un formato válido.`);

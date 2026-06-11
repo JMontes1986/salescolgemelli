@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getPurchases, getSelfServicePurchasesByCedula, type NewPurchase, updatePendingPurchase, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getPurchases, getSelfServicePurchasesByCedula, sanitizeCustomerIdentifier, type NewPurchase, updatePendingPurchase, getSelfServiceReservedQuantities } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
@@ -349,9 +349,19 @@ export default function SelfServicePage() {
         toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese la cédula para buscar." });
         return;
     }
+    let normalizedCedula: string;
+    try {
+        normalizedCedula = sanitizeCustomerIdentifier(cedulaToSearch, 'La cédula');
+    } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Revise la cédula",
+          description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
+        });
+        return;
+    }
     setIsHistoryLoading(true);
     try {
-        const normalizedCedula = cedulaToSearch;
         const history = await getSelfServicePurchasesByCedula(normalizedCedula);
         setSearchCedula(normalizedCedula);
         setCedula(normalizedCedula);
