@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Trash2, Plus, Minus, ShoppingCart, History, Pencil, QrCode, Smartphone } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, ClipboardList, PackageCheck } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -329,7 +329,10 @@ export default function SelfServicePage() {
     }
     setIsHistoryLoading(true);
     try {
-        const history = await getSelfServicePurchasesByCedula(searchCedula);
+        const normalizedCedula = searchCedula.trim();
+        const history = await getSelfServicePurchasesByCedula(normalizedCedula);
+        setSearchCedula(normalizedCedula);
+        setCedula(normalizedCedula);
         setPurchaseHistory(history);
     } catch (error) {
         console.error("Error fetching purchase history:", error);
@@ -375,6 +378,34 @@ export default function SelfServicePage() {
   const lastPurchaseDaviplataQrImageUrl = lastPurchase
     ? buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))
     : '';
+  const hasSearchedCedula = searchCedula.trim().length > 0;
+
+  const getPurchaseStatusLabel = (status: Purchase['status']) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendiente de pago';
+      case 'paid':
+        return 'Pagado';
+      case 'delivered':
+        return 'Entregado';
+      case 'pre-sale':
+        return 'Preventa pendiente';
+      case 'pre-sale-confirmed':
+        return 'Preventa confirmada';
+      case 'cancelled':
+        return 'Cancelado';
+      default:
+        return status;
+    }
+  };
+
+  const getPurchaseStatusClassName = (status: Purchase['status']) => (
+    status === 'paid' || status === 'delivered' || status === 'pre-sale-confirmed'
+      ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+      : status === 'cancelled'
+        ? 'bg-red-100 text-red-700 hover:bg-red-100'
+        : 'bg-[#fff7cf] text-[#8a6f12] hover:bg-[#fff7cf]'
+  );
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f6f7f2] pb-32 text-[#232328] lg:pb-10">
@@ -492,6 +523,66 @@ export default function SelfServicePage() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-2 border-[#d2528d]/30 bg-white/92 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.10)] backdrop-blur">
+          <CardHeader className="gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl space-y-2">
+              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.25em] text-[#8d2460]">
+                <ClipboardList className="h-5 w-5" />
+                Antes de escoger productos
+              </div>
+              <CardTitle className="text-2xl font-black uppercase tracking-tight text-[#232328] sm:text-3xl">
+                ¿Cómo comprar por autogestión?
+              </CardTitle>
+              <CardDescription className="text-base font-semibold text-[#4b4b52]">
+                Primero ingrese su cédula para consultar compras anteriores y dejar listo el documento de esta compra. Después elija productos, genere el código y pague en caja o por DaviPlata/Bre-B.
+              </CardDescription>
+            </div>
+            <div className="rounded-2xl border border-[#0eb9c3]/35 bg-[#edfafa] px-4 py-3 text-sm font-bold text-[#126d74]">
+              {hasSearchedCedula ? `Cédula activa: ${searchCedula}` : 'Sin cédula consultada'}
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-4">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0eb9c3] text-lg font-black text-[#0f1720]">1</div>
+                <h3 className="font-black uppercase text-[#232328]">Ingrese cédula</h3>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Consulte sus pedidos y use el mismo documento para generar el código.</p>
+              </div>
+              <div className="rounded-2xl border border-[#d2528d]/25 bg-[#fff5fa] p-4">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#b23178] text-lg font-black text-white">2</div>
+                <h3 className="font-black uppercase text-[#232328]">Arme el pedido</h3>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Agregue productos y revise cantidades antes de generar el código.</p>
+              </div>
+              <div className="rounded-2xl border border-[#ecc643]/35 bg-[#fff9df] p-4">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecc643] text-lg font-black text-[#232328]">3</div>
+                <h3 className="font-black uppercase text-[#232328]">Pague y reciba</h3>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Presente el código en caja o pague por DaviPlata. Abajo verá el estado.</p>
+              </div>
+            </div>
+            <div className="rounded-3xl border-2 border-[#0eb9c3]/30 bg-white p-4 shadow-inner">
+              <Label htmlFor="access-cedula" className="text-sm font-black uppercase tracking-wide text-[#126d74]">Consultar con cédula</Label>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+                <Input
+                  id="access-cedula"
+                  name="accessCedula"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className="h-12 rounded-2xl border-[#0eb9c3]/45 bg-white/95 text-base text-slate-950 placeholder:text-slate-500"
+                  placeholder="Ej: 1020304050"
+                  value={searchCedula}
+                  onChange={(e) => setSearchCedula(e.target.value)}
+                />
+                <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={isHistoryLoading}>
+                  {isHistoryLoading ? 'Consultando...' : 'Ingresar'}
+                </Button>
+              </div>
+              <p className="mt-2 text-xs font-semibold text-[#5f686a]">
+                También puede escoger productos sin consultar, pero al finalizar se solicitará cédula y celular.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
           <section className="space-y-4">
@@ -721,30 +812,19 @@ export default function SelfServicePage() {
 
         <section className="mt-2">
         <Card className="border-2 border-[#0eb9c3]/25 bg-white/88 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.10)] backdrop-blur">
-          <CardHeader>
+          <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
               <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-wide text-[#232328]">
-                <History className="h-5 w-5" />
-              Mi Historial de Compras
-            </CardTitle>
-            <CardDescription className="text-[#5f686a]">
-              Ingrese su cédula para ver su historial y modificar compras pendientes.
-            </CardDescription>
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end">
-              <div className="flex-grow">
-                <Label htmlFor="search-cedula">Buscar por Cédula</Label>
-                <Input 
-                  id="search-cedula"
-                    name="searchCedula"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    className="mt-1 h-12 rounded-2xl border-[#0eb9c3]/45 bg-white/95 text-base text-slate-950 placeholder:text-slate-500"
-                  placeholder="Ingrese su número de cédula"
-                  value={searchCedula}
-                  onChange={(e) => setSearchCedula(e.target.value)}
-                />
-              </div>
-                <Button className="h-12 w-full rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2] sm:w-auto" onClick={handleSearchHistory}>Buscar</Button>
+                <PackageCheck className="h-5 w-5" />
+                Productos adquiridos en autogestión
+              </CardTitle>
+              <CardDescription className="text-[#5f686a]">
+                Al final de la página verá sus compras consultadas con cédula, los productos incluidos y el estado actual de cada pedido.
+              </CardDescription>
             </div>
+            <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={!hasSearchedCedula || isHistoryLoading}>
+              {isHistoryLoading ? 'Actualizando...' : 'Actualizar estado'}
+            </Button>
           </CardHeader>
           <CardContent>
             {isHistoryLoading ? (
@@ -753,30 +833,41 @@ export default function SelfServicePage() {
                 <div className="space-y-3">
                   {purchaseHistory.map((purchase) => (
                     <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                          <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código de pago</p>
-                          <p className="font-mono text-base font-bold">{purchase.id}</p>
-                          <p className="text-sm font-semibold text-[#5f686a]">{purchase.date}</p>
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 space-y-3">
+                          <div className="space-y-1">
+                            <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código de pago</p>
+                            <p className="font-mono text-base font-bold">{purchase.id}</p>
+                            <p className="text-sm font-semibold text-[#5f686a]">{purchase.date}</p>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                            {purchase.items.map((item) => (
+                              <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/18 bg-white p-3">
+                                <p className="font-bold leading-tight text-[#232328]">{item.name}</p>
+                                <p className="text-sm font-semibold text-[#5f686a]">Cantidad: {item.quantity}</p>
+                                <p className="text-sm font-black text-[#b23178]">{formatCurrency(item.price * item.quantity)}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                          <Badge variant={purchase.status === 'paid' || purchase.status === 'delivered' ? 'default' : 'secondary'} className={purchase.status === 'paid' || purchase.status === 'delivered' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : ''}>
-                            {purchase.status === 'pre-sale' ? 'Preventa' : purchase.status === 'pending' ? 'Pendiente' : purchase.status === 'paid' ? 'Pagado' : purchase.status === 'delivered' ? 'Entregado' : 'Cancelado'}
-                         </Badge>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+                          <Badge variant="secondary" className={getPurchaseStatusClassName(purchase.status)}>
+                            {getPurchaseStatusLabel(purchase.status)}
+                          </Badge>
                           <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
-                        {(purchase.status === 'pending' || purchase.status === 'pre-sale') && (
+                          {(purchase.status === 'pending' || purchase.status === 'pre-sale') && (
                             <Button variant="outline" className="h-11 rounded-2xl border-[#d2528d]/45 bg-white text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={() => handleEditPurchase(purchase)}>
-                                <Pencil className="h-4 w-4" />
-                                Modificar
+                              <Pencil className="h-4 w-4" />
+                              Modificar
                             </Button>
-                        )}
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
               </div>
             ) : (
-                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Ingrese la cédula para ver el historial.</p>
+                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Ingrese su cédula en el primer bloque para ver aquí sus productos adquiridos y su estado.</p>
             )}
           </CardContent>
         </Card>
