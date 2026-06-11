@@ -17,7 +17,17 @@ function authEmailForUsername(username: string): string {
   if (trimmed.includes('@')) {
     return trimmed;
   }
-  return `${trimmed}@ventas.invalid`;
+
+  const localPart = trimmed
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/(^\.|\.$)/g, '');
+
+  if (!localPart) {
+    throw new Error('El nombre de usuario no es válido para generar el correo interno. Usa solo letras, números, puntos, guiones o guiones bajos.');
+  }
+
+  return `${localPart}@ventas.invalid`;
 }
 
 type SupabaseAuthUser = {
