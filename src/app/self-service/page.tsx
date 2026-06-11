@@ -110,6 +110,8 @@ export default function SelfServicePage() {
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
   const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
+  const activeCedula = cedula.trim();
+  const hasActiveCedula = activeCedula.length > 0;
 
   const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
     if (!paymentHref) {
@@ -190,6 +192,15 @@ export default function SelfServicePage() {
   }, [getAvailableStock, products]);
 
   const addToCart = (item: Product) => {
+    if (!hasActiveCedula) {
+      toast({
+        variant: "destructive",
+        title: "Ingrese la cédula primero",
+        description: "Para asociar la compra al padre de familia, consulte primero el documento.",
+      });
+      return;
+    }
+
     const availableStock = getAvailableStock(item);
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
@@ -244,6 +255,15 @@ export default function SelfServicePage() {
   };
 
   const handleInitiatePayment = () => {
+    if (!hasActiveCedula) {
+      toast({
+        variant: "destructive",
+        title: "Ingrese la cédula primero",
+        description: "Consulte la cédula del padre de familia antes de escoger o generar una compra.",
+      });
+      return;
+    }
+
     if (cart.length > 0) {
         if (editingPurchase) {
             handleUpdatePurchase();
@@ -260,7 +280,7 @@ export default function SelfServicePage() {
     try {
         const updatedItems = cart.map(({ stock, ...item }) => item);
         const updatedPurchase = await updatePendingPurchase(editingPurchase.id, updatedItems, {
-          customerCedula: searchCedula || editingPurchase.cedula,
+          customerCedula: activeCedula || editingPurchase.cedula,
           customerCelular: editingPurchase.celular,
           selfServiceOnly: true,
         });
@@ -283,14 +303,14 @@ export default function SelfServicePage() {
 
   const handleConfirmPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0 || !cedula || !celular) return;
+    if (cart.length === 0 || !activeCedula || !celular) return;
     setIsProcessing(true);
 
     const newPurchaseData: NewPurchase = {
         date: new Date().toLocaleString('es-CO'),
         total: subtotal,
         items: cart.map(({ stock, ...item }) => item),
-        cedula,
+        cedula: activeCedula,
         celular,
         status: 'pending', // Autogestión reserva disponibilidad y descuenta stock al confirmar el pago.
     };
@@ -323,17 +343,26 @@ export default function SelfServicePage() {
   };
 
   const handleSearchHistory = async () => {
-    if (!searchCedula) {
+    const cedulaToSearch = searchCedula.trim() || activeCedula;
+
+    if (!cedulaToSearch) {
         toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese la cédula para buscar." });
         return;
     }
     setIsHistoryLoading(true);
     try {
-        const normalizedCedula = searchCedula.trim();
+        const normalizedCedula = cedulaToSearch;
         const history = await getSelfServicePurchasesByCedula(normalizedCedula);
         setSearchCedula(normalizedCedula);
         setCedula(normalizedCedula);
         setPurchaseHistory(history);
+        clearCart();
+        toast({
+          title: "Perfil listo",
+          description: history.length > 0
+            ? `Se cargaron ${history.length} compra${history.length === 1 ? '' : 's'} para la cédula ${normalizedCedula}.`
+            : `La cédula ${normalizedCedula} quedó activa para una nueva compra.`,
+        });
     } catch (error) {
         console.error("Error fetching purchase history:", error);
         toast({ variant: "destructive", title: "Error", description: "No se pudo cargar el historial de compras." });
@@ -345,7 +374,6 @@ export default function SelfServicePage() {
   const closeModal = () => {
       setIsPaymentModalOpen(false);
       setPaymentCode(null);
-      setCedula('');
       setCelular('');
       clearCart();
       loadProducts(); // Refresh products after a successful purchase
@@ -363,6 +391,7 @@ export default function SelfServicePage() {
     setCart(cartItems);
     setEditingPurchase(purchase);
     setSearchCedula(purchase.cedula);
+    setCedula(purchase.cedula);
     toast({ title: "Modo Edición", description: "Los artículos de su compra han sido cargados en el carrito." });
   }
 
@@ -378,8 +407,6 @@ export default function SelfServicePage() {
   const lastPurchaseDaviplataQrImageUrl = lastPurchase
     ? buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))
     : '';
-  const hasSearchedCedula = searchCedula.trim().length > 0;
-
   const getPurchaseStatusLabel = (status: Purchase['status']) => {
     switch (status) {
       case 'pending':
@@ -536,7 +563,7 @@ export default function SelfServicePage() {
               </CardDescription>
             </div>
             <div className="rounded-2xl border border-[#0eb9c3]/35 bg-[#edfafa] px-4 py-3 text-sm font-bold text-[#126d74]">
-              {hasSearchedCedula ? `Cédula activa: ${searchCedula}` : 'Sin cédula consultada'}
+              {hasActiveCedula ? `Cédula activa: ${activeCedula}` : 'Sin cédula consultada'}
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -575,7 +602,7 @@ export default function SelfServicePage() {
                 </Button>
               </div>
               <p className="mt-2 text-xs font-semibold text-[#5f686a]">
-                También puede escoger productos sin consultar, pero al finalizar se solicitará cédula y celular.
+                La cédula queda como perfil activo del padre de familia. Después solo se pedirá el celular al finalizar la compra.
               </p>
             </div>
           </CardContent>
@@ -616,14 +643,14 @@ export default function SelfServicePage() {
                       key={product.id}
                       className={cn(
                         "group overflow-hidden rounded-2xl border-2 border-[#0eb9c3]/22 bg-white/88 text-[#232328] shadow-[0_10px_22px_rgba(35,35,40,0.10)] transition hover:-translate-y-1 hover:border-[#d2528d]/60 hover:shadow-[0_20px_42px_rgba(35,35,40,0.14)] active:scale-[0.99] sm:rounded-3xl sm:shadow-[0_16px_34px_rgba(35,35,40,0.10)]",
-                        isSoldOut && "opacity-60"
+                        (isSoldOut || !hasActiveCedula) && "opacity-60"
                       )}
                     >
                       <button
                         type="button"
-                        className={cn("relative block w-full text-left", !isSoldOut && !hasReachedLimit && "cursor-pointer")}
-                        onClick={() => !isSoldOut && !hasReachedLimit && addToCart(product)}
-                        disabled={isSoldOut || hasReachedLimit}
+                        className={cn("relative block w-full text-left", hasActiveCedula && !isSoldOut && !hasReachedLimit && "cursor-pointer")}
+                        onClick={() => hasActiveCedula && !isSoldOut && !hasReachedLimit && addToCart(product)}
+                        disabled={!hasActiveCedula || isSoldOut || hasReachedLimit}
                         aria-label={`Agregar ${product.name}`}
                       >
                         <div className="relative aspect-[16/10] overflow-hidden bg-[#e8eeee]">
@@ -694,10 +721,10 @@ export default function SelfServicePage() {
                           <Button
                             className="h-10 w-full rounded-xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-xs font-black uppercase text-[#101016] shadow-[0_10px_22px_rgba(6,7,10,0.20)] hover:opacity-95 sm:h-12 sm:rounded-2xl sm:text-base sm:shadow-[0_14px_32px_rgba(6,7,10,0.24)]"
                             onClick={() => addToCart(product)}
-                            disabled={isSoldOut || hasReachedLimit}
+                            disabled={!hasActiveCedula || isSoldOut || hasReachedLimit}
                           >
                             <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-                            Agregar
+                            {hasActiveCedula ? 'Agregar' : 'Ingrese cédula'}
                           </Button>
                         )}
                       </CardContent>
@@ -795,7 +822,7 @@ export default function SelfServicePage() {
               <Button 
                   className="h-14 w-full rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-base font-black uppercase text-[#101016] shadow-[0_16px_34px_rgba(6,7,10,0.28)] hover:opacity-95 sm:text-lg"
                 onClick={handleInitiatePayment}
-                disabled={cart.length === 0 || isProcessing}
+                disabled={!hasActiveCedula || cart.length === 0 || isProcessing}
               >
                 {isProcessing ? 'Procesando...' : (editingPurchase ? 'Guardar Cambios' : 'Generar Código de Pago')}
               </Button>
@@ -819,7 +846,7 @@ export default function SelfServicePage() {
                 Al final de la página verá sus compras consultadas con cédula, los productos incluidos y el estado actual de cada pedido.
               </CardDescription>
             </div>
-            <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={!hasSearchedCedula || isHistoryLoading}>
+            <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={!hasActiveCedula || isHistoryLoading}>
               {isHistoryLoading ? 'Actualizando...' : 'Actualizar estado'}
             </Button>
           </CardHeader>
@@ -880,7 +907,7 @@ export default function SelfServicePage() {
           <Button
             className="h-14 rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] px-5 text-sm font-black uppercase text-[#101016]"
             onClick={handleInitiatePayment}
-            disabled={cart.length === 0 || isProcessing}
+            disabled={!hasActiveCedula || cart.length === 0 || isProcessing}
           >
             {editingPurchase ? 'Guardar' : 'Generar código'}
           </Button>
@@ -892,24 +919,15 @@ export default function SelfServicePage() {
           <DialogHeader>
             <DialogTitle>Confirmar Información</DialogTitle>
             <DialogDesc>
-              Por favor, ingrese su cédula y número de celular para generar el código de pago.
+              La cédula ya está asociada al perfil. Ingrese solo el celular para generar el código de pago.
             </DialogDesc>
           </DialogHeader>
           <form id="user-info-form" onSubmit={handleConfirmPayment}>
             <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="cedula">Cédula</Label>
-                <Input 
-                  id="cedula" 
-                  name="cedula"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="h-12 text-base"
-                  value={cedula} 
-                  onChange={(e) => setCedula(e.target.value)} 
-                  required 
-                  placeholder="Número de documento"
-                />
+              <div className="rounded-2xl border bg-muted/50 p-3">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Cédula asociada</p>
+                <p className="text-lg font-black text-foreground">{activeCedula}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Todas las compras quedarán guardadas para este documento.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="celular">Celular (para notificaciones)</Label>
