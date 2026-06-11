@@ -396,11 +396,6 @@ export default function SelfServicePage() {
               <p className="max-w-2xl text-sm font-semibold text-[#4b4b52] sm:text-base">
                 Elija sus productos en modo arcade, genere el código y pague en caja o por DaviPlata usando la llave Bre-B del colegio.
               </p>
-              <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-widest text-[#232328]">
-                <span className="rounded-full bg-[#ecc643] px-3 py-1 text-[#232328]">Logo 2026</span>
-                <span className="rounded-full bg-[#b23178] px-3 py-1 text-white">Arcade</span>
-                <span className="rounded-full bg-[#0eb9c3] px-3 py-1 text-[#0f1720]">Retro suave</span>
-              </div>
             </div>
             <div className="relative flex min-h-24 min-w-24 shrink-0 rotate-2 items-center justify-center rounded-2xl border-2 border-[#d2528d]/75 bg-white p-3 shadow-[8px_8px_0_rgba(14,185,195,0.32)] sm:min-h-28 sm:min-w-32 lg:min-h-32 lg:min-w-36">
               <div className="absolute -left-3 -top-3 rounded-full bg-[#ecc643] px-2 py-1 text-xs font-black uppercase text-[#232328]">VIP</div>
@@ -414,10 +409,10 @@ export default function SelfServicePage() {
               />
             </div>
           </div>
-          <div className="relative mt-5 grid grid-cols-3 gap-2 text-center text-xs font-black uppercase tracking-wide text-[#232328] sm:max-w-2xl sm:text-sm">
-            <div className="rounded-2xl border border-[#0eb9c3]/55 bg-[#0eb9c3]/12 px-2 py-3">1. Escoge</div>
-            <div className="rounded-2xl border border-[#d2528d]/55 bg-[#b23178]/14 px-2 py-3">2. Genera código</div>
-            <div className="rounded-2xl border border-[#ecc643]/60 bg-[#ecc643]/14 px-2 py-3">3. Paga en caja o DaviPlata</div>
+          <div className="relative mt-5 grid grid-cols-3 items-stretch gap-2 text-center text-xs font-black uppercase tracking-wide text-[#232328] sm:max-w-2xl sm:text-sm">
+            <div className="flex min-h-14 items-center justify-center rounded-2xl border border-[#0eb9c3]/55 bg-[#0eb9c3]/12 px-2 py-3">1. Escoge</div>
+            <div className="flex min-h-14 items-center justify-center rounded-2xl border border-[#d2528d]/55 bg-[#b23178]/14 px-2 py-3">2. Genera código</div>
+            <div className="flex min-h-14 items-center justify-center rounded-2xl border border-[#ecc643]/60 bg-[#ecc643]/14 px-2 py-3">3. Paga en caja o DaviPlata</div>
           </div>
         </header>
 
