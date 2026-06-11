@@ -257,6 +257,18 @@ function getAuthenticationError(error: unknown): AuthenticationError | null {
   return null;
 }
 
+function isUsersRlsError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("row-level security policy") &&
+    message.includes("table \"users\"")
+  );
+}
+
 async function getProfileForAuthUser(
   authUser: SupabaseAuthUser,
   fallback?: Partial<NewUser>,
@@ -486,15 +498,27 @@ export async function addUser(user: NewUser): Promise<User> {
     return buildProfileFromAuthUser(response.user, user);
   }
 
-  const localUser = await insertRow<StoredUser>("users", {
-    id: crypto.randomUUID(),
-    name: user.name.trim(),
-    username,
-    role: user.role,
-    permissions: getPermissionsForRole(user.role),
-    avatarUrl: user.avatarUrl,
-    passwordHash: await hashPassword(user.password),
-  });
+  let localUser: StoredUser;
+
+  try {
+    localUser = await insertRow<StoredUser>("users", {
+      id: crypto.randomUUID(),
+      name: user.name.trim(),
+      username,
+      role: user.role,
+      permissions: getPermissionsForRole(user.role),
+      avatarUrl: user.avatarUrl,
+      passwordHash: await hashPassword(user.password),
+    });
+  } catch (error) {
+    if (isUsersRlsError(error)) {
+      throw new Error(
+        "Supabase esta bloqueando la creacion del usuario por RLS. Aplica nuevamente el SQL de supabase/schema.sql para crear las politicas de public.users.",
+      );
+    }
+
+    throw error;
+  }
 
   return sanitizeUser(localUser);
 }

@@ -14,6 +14,41 @@ alter table public.users drop constraint if exists users_id_fkey;
 alter table public.users alter column id set default gen_random_uuid();
 alter table public.users add column if not exists "passwordHash" text;
 
+alter table public.users enable row level security;
+
+grant select on public.users to anon, authenticated;
+grant insert, update, delete on public.users to authenticated;
+
+drop policy if exists "public_users_select" on public.users;
+drop policy if exists "dashboard_users_insert" on public.users;
+drop policy if exists "dashboard_users_update" on public.users;
+drop policy if exists "dashboard_users_delete" on public.users;
+
+create policy "public_users_select"
+  on public.users
+  for select
+  to anon, authenticated
+  using (true);
+
+create policy "dashboard_users_insert"
+  on public.users
+  for insert
+  to authenticated
+  with check (auth.uid() is not null);
+
+create policy "dashboard_users_update"
+  on public.users
+  for update
+  to authenticated
+  using (auth.uid() is not null)
+  with check (auth.uid() is not null);
+
+create policy "dashboard_users_delete"
+  on public.users
+  for delete
+  to authenticated
+  using (auth.uid() is not null);
+
 create table if not exists public.products (
   id text primary key default gen_random_uuid()::text,
   name text not null,
