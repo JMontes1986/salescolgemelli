@@ -424,9 +424,6 @@ export default function SelfServicePage() {
               <h1 className="max-w-3xl text-4xl font-black uppercase leading-none tracking-tight text-[#232328] sm:text-6xl">
                 Compra rápida 80&apos;s / 90&apos;s
               </h1>
-              <p className="max-w-2xl text-sm font-semibold text-[#4b4b52] sm:text-base">
-                Elija sus productos en modo arcade, genere el código y pague en caja o por DaviPlata usando la llave Bre-B del colegio.
-              </p>
             </div>
             <div className="relative flex min-h-24 min-w-24 shrink-0 rotate-2 items-center justify-center rounded-2xl border-2 border-[#d2528d]/75 bg-white p-3 shadow-[8px_8px_0_rgba(14,185,195,0.32)] sm:min-h-28 sm:min-w-32 lg:min-h-32 lg:min-w-36">
               <div className="absolute -left-3 -top-3 rounded-full bg-[#ecc643] px-2 py-1 text-xs font-black uppercase text-[#232328]">VIP</div>
