@@ -12,6 +12,14 @@ type AuthUserMetadata = {
   avatar_url?: string;
 };
 
+function authEmailForUsername(username: string): string {
+  const trimmed = username.trim().toLowerCase();
+  if (trimmed.includes('@')) {
+    return trimmed;
+  }
+  return `${trimmed}@ventas.invalid`;
+}
+
 type SupabaseAuthUser = {
   id: string;
   email?: string;
@@ -138,7 +146,7 @@ function getAuthenticationError(error: unknown): AuthenticationError | null {
   ) {
     return new AuthenticationError(
       'invalid_credentials',
-      'El correo o la contraseña no coinciden con Supabase Authentication.'
+      'El usuario o la contraseña no coinciden con Supabase Authentication.'
     );
   }
 
@@ -174,7 +182,7 @@ export async function authenticateUser(username: string, password_provided: stri
       method: 'POST',
       query: { grant_type: 'password' },
       body: {
-        email: username.trim(),
+        email: authEmailForUsername(username.trim()),
         password: password_provided,
       },
     });
@@ -194,7 +202,11 @@ export async function authenticateUser(username: string, password_provided: stri
     return null;
   }
 
-  const user = await getProfileForAuthUser(response.user, { username: response.user.email ?? username.trim() });
+  const authUser = response.user;
+  const shouldUseUsername = authUser.user_metadata?.role !== 'admin' && authUser.user_metadata?.role !== 'auditor';
+  const fallbackUsername = shouldUseUsername ? username.trim() : authUser.email ?? username.trim();
+
+  const user = await getProfileForAuthUser(response.user, { username: fallbackUsername });
 
   return { user, session };
 }
@@ -240,14 +252,20 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function addUser(user: NewUser): Promise<User> {
+  const username = user.username.trim();
+
+  if ((user.role === 'admin' || user.role === 'auditor') && !username.includes('@')) {
+    throw new Error('Para los roles administrador y auditor se requiere un correo electrónico válido.');
+  }
+
   const response = await supabaseAuthRequest<SupabaseAuthResponse>('signup', {
     method: 'POST',
     body: {
-      email: user.username.trim(),
+      email: authEmailForUsername(username),
       password: user.password,
       data: {
         name: user.name,
-        username: user.username.trim(),
+        username,
         role: user.role,
         avatarUrl: user.avatarUrl,
       },

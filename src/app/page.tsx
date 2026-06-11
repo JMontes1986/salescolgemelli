@@ -35,7 +35,7 @@ import { addAuditLog } from "@/lib/services/audit-service";
 function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -47,10 +47,10 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
     try {
       const newUser: NewUser = {
         name,
-        username: email,
+        username,
         password,
-        role: 'seller', // Public registrations are sellers by default
-        avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(email)}/100/100`,
+        role: 'seller',
+        avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
       };
       await addUser(newUser);
       toast({
@@ -98,12 +98,12 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-email">Correo Electrónico</Label>
+              <Label htmlFor="new-username">Usuario</Label>
               <Input
-                id="new-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="new-username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -141,7 +141,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [key, setKey] = useState(0); // Key to force re-render if needed
@@ -151,8 +151,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log(`Attempting to authenticate user: ${email}`);
-      const authenticatedUser = await authenticateUser(email, password);
+      console.log(`Attempting to authenticate user: ${username}`);
+      const authenticatedUser = await authenticateUser(username, password);
       
       if (authenticatedUser) {
         const { user, session } = authenticatedUser;
@@ -179,7 +179,7 @@ export default function LoginPage() {
             router.push("/dashboard");
         }
       } else {
-        console.log(`Authentication failed for user: ${email}`);
+        console.log(`Authentication failed for user: ${username}`);
         toast({
           variant: "destructive",
           title: "Error de autenticación",
@@ -228,14 +228,14 @@ export default function LoginPage() {
         <CardContent>
           <form id="login-form" onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Correo Electrónico</Label>
+              <Label htmlFor="username">Usuario o correo electrónico</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="usuario@colegio.edu"
+                id="username"
+                type="text"
+                placeholder="usuario123 o admin@colegio.edu"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 disabled={isLoading}
               />
             </div>

@@ -64,16 +64,17 @@ function UserForm({
 }) {
     const { toast } = useToast();
     const [name, setName] = useState(initialData?.name || '');
-    const [email, setEmail] = useState(initialData?.username || '');
+    const [username, setUsername] = useState(initialData?.username || '');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>('seller');
     const [isOpen, setIsOpen] = useState(false);
 
+    const isEmailRole = role === 'admin' || role === 'auditor';
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
         if (open) {
             setName('');
-            setEmail('');
+            setUsername('');
             setPassword('');
             setRole('seller');
         }
@@ -84,10 +85,10 @@ function UserForm({
         
         const newUserData: NewUser = {
             name,
-            username: email,
+            username,
             password,
             role,
-            avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(email)}/100/100`,
+            avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
         };
 
         try {
@@ -125,8 +126,17 @@ function UserForm({
                             <Input id="user-name" placeholder="Ej: Juan Pérez" value={name} onChange={e => setName(e.target.value)} required />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="user-email">Correo Electrónico</Label>
-                            <Input id="user-email" type="email" placeholder="usuario@colegio.edu" value={email} onChange={e => setEmail(e.target.value)} required />
+                            <Label htmlFor="user-credential">
+                              {isEmailRole ? 'Correo Electrónico' : 'Usuario'}
+                            </Label>
+                            <Input
+                              id="user-credential"
+                              type={isEmailRole ? 'email' : 'text'}
+                              placeholder={isEmailRole ? 'admin@colegio.edu' : 'juan.perez'}
+                              value={username}
+                              onChange={e => setUsername(e.target.value)}
+                              required
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="user-password">Contraseña</Label>
