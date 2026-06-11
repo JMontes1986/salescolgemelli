@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -16,7 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AuthenticationError, authenticateUser, addUser } from "@/lib/services/user-service";
+import {
+  AuthenticationError,
+  authenticateUser,
+  addUser,
+} from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
 import type { NewUser } from "@/lib/types";
 import {
@@ -49,7 +52,7 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
         name,
         username,
         password,
-        role: 'seller',
+        role: "seller",
         avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
       };
       await addUser(newUser);
@@ -64,7 +67,10 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
       toast({
         variant: "destructive",
         title: "Error al crear usuario",
-        description: "No se pudo crear la cuenta. Inténtalo de nuevo.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "No se pudo crear la cuenta. Inténtalo de nuevo.",
       });
     } finally {
       setIsLoading(false);
@@ -82,7 +88,8 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
         <DialogHeader>
           <DialogTitle>Crear Nueva Cuenta</DialogTitle>
           <DialogDescription>
-            Completa el formulario para registrarte. Las nuevas cuentas tendrán el rol de Vendedor.
+            Completa el formulario para registrarte. Las nuevas cuentas tendrán
+            el rol de Vendedor.
           </DialogDescription>
         </DialogHeader>
         <form id="create-user-form" onSubmit={handleCreateUser}>
@@ -136,7 +143,6 @@ function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   );
 }
 
-
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -153,7 +159,7 @@ export default function LoginPage() {
     try {
       console.log(`Attempting to authenticate user: ${username}`);
       const authenticatedUser = await authenticateUser(username, password);
-      
+
       if (authenticatedUser) {
         const { user, session } = authenticatedUser;
 
@@ -167,16 +173,16 @@ export default function LoginPage() {
         addAuditLog({
           userId: user.id,
           userName: user.name,
-          action: 'USER_LOGIN',
+          action: "USER_LOGIN",
           details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
         }).catch((error) => {
           console.warn("No se pudo registrar auditoría de login.", error);
         });
 
-        if (user.role === 'cashier') {
-            router.push("/dashboard/sales");
+        if (user.role === "cashier") {
+          router.push("/dashboard/sales");
         } else {
-            router.push("/dashboard");
+          router.push("/dashboard");
         }
       } else {
         console.log(`Authentication failed for user: ${username}`);
@@ -210,11 +216,14 @@ export default function LoginPage() {
   const handleUserCreation = () => {
     // This function can be used to trigger a re-render or state update if necessary,
     // but with caching removed, it's less critical.
-    setKey(prev => prev + 1);
-  }
+    setKey((prev) => prev + 1);
+  };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4" key={key}>
+    <main
+      className="flex min-h-screen items-center justify-center bg-background p-4"
+      key={key}
+    >
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-4 flex items-center justify-center">
@@ -253,7 +262,12 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col">
-          <Button className="w-full" type="submit" form="login-form" disabled={isLoading}>
+          <Button
+            className="w-full"
+            type="submit"
+            form="login-form"
+            disabled={isLoading}
+          >
             <LogIn className="mr-2 h-4 w-4" />
             {isLoading ? "Ingresando..." : "Ingresar"}
           </Button>

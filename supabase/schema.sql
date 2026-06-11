@@ -1,13 +1,18 @@
 create extension if not exists "pgcrypto";
 
 create table if not exists public.users (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   username text not null unique,
   role text not null,
   permissions text[] not null default '{}',
-  "avatarUrl" text not null default ''
+  "avatarUrl" text not null default '',
+  "passwordHash" text
 );
+
+alter table public.users drop constraint if exists users_id_fkey;
+alter table public.users alter column id set default gen_random_uuid();
+alter table public.users add column if not exists "passwordHash" text;
 
 create table if not exists public.products (
   id text primary key default gen_random_uuid()::text,
