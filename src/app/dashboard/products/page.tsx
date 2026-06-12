@@ -24,7 +24,7 @@ import { PlusCircle, MoreHorizontal, Database, Trash2, Pencil, ShoppingCart, Sto
 import { PermissionGate } from "@/components/permission-gate";
 import Image from "next/image";
 import { mockProducts } from "@/lib/placeholder-data";
-import type { Product, User, ProductAvailability, Purchase } from "@/lib/types";
+import type { Product, User, ProductAvailability } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
 import { allProductAvailability, unavailableProductAvailability, getProducts, addProduct, addProductWithId, type NewProduct, updateProduct, increaseProductStock, updateProductOrder } from "@/lib/services/product-service";
-import { getPurchases, getSelfServicePendingQuantities } from "@/lib/services/purchase-service";
+import { getSelfServiceReservedQuantityMap } from "@/lib/services/purchase-service";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -514,7 +514,7 @@ function SortableProductCard({
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [selfServicePendingQuantities, setSelfServicePendingQuantities] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [hasSeeded, setHasSeeded] = useState(false);
   const { toast } = useToast();
@@ -532,12 +532,12 @@ export default function ProductsPage() {
       setIsLoading(true);
     }
     try {
-      const [fetchedProducts, fetchedPurchases] = await Promise.all([
+      const [fetchedProducts, pendingQuantities] = await Promise.all([
         getProducts(),
-        getPurchases(),
+        getSelfServiceReservedQuantityMap(),
       ]);
       setProducts(fetchedProducts);
-      setPurchases(fetchedPurchases);
+      setSelfServicePendingQuantities(pendingQuantities);
       if (fetchedProducts.length > 0) {
           setHasSeeded(true);
       }
@@ -559,8 +559,6 @@ export default function ProductsPage() {
     tables: realtimeTables,
     onChange: () => loadProducts(false),
   });
-
-  const selfServicePendingQuantities = useMemo(() => getSelfServicePendingQuantities(purchases), [purchases]);
 
   const handleProductAdded = (newProduct: Product) => {
     setProducts(prevProducts => [...prevProducts, newProduct].sort((a,b) => a.position - b.position));

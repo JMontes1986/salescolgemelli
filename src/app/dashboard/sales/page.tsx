@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Plus, Minus, Ticket as TicketIcon, Hourglass, Search, XCircle } from "lucide-react";
+import { Trash2, Plus, Minus, Hourglass, Search, XCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPurchase, getPurchases, type NewPurchase, cancelPurchaseAndUpdateStock, getSelfServiceReservedQuantities, getSelfServicePendingQuantities } from '@/lib/services/purchase-service';
+import { addPurchase, type NewPurchase, cancelPurchaseAndUpdateStock, getSelfServicePendingPurchases, getSelfServiceReservedQuantityMap } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +61,8 @@ export default function SalesPage() {
   const [customerPayment, setCustomerPayment] = useState<number>(0);
   const [customerCedula, setCustomerCedula] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [pendingSelfServicePurchases, setPendingSelfServicePurchases] = useState<Purchase[]>([]);
+  const [selfServiceReservedQuantities, setSelfServiceReservedQuantities] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { currentUser, isMounted } = useAuth();
@@ -73,12 +74,14 @@ export default function SalesPage() {
       setIsLoading(true);
     }
     try {
-        const [fetchedProducts, fetchedPurchases] = await Promise.all([
+        const [fetchedProducts, pendingPurchases, reservedQuantities] = await Promise.all([
             getProductsByAvailability('pos'),
-            getPurchases(),
+            getSelfServicePendingPurchases(),
+            getSelfServiceReservedQuantityMap(),
         ]);
         setProducts(fetchedProducts);
-        setPurchases(fetchedPurchases);
+        setPendingSelfServicePurchases(pendingPurchases);
+        setSelfServiceReservedQuantities(reservedQuantities);
     } catch (error) {
         console.error("Error fetching data:", error);
     } finally {
@@ -96,13 +99,7 @@ export default function SalesPage() {
     tables: realtimeTables,
     onChange: () => loadData(false),
   });
-  
-  const selfServiceReservedQuantities = useMemo(() => getSelfServiceReservedQuantities(purchases), [purchases]);
-  const selfServicePendingQuantities = useMemo(() => getSelfServicePendingQuantities(purchases), [purchases]);
-
-  const pendingSelfServicePurchases = purchases.filter(
-    p => (p.status === 'pending' || p.status === 'pre-sale') && !p.sellerId
-  );
+  const selfServicePendingQuantities = selfServiceReservedQuantities;
 
   useEffect(() => {
     setCart((prevCart) => prevCart.reduce<CartItem[]>((nextCart, item) => {
@@ -284,12 +281,6 @@ export default function SalesPage() {
                                       const selfServiceReserved = selfServiceReservedQuantities[product.id] || 0;
                                       const selfServicePending = selfServicePendingQuantities[product.id] || 0;
                                       const availableStock = Math.max(product.stock - selfServiceReserved, 0);
-                                      const deliveredQuantity = purchases.reduce((total, purchase) => {
-                                        if (purchase.status !== 'delivered' && purchase.status !== 'partially-delivered') return total;
-                                        return total + purchase.items
-                                          .filter(item => item.id === product.id)
-                                          .reduce((itemTotal, item) => itemTotal + (item.deliveredQuantity || (purchase.status === 'delivered' ? item.quantity : 0)), 0);
-                                      }, 0);
                                       const isSoldOut = availableStock <= 0;
                                       return (
                                         <div key={product.id} className={cn("flex items-center justify-between p-3 bg-muted/50 rounded-lg", isSoldOut && "opacity-50")}>
@@ -318,9 +309,6 @@ export default function SalesPage() {
                                                             <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServicePending}</Badge>
                                                         )}
                                                         <Badge variant={availableStock > 0 ? "secondary" : "destructive"}>Disp.: {availableStock}</Badge>
-                                                        {deliveredQuantity > 0 && (
-                                                            <Badge className="bg-green-500/20 text-green-700">Entregados: {deliveredQuantity}</Badge>
-                                                        )}
                                                     </div>
                                                 )}
                                                 <Button onClick={() => addToCart(product)} disabled={isSoldOut}>

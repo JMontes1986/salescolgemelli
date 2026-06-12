@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Search, ExternalLink, Printer, Download, Pencil } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getRecentPreSales, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -97,13 +97,12 @@ export default function PreSalePage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-        const [fetchedProducts, recent, all] = await Promise.all([
+        const [fetchedProducts, all] = await Promise.all([
           getProductsByAvailability('presale'),
-          getRecentPreSales(),
           getDashboardPreSales()
         ]);
         setProducts(fetchedProducts);
-        setRecentPreSales(recent);
+        setRecentPreSales(all.slice(0, 5));
         setAllPreSales(all);
     } catch (error) {
         console.error("Error fetching data:", error);

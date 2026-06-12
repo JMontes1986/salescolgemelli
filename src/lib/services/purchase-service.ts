@@ -63,6 +63,8 @@ function withDeliveryAccess(purchase: Purchase): Purchase {
   };
 }
 
+const purchaseSelectColumns = 'id,date,total,items,cedula,celular,"sellerId","sellerName",status,"deliveryCode","qrPayload"';
+
 export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
   return purchases
     .filter(purchase => !purchase.sellerId && (purchase.status === 'pending' || purchase.status === 'partially-delivered'))
@@ -256,8 +258,8 @@ export async function getPurchases(idPrefix?: string): Promise<Purchase[]> {
 }
 
 export async function getRecentPreSales(): Promise<Purchase[]> {
-  const purchases = await getPurchases('PV');
-  return purchases.filter(isDashboardPreSale).slice(0, 5);
+  const purchases = await getDashboardPreSales();
+  return purchases.slice(0, 5);
 }
 
 export async function getSelfServicePurchases(limit = 30): Promise<Purchase[]> {
@@ -265,6 +267,18 @@ export async function getSelfServicePurchases(limit = 30): Promise<Purchase[]> {
   return purchases
     .filter(purchase => !purchase.sellerId)
     .slice(0, limit);
+}
+
+export async function getSelfServicePendingPurchases(limit = 100): Promise<Purchase[]> {
+  const purchases = await selectRows<Purchase>('purchases', {
+    select: purchaseSelectColumns,
+    status: 'in.(pending,pre-sale,partially-delivered)',
+    '"sellerId"': 'is.null',
+    order: 'date.desc',
+    limit,
+  });
+
+  return sortByNewest(purchases.map(ensureReturnedFlags));
 }
 
 export async function getPurchaseById(id: string): Promise<Purchase | null> {
@@ -326,8 +340,15 @@ export async function getPreSalesByCedula(cedula: string): Promise<Purchase[]> {
 }
 
 export async function getDashboardPreSales(): Promise<Purchase[]> {
-  const purchases = await getPurchases('PV');
-  return purchases.filter(isDashboardPreSale);
+  const purchases = await selectRows<Purchase>('purchases', {
+    select: purchaseSelectColumns,
+    id: 'like.PV%',
+    status: 'in.(pre-sale,pre-sale-confirmed)',
+    '"sellerId"': 'not.is.null',
+    order: 'date.desc',
+  });
+
+  return sortByNewest(purchases.map(ensureReturnedFlags)).filter(isDashboardPreSale);
 }
 
 export async function getSelfServicePurchasesByCedula(cedula: string): Promise<Purchase[]> {

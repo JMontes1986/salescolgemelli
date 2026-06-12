@@ -97,6 +97,18 @@ create table if not exists public.purchases (
 alter table public.purchases add column if not exists "deliveryCode" text;
 alter table public.purchases add column if not exists "qrPayload" text;
 
+create index if not exists purchases_status_seller_id_idx
+  on public.purchases (status, "sellerId");
+
+create index if not exists purchases_id_text_pattern_idx
+  on public.purchases (id text_pattern_ops);
+
+create index if not exists purchases_cedula_idx
+  on public.purchases (cedula);
+
+create index if not exists products_position_idx
+  on public.products (position);
+
 create or replace function public.get_purchase_for_delivery_lookup(
   p_code text default null,
   p_delivery_code text default null
