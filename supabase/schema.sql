@@ -91,6 +91,11 @@ create table if not exists public.purchases (
 alter table public.purchases add column if not exists "deliveryCode" text;
 alter table public.purchases add column if not exists "qrPayload" text;
 
+alter table public.purchases enable row level security;
+
+grant select, insert, update on public.purchases to authenticated;
+grant insert on public.purchases to anon;
+
 create table if not exists public.returns (
   id text primary key default gen_random_uuid()::text,
   "productId" text not null,
@@ -149,6 +154,67 @@ $$;
 
 revoke all on function public.next_counter(text) from public;
 grant execute on function public.next_counter(text) to anon, authenticated;
+
+create or replace function public.get_self_service_reserved_quantities(
+  p_exclude_purchase_id text default null
+)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  with reservation_items as (
+    select
+      trim(item->>'id') as product_id,
+      greatest(
+        coalesce((item->>'quantity')::integer, 0)
+          - coalesce((item->>'deliveredQuantity')::integer, 0),
+        0
+      ) as pending_quantity
+    from public.purchases purchase
+    cross join jsonb_array_elements(purchase.items) as input(item)
+    where purchase."sellerId" is null
+      and purchase.status in ('pending', 'partially-delivered')
+      and (
+        p_exclude_purchase_id is null
+        or purchase.id <> trim(p_exclude_purchase_id)
+      )
+  ),
+  reserved_totals as (
+    select product_id, sum(pending_quantity)::integer as reserved_quantity
+    from reservation_items
+    where product_id ~ '^[0-9A-Za-z_-]{1,80}$'
+      and pending_quantity > 0
+    group by product_id
+  )
+  select coalesce(jsonb_object_agg(product_id, reserved_quantity), '{}'::jsonb)
+  from reserved_totals;
+$$;
+
+revoke all on function public.get_self_service_reserved_quantities(text) from public;
+grant execute on function public.get_self_service_reserved_quantities(text) to anon, authenticated;
+
+create or replace function public.get_self_service_purchases_by_customer(
+  p_cedula text,
+  p_celular text
+)
+returns setof public.purchases
+language sql
+security definer
+set search_path = public
+as $$
+  select purchase.*
+  from public.purchases purchase
+  where trim(p_cedula) ~ '^[0-9A-Za-z.-]{4,30}$'
+    and trim(p_celular) ~ '^[0-9+()[:space:]-]{7,20}$'
+    and purchase.cedula = trim(p_cedula)
+    and purchase.celular = trim(p_celular)
+  order by purchase.date desc
+  limit 50;
+$$;
+
+revoke all on function public.get_self_service_purchases_by_customer(text, text) from public;
+grant execute on function public.get_self_service_purchases_by_customer(text, text) to anon, authenticated;
 
 create or replace function public.create_pos_purchase_with_stock(
   p_items jsonb,
@@ -310,6 +376,137 @@ $$;
 
 revoke all on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) from public;
 grant execute on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) to authenticated;
+
+create or replace function public.update_self_service_pending_purchase(
+  p_purchase_id text,
+  p_items jsonb,
+  p_cedula text,
+  p_celular text
+)
+returns public.purchases
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_item record;
+  product_record public.products%rowtype;
+  purchase_record public.purchases%rowtype;
+  verified_items jsonb := '[]'::jsonb;
+  purchase_total numeric := 0;
+  reserved_quantity integer := 0;
+begin
+  if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
+    raise exception 'La compra tiene un identificador inválido.';
+  end if;
+
+  if p_cedula is null or trim(p_cedula) !~ '^[0-9A-Za-z.-]{4,30}$' then
+    raise exception 'La cédula no tiene un formato válido.';
+  end if;
+
+  if p_celular is null or trim(p_celular) !~ '^[0-9+()[:space:]-]{7,20}$' then
+    raise exception 'El celular no tiene un formato válido.';
+  end if;
+
+  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'Debe seleccionar al menos un producto.';
+  end if;
+
+  if jsonb_array_length(p_items) > 30 then
+    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+  end if;
+
+  select * into purchase_record
+  from public.purchases
+  where id = trim(p_purchase_id)
+  for update;
+
+  if not found
+    or purchase_record.status <> 'pending'
+    or purchase_record."sellerId" is not null
+    or purchase_record."sellerName" is not null then
+    raise exception 'Compra no encontrada o ya ha sido procesada.';
+  end if;
+
+  if purchase_record.cedula <> trim(p_cedula)
+    or purchase_record.celular <> trim(p_celular) then
+    raise exception 'Los datos del cliente no coinciden con esta compra.';
+  end if;
+
+  for normalized_item in
+    select
+      trim(item->>'id') as id,
+      sum((item->>'quantity')::integer) as quantity,
+      min(ord) as first_position
+    from jsonb_array_elements(p_items) with ordinality as input(item, ord)
+    group by trim(item->>'id')
+    order by min(ord)
+  loop
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+      raise exception 'La compra contiene un producto inválido.';
+    end if;
+
+    if normalized_item.quantity is null or normalized_item.quantity < 1 or normalized_item.quantity > 99 then
+      raise exception 'La compra contiene una cantidad inválida.';
+    end if;
+
+    select * into product_record
+    from public.products
+    where id::text = normalized_item.id
+    for update;
+
+    if not found then
+      raise exception 'Producto con ID % no encontrado.', normalized_item.id;
+    end if;
+
+    if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
+      and not coalesce(product_record.availability, '{}'::text[]) @> array['self-service']::text[] then
+      raise exception '% no está disponible para autogestión.', product_record.name;
+    end if;
+
+    select coalesce(sum(
+      greatest(
+        coalesce((item->>'quantity')::integer, 0)
+          - coalesce((item->>'deliveredQuantity')::integer, 0),
+        0
+      )
+    ), 0)::integer into reserved_quantity
+    from public.purchases reserved_purchase
+    cross join jsonb_array_elements(reserved_purchase.items) as input(item)
+    where reserved_purchase.id <> purchase_record.id
+      and reserved_purchase."sellerId" is null
+      and reserved_purchase.status in ('pending', 'partially-delivered')
+      and trim(item->>'id') = normalized_item.id;
+
+    if product_record.stock - reserved_quantity < normalized_item.quantity then
+      raise exception 'Stock insuficiente para %.', product_record.name;
+    end if;
+
+    purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
+    verified_items := verified_items || jsonb_build_array(jsonb_build_object(
+      'id', product_record.id::text,
+      'name', product_record.name,
+      'price', product_record.price,
+      'quantity', normalized_item.quantity,
+      'returned', false,
+      'deliveredQuantity', 0
+    ));
+  end loop;
+
+  update public.purchases
+  set
+    date = now()::text,
+    total = purchase_total,
+    items = verified_items
+  where id = purchase_record.id
+  returning * into purchase_record;
+
+  return purchase_record;
+end;
+$$;
+
+revoke all on function public.update_self_service_pending_purchase(text, jsonb, text, text) from public;
+grant execute on function public.update_self_service_pending_purchase(text, jsonb, text, text) to anon, authenticated;
 
 create or replace function public.update_purchase_status_with_stock(
   p_purchase_id text,

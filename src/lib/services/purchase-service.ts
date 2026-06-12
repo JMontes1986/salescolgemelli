@@ -65,10 +65,11 @@ function withDeliveryAccess(purchase: Purchase): Purchase {
 
 export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
   return purchases
-    .filter(purchase => !purchase.sellerId && purchase.status === 'pending')
+    .filter(purchase => !purchase.sellerId && (purchase.status === 'pending' || purchase.status === 'partially-delivered'))
     .reduce<Record<string, number>>((acc, purchase) => {
       purchase.items.forEach((item) => {
-        acc[item.id] = (acc[item.id] || 0) + item.quantity;
+        const pendingQuantity = Math.max(item.quantity - normalizeDeliveredQuantity(item), 0);
+        acc[item.id] = (acc[item.id] || 0) + pendingQuantity;
       });
       return acc;
     }, {});
@@ -129,7 +130,7 @@ export function sanitizeCustomerIdentifier(value: string, fieldName: string) {
   return normalized;
 }
 
-function sanitizeCustomerPhone(value: string) {
+export function sanitizeCustomerPhone(value: string) {
   const normalized = value.trim();
 
   if (!colombianPhonePattern.test(normalized)) {
@@ -223,12 +224,26 @@ function assertAvailableStock(
 }
 
 async function getSelfServiceReservations(excludePurchaseId?: string) {
-  const purchases = await getPurchases('PV');
-  return getSelfServiceReservedQuantities(
-    excludePurchaseId
-      ? purchases.filter(purchase => purchase.id !== excludePurchaseId)
-      : purchases
-  );
+  return getSelfServiceReservedQuantityMap(excludePurchaseId);
+}
+
+export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: string): Promise<Record<string, number>> {
+  const safeExcludePurchaseId = excludePurchaseId
+    ? sanitizeRecordId(excludePurchaseId, 'La compra')
+    : null;
+
+  try {
+    const reservedQuantities = await callRpc<Record<string, number>>('get_self_service_reserved_quantities', {
+      p_exclude_purchase_id: safeExcludePurchaseId,
+    });
+    return reservedQuantities ?? {};
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('get_self_service_reserved_quantities')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para calcular reservas de autogestión.');
+    }
+
+    throw error;
+  }
 }
 
 function getCurrentDateLabel() {
@@ -277,6 +292,25 @@ export async function getSelfServicePurchasesByCedula(cedula: string): Promise<P
     cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}`,
   });
   return sortByNewest(purchases.map(ensureReturnedFlags));
+}
+
+export async function getSelfServicePurchasesByCustomer(cedula: string, celular: string): Promise<Purchase[]> {
+  const safeCedula = sanitizeCustomerIdentifier(cedula, 'La cédula');
+  const safeCelular = sanitizeCustomerPhone(celular);
+
+  try {
+    const purchases = await callRpc<Purchase[]>('get_self_service_purchases_by_customer', {
+      p_cedula: safeCedula,
+      p_celular: safeCelular,
+    });
+    return sortByNewest(purchases.map(ensureReturnedFlags));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('get_self_service_purchases_by_customer')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para cargar compras por cédula y celular.');
+    }
+
+    throw error;
+  }
 }
 
 export async function getPurchasesByCelular(celular: string): Promise<Purchase[]> {
@@ -410,6 +444,36 @@ export async function updatePendingPurchase(
   options: UpdatePendingPurchaseOptions = {}
 ): Promise<Purchase> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  if (options.selfServiceOnly) {
+    if (!options.customerCedula || !options.customerCelular) {
+      throw new Error('Los datos del cliente son requeridos para modificar esta compra.');
+    }
+
+    try {
+      const updatedPurchase = ensureReturnedFlags(await callRpc<Purchase>('update_self_service_pending_purchase', {
+        p_purchase_id: safePurchaseId,
+        p_items: normalizeCartInput(newCart),
+        p_cedula: sanitizeCustomerIdentifier(options.customerCedula, 'La cédula'),
+        p_celular: sanitizeCustomerPhone(options.customerCelular),
+      }));
+
+      await addAuditLog({
+        userId: updatedPurchase.cedula,
+        userName: `Cliente (Autogestión)`,
+        action: 'PURCHASE_EDIT',
+        details: `Cliente modificó la compra pendiente ${safePurchaseId}.`,
+      });
+
+      return updatedPurchase;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('update_self_service_pending_purchase')) {
+        throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para modificar compras pendientes de autogestión.');
+      }
+
+      throw error;
+    }
+  }
+
   const originalPurchase = await getPurchaseById(safePurchaseId);
   if (!originalPurchase || (originalPurchase.status !== 'pending' && originalPurchase.status !== 'pre-sale')) {
     throw new Error("Compra no encontrada o ya ha sido procesada.");
@@ -533,10 +597,10 @@ export async function deliverPurchaseItems(
   expectedDeliveryCode?: string
 ): Promise<Purchase> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
-  const purchase = await getPurchaseById(safePurchaseId);
+  let purchase = await getPurchaseById(safePurchaseId);
   if (!purchase) throw new Error('Compra no encontrada.');
-  if (!['paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
-    throw new Error('Solo se pueden entregar compras pagadas o preventas confirmadas.');
+  if (!['pending', 'paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
+    throw new Error('Solo se pueden entregar compras pendientes, pagadas o preventas confirmadas.');
   }
 
   const savedDeliveryCode = purchase.deliveryCode || '';
@@ -546,6 +610,17 @@ export async function deliverPurchaseItems(
 
   if (expectedDeliveryCode && savedDeliveryCode && expectedDeliveryCode !== savedDeliveryCode) {
     throw new Error('El código adicional de entrega no coincide con esta compra.');
+  }
+
+  if (purchase.status === 'pending') {
+    purchase = await updatePurchaseStatusWithStock(safePurchaseId, 'paid');
+
+    await addAuditLog({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'PAYMENT_CONFIRM',
+      details: `Compra de autogestión ${safePurchaseId} confirmada desde entrega. Stock descontado al registrar la entrega.`,
+    });
   }
 
   let movedUnits = 0;

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Info, CheckCircle, AlertTriangle, CreditCard, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus } from "lucide-react";
+import { Search, Info, CheckCircle, AlertTriangle, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus } from "lucide-react";
 import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems } from '@/lib/services/purchase-service';
 import type { Purchase, User } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
@@ -317,7 +317,11 @@ function RedeemPageComponent() {
                     disabled={isUpdating || selectedTotal <= 0}
                 >
                     <PackageCheck className="mr-2 h-4 w-4" />
-                    {isUpdating ? 'Entregando...' : `Entregar seleccionados (${selectedTotal})`}
+                    {isUpdating
+                        ? 'Entregando...'
+                        : purchase.status === 'pending'
+                            ? `Entregar y descontar (${selectedTotal})`
+                            : `Entregar seleccionados (${selectedTotal})`}
                 </Button>
             </div>
         );
@@ -336,19 +340,10 @@ function RedeemPageComponent() {
                         {isUpdating ? 'Confirmando...' : 'Confirmar Preventa y Pagar'}
                     </Button>
                 );
-             case 'pre-sale-confirmed':
+            case 'pre-sale-confirmed':
                 return renderDeliveryButton(purchase);
             case 'pending':
-                return (
-                    <Button 
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        onClick={() => handleUpdateStatus(purchase.id, 'paid')}
-                        disabled={isUpdating}
-                    >
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        {isUpdating ? 'Confirmando...' : 'Confirmar Pago'}
-                    </Button>
-                );
+                return renderDeliveryButton(purchase);
             case 'paid':
             case 'partially-delivered':
                 return renderDeliveryButton(purchase);
@@ -455,8 +450,8 @@ function RedeemPageComponent() {
                     <CardContent>
                         <form id="search-form" onSubmit={handleSearch} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="ticket-code">Código de Pago</Label>
-                                <Input id="ticket-code" placeholder="ej., aBcDeFg123" className="font-mono" value={searchCode} onChange={e => setSearchCode(e.target.value)} />
+                                <Label htmlFor="ticket-code">Código de compra o QR</Label>
+                                <Input id="ticket-code" placeholder="ej., PVX0001" className="font-mono" value={searchCode} onChange={e => setSearchCode(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="delivery-code">Código adicional del QR</Label>
@@ -531,7 +526,7 @@ function RedeemPageComponent() {
                                                                     <p className="font-medium">{item.name} (x{item.quantity}) - {formatCurrency(item.price * item.quantity)}</p>
                                                                     <p className="text-xs text-muted-foreground">Entregado: {delivered} | Pendiente: {pending}</p>
                                                                 </div>
-                                                                {pending > 0 && (purchase.status === 'paid' || purchase.status === 'pre-sale-confirmed' || purchase.status === 'partially-delivered') && (
+                                                                {pending > 0 && (purchase.status === 'pending' || purchase.status === 'paid' || purchase.status === 'pre-sale-confirmed' || purchase.status === 'partially-delivered') && (
                                                                     <div className="flex items-center gap-2">
                                                                         <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setSelectedDeliveryQuantity(purchase, item.id, selected - 1)}>
                                                                             <Minus className="h-3 w-3" />
