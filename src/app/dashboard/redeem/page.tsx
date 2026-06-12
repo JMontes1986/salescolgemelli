@@ -2,14 +2,14 @@
 
 "use client";
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Info, CheckCircle, AlertTriangle, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus } from "lucide-react";
+import { Search, Info, CheckCircle, AlertTriangle, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus, Camera, VideoOff } from "lucide-react";
 import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems } from '@/lib/services/purchase-service';
 import type { Purchase, User } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
 import { addAuditLog } from '@/lib/services/audit-service';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const statusTranslations: Record<Purchase['status'], string> = {
     pending: 'Pendiente',
@@ -39,6 +40,21 @@ const statusColors: Record<Purchase['status'], string> = {
     'pre-sale': 'bg-purple-500/20 text-purple-700',
     'pre-sale-confirmed': 'bg-teal-500/20 text-teal-700',
 };
+
+type BarcodeDetectorResult = {
+    rawValue?: string;
+};
+
+type BarcodeDetectorInstance = {
+    detect: (source: HTMLVideoElement) => Promise<BarcodeDetectorResult[]>;
+};
+
+type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+
+type WindowWithBarcodeDetector = Window &
+    typeof globalThis & {
+        BarcodeDetector?: BarcodeDetectorConstructor;
+    };
 
 function parsePurchaseLookup(searchCode: string, deliveryCode: string) {
     const rawCode = searchCode.trim();
@@ -84,6 +100,12 @@ function RedeemPageComponent() {
     const [isRecentLoading, setIsRecentLoading] = useState(true);
     const [searchPerformed, setSearchPerformed] = useState(false);
     const [deliveryQuantities, setDeliveryQuantities] = useState<Record<string, Record<string, number>>>({});
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isScannerStarting, setIsScannerStarting] = useState(false);
+    const [scannerError, setScannerError] = useState('');
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const scannerStreamRef = useRef<MediaStream | null>(null);
+    const scannerFrameRef = useRef<number | null>(null);
     const { toast } = useToast();
     const realtimeTables = React.useMemo(() => ['products', 'purchases'] as const, []);
 
@@ -137,6 +159,63 @@ function RedeemPageComponent() {
 
         setSearchResults(results);
     }, [deliveryCode, isSeller, searchCedula, searchCelular, searchCode, searchPerformed]);
+
+    const stopScanner = useCallback(() => {
+        if (scannerFrameRef.current !== null) {
+            cancelAnimationFrame(scannerFrameRef.current);
+            scannerFrameRef.current = null;
+        }
+
+        scannerStreamRef.current?.getTracks().forEach(track => track.stop());
+        scannerStreamRef.current = null;
+
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+
+        setIsScannerStarting(false);
+    }, []);
+
+    const searchByQrPayload = useCallback(async (qrPayload: string) => {
+        const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(qrPayload, deliveryCode);
+
+        if (!normalizedCode) {
+            toast({
+                variant: 'destructive',
+                title: 'QR no válido',
+                description: 'No se encontró un código de compra dentro del QR.'
+            });
+            return;
+        }
+
+        setSearchCode(normalizedCode);
+        setDeliveryCode(normalizedDeliveryCode);
+        setSearchCedula('');
+        setSearchCelular('');
+        setIsLoading(true);
+        setSearchPerformed(true);
+        setSearchResults([]);
+
+        try {
+            const purchase = await getPurchaseById(normalizedCode);
+            setSearchResults(purchase ? [purchase] : []);
+            toast({
+                title: purchase ? 'QR escaneado' : 'Compra no encontrada',
+                description: purchase
+                    ? 'Los productos de la compra ya están listos para revisar.'
+                    : 'No se encontró una compra con el código leído.'
+            });
+        } catch (error) {
+            console.error("Error searching scanned purchase:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error de Búsqueda',
+                description: 'No se pudo cargar la compra del QR. Intente de nuevo.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [deliveryCode, toast]);
 
      const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -197,6 +276,108 @@ function RedeemPageComponent() {
             setIsLoading(false);
         }
     }
+
+    const handleScannerOpenChange = (open: boolean) => {
+        setIsScannerOpen(open);
+
+        if (!open) {
+            stopScanner();
+        }
+    };
+
+    useEffect(() => {
+        if (!isScannerOpen) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const startScanner = async () => {
+            setScannerError('');
+            setIsScannerStarting(true);
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setScannerError('Este navegador no permite acceder a la cámara.');
+                setIsScannerStarting(false);
+                return;
+            }
+
+            const BarcodeDetector = (window as WindowWithBarcodeDetector).BarcodeDetector;
+
+            if (!BarcodeDetector) {
+                setScannerError('Este navegador no soporta lectura directa de QR. Puede pegar o digitar el código manualmente.');
+                setIsScannerStarting(false);
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } },
+                    audio: false,
+                });
+
+                if (cancelled) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+
+                scannerStreamRef.current = stream;
+
+                if (!videoRef.current) {
+                    throw new Error('No se pudo preparar la cámara.');
+                }
+
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
+                setIsScannerStarting(false);
+
+                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+
+                const scanFrame = async () => {
+                    const video = videoRef.current;
+
+                    if (!video || cancelled) {
+                        return;
+                    }
+
+                    try {
+                        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                            const codes = await detector.detect(video);
+                            const qrValue = codes.find(code => Boolean(code.rawValue))?.rawValue;
+
+                            if (qrValue) {
+                                stopScanner();
+                                setIsScannerOpen(false);
+                                await searchByQrPayload(qrValue);
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('No se pudo leer el cuadro actual del QR.', error);
+                    }
+
+                    scannerFrameRef.current = requestAnimationFrame(scanFrame);
+                };
+
+                scannerFrameRef.current = requestAnimationFrame(scanFrame);
+            } catch (error) {
+                console.error('Error starting QR scanner:', error);
+                stopScanner();
+                setScannerError(
+                    error instanceof Error
+                        ? error.message
+                        : 'No se pudo iniciar la cámara para escanear el QR.'
+                );
+            }
+        };
+
+        startScanner();
+
+        return () => {
+            cancelled = true;
+            stopScanner();
+        };
+    }, [isScannerOpen, searchByQrPayload, stopScanner]);
 
     useEffect(() => {
         loadRecentPurchases();
@@ -524,7 +705,11 @@ function RedeemPageComponent() {
                             )}
                         </form>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="grid gap-2 sm:grid-cols-2">
+                         <Button variant="outline" type="button" onClick={() => setIsScannerOpen(true)} disabled={isLoading}>
+                            <Camera className="mr-2 h-4 w-4" />
+                            Escanear QR
+                        </Button>
                          <Button className="w-full" type="submit" form="search-form" disabled={isLoading}>
                             <Search className="mr-2 h-4 w-4" />
                             {isLoading ? 'Buscando...' : 'Buscar Compra'}
@@ -623,6 +808,38 @@ function RedeemPageComponent() {
                     </CardContent>
                 </Card>
             </div>
+            <Dialog open={isScannerOpen} onOpenChange={handleScannerOpenChange}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Escanear QR de compra</DialogTitle>
+                        <DialogDescription>
+                            Al detectar el código, se cargará la compra con sus productos pendientes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="overflow-hidden rounded-md border bg-black">
+                        <video
+                            ref={videoRef}
+                            className="aspect-video w-full object-cover"
+                            muted
+                            playsInline
+                        />
+                    </div>
+                    {isScannerStarting && (
+                        <p className="text-sm text-muted-foreground">Activando cámara...</p>
+                    )}
+                    {scannerError && (
+                        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                            <VideoOff className="mt-0.5 h-4 w-4 shrink-0" />
+                            <p>{scannerError}</p>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button type="button" variant="secondary" onClick={() => handleScannerOpenChange(false)}>
+                            Cerrar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
