@@ -135,7 +135,6 @@ export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [returns, setReturns] = useState<Return[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeSection, setActiveSection] = useState<'overview' | 'sales' | 'team'>('overview');
   const router = useRouter();
   const { toast } = useToast();
@@ -280,18 +279,8 @@ export default function Dashboard() {
 
 
   return (
-    <div
-      className={cn(
-        "w-full min-h-screen space-y-6 transition-colors duration-500 px-4 py-8 sm:px-6 xl:px-8",
-        isDarkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-950"
-      )}
-    >
-      <div
-        className={cn(
-          "w-full space-y-6 rounded-3xl border p-6 shadow-sm transition-all duration-300",
-          isDarkMode ? "border-slate-800/80 bg-slate-900/95" : "border-slate-200/80 bg-white"
-        )}
-      >
+    <div className="min-h-screen w-full space-y-6 bg-background px-4 py-8 text-foreground transition-colors duration-500 sm:px-6 xl:px-8">
+      <div className="w-full space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm transition-all duration-300">
         <PageHeader
           title="Panel de Control"
           description="Resumen operativo para ventas, autogestión, devoluciones y rendimiento del equipo."
@@ -300,9 +289,6 @@ export default function Dashboard() {
             <Button variant="outline" onClick={loadData} disabled={isLoading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
               {isLoading ? "Actualizando..." : "Actualizar"}
-            </Button>
-            <Button variant="secondary" onClick={() => setIsDarkMode(!isDarkMode)}>
-              {isDarkMode ? "Modo claro" : "Modo oscuro"}
             </Button>
           </div>
         </PageHeader>
@@ -412,7 +398,7 @@ export default function Dashboard() {
                         cy="28"
                         r="24"
                         fill="none"
-                        stroke={isDarkMode ? "#1e293b" : "#e2e8f0"}
+                        className="stroke-border"
                         strokeWidth="6"
                       />
                       <circle
@@ -492,7 +478,7 @@ export default function Dashboard() {
                             handleProductClick(productId);
                           }
                         }}
-                        className="rounded-2xl border bg-white p-4 transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="cursor-pointer rounded-2xl border bg-card p-4 transition duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
@@ -557,7 +543,7 @@ export default function Dashboard() {
                           </TableRow>
                         ) : (
                           recentPurchases.map((purchase) => (
-                            <TableRow key={purchase.id} className="transition-colors duration-200 hover:bg-slate-50">
+                            <TableRow key={purchase.id} className="transition-colors duration-200 hover:bg-muted/60">
                               <TableCell className="font-medium font-mono">{purchase.id}</TableCell>
                               <TableCell className="whitespace-nowrap text-muted-foreground">
                                 {formatDashboardDate(purchase.date)}
@@ -616,7 +602,7 @@ export default function Dashboard() {
                         </TableRow>
                       ) : (
                         sortedSellerSales.map(([sellerId, data]) => (
-                          <TableRow key={sellerId} className="transition-colors duration-200 hover:bg-slate-50">
+                          <TableRow key={sellerId} className="transition-colors duration-200 hover:bg-muted/60">
                             <TableCell className="font-medium">{data.name}</TableCell>
                             <TableCell>{data.transactionCount}</TableCell>
                             <TableCell className="text-right">{formatCurrency(data.totalRevenue)}</TableCell>
@@ -642,7 +628,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   topProducts.map(([, data]) => (
-                    <div key={data.name} className="rounded-2xl border bg-white p-4 transition duration-200 hover:-translate-y-1 hover:shadow-sm">
+                    <div key={data.name} className="rounded-2xl border bg-card p-4 transition duration-200 hover:-translate-y-1 hover:shadow-sm">
                       <p className="font-medium">{data.name}</p>
                       <p className="mt-1 text-sm text-muted-foreground">Ingresos netos {formatCurrency(data.netRevenue)}</p>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">

@@ -455,9 +455,9 @@ export default function SelfServicePage() {
   );
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f6f7f2] pb-32 text-[#232328] lg:pb-10">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_12%,rgba(14,185,195,0.20),transparent_30%),radial-gradient(circle_at_86%_16%,rgba(236,198,67,0.18),transparent_28%),radial-gradient(circle_at_50%_88%,rgba(178,49,120,0.10),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f6f7f2_54%,#edf3f2_100%)]" />
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(rgba(14,185,195,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(178,49,120,0.09)_1px,transparent_1px)] bg-[size:58px_58px] opacity-60 [transform:perspective(480px)_rotateX(58deg)] [transform-origin:bottom]" />
+    <div className="self-service-theme min-h-screen overflow-hidden bg-[#f6f7f2] pb-32 pt-14 text-[#232328] transition-colors duration-300 sm:pt-4 lg:pb-10">
+      <div className="self-service-bg pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_12%,rgba(14,185,195,0.20),transparent_30%),radial-gradient(circle_at_86%_16%,rgba(236,198,67,0.18),transparent_28%),radial-gradient(circle_at_50%_88%,rgba(178,49,120,0.10),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f6f7f2_54%,#edf3f2_100%)]" />
+      <div className="self-service-grid pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(rgba(14,185,195,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(178,49,120,0.09)_1px,transparent_1px)] bg-[size:58px_58px] opacity-60 [transform:perspective(480px)_rotateX(58deg)] [transform-origin:bottom]" />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 py-4 sm:px-6 lg:px-8">
         <header className="relative overflow-hidden rounded-[2rem] border-2 border-[#0eb9c3]/35 bg-white/88 px-4 py-5 shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur sm:px-6">
           <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[#ecc643]/24 blur-3xl" />

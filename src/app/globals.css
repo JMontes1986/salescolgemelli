@@ -171,3 +171,79 @@
     display: none;
   }
 }
+
+@layer components {
+  .dark .self-service-theme {
+    background: #101316;
+    color: #f4f6f7;
+  }
+
+  .dark .self-service-bg {
+    background:
+      radial-gradient(circle at 14% 12%, rgba(14, 185, 195, 0.16), transparent 30%),
+      radial-gradient(circle at 86% 16%, rgba(236, 198, 67, 0.12), transparent 28%),
+      radial-gradient(circle at 50% 88%, rgba(178, 49, 120, 0.13), transparent 34%),
+      linear-gradient(180deg, #11161a 0%, #101316 54%, #161b20 100%) !important;
+  }
+
+  .dark .self-service-grid {
+    background-image:
+      linear-gradient(rgba(14, 185, 195, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(210, 82, 141, 0.10) 1px, transparent 1px) !important;
+    opacity: 0.42;
+  }
+
+  .dark .self-service-theme [class*="bg-white/"],
+  .dark .self-service-theme [class~="bg-white"],
+  .dark .self-service-theme [class*="bg-[#f7fbfb]"],
+  .dark .self-service-theme [class*="bg-[#edfafa]"],
+  .dark .self-service-theme [class*="bg-[#fff5fa]"],
+  .dark .self-service-theme [class*="bg-[#fff9df]"],
+  .dark .self-service-theme [class*="bg-[#fff7cf]"] {
+    background-color: rgb(24 28 32 / 0.88) !important;
+  }
+
+  .dark .self-service-theme [class*="border-[#0eb9c3]"] {
+    border-color: rgb(14 185 195 / 0.34) !important;
+  }
+
+  .dark .self-service-theme [class*="border-[#d2528d]"] {
+    border-color: rgb(210 82 141 / 0.38) !important;
+  }
+
+  .dark .self-service-theme [class*="border-[#ecc643]"] {
+    border-color: rgb(236 198 67 / 0.42) !important;
+  }
+
+  .dark .self-service-theme [class*="text-[#232328]"],
+  .dark .self-service-theme [class*="text-slate-950"] {
+    color: #f4f6f7 !important;
+  }
+
+  .dark .self-service-theme [class*="text-[#4b4b52]"],
+  .dark .self-service-theme [class*="text-[#5f686a]"],
+  .dark .self-service-theme [class*="placeholder:text-slate-500"]::placeholder {
+    color: #b8c1c5 !important;
+  }
+
+  .dark .self-service-theme [class*="text-[#126d74]"] {
+    color: #77dce3 !important;
+  }
+
+  .dark .self-service-theme [class*="text-[#8d2460]"],
+  .dark .self-service-theme [class*="text-[#b23178]"] {
+    color: #f0a6c9 !important;
+  }
+
+  .dark .self-service-theme [class*="text-[#5d4b10]"],
+  .dark .self-service-theme [class*="text-[#8a6f12]"] {
+    color: #f3d978 !important;
+  }
+
+  .dark .self-service-theme input,
+  .dark .self-service-theme textarea,
+  .dark .self-service-theme select {
+    background-color: rgb(16 19 22 / 0.88) !important;
+    color: #f4f6f7 !important;
+  }
+}
