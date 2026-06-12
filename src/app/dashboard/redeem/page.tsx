@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, Info, CheckCircle, AlertTriangle, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus, Camera, VideoOff } from "lucide-react";
-import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems } from '@/lib/services/purchase-service';
+import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, getPurchaseByDeliveryCode } from '@/lib/services/purchase-service';
 import type { Purchase, User } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -82,6 +82,18 @@ function parsePurchaseLookup(searchCode: string, deliveryCode: string) {
     return { normalizedCode, normalizedDeliveryCode };
 }
 
+async function getPurchaseByCodeOrDeliveryCode(searchCode: string, deliveryCode: string) {
+    if (searchCode) {
+        return getPurchaseById(searchCode);
+    }
+
+    if (deliveryCode) {
+        return getPurchaseByDeliveryCode(deliveryCode);
+    }
+
+    return null;
+}
+
 function RedeemPageComponent() {
     const searchParams = useSearchParams();
     const codeFromUrl = searchParams.get('code');
@@ -137,17 +149,17 @@ function RedeemPageComponent() {
     }, [isSeller]);
 
     const refreshSearchResults = useCallback(async () => {
-        const { normalizedCode } = parsePurchaseLookup(searchCode, deliveryCode);
+        const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(searchCode, deliveryCode);
         const normalizedCedula = searchCedula.trim();
         const normalizedCelular = searchCelular.trim();
 
-        if (!searchPerformed || (!normalizedCode && !normalizedCedula && !normalizedCelular)) {
+        if (!searchPerformed || (!normalizedCode && !normalizedDeliveryCode && !normalizedCedula && !normalizedCelular)) {
             return;
         }
 
         let results: Purchase[] = [];
-        if (normalizedCode) {
-            const purchase = await getPurchaseById(normalizedCode);
+        if (normalizedCode || normalizedDeliveryCode) {
+            const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode);
             if (purchase) {
                 results.push(purchase);
             }
@@ -179,17 +191,17 @@ function RedeemPageComponent() {
     const searchByQrPayload = useCallback(async (qrPayload: string) => {
         const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(qrPayload, deliveryCode);
 
-        if (!normalizedCode) {
+        if (!normalizedCode && !normalizedDeliveryCode) {
             toast({
                 variant: 'destructive',
                 title: 'QR no válido',
-                description: 'No se encontró un código de compra dentro del QR.'
+                description: 'No se encontró un código de compra o código adicional dentro del QR.'
             });
             return;
         }
 
         setSearchCode(normalizedCode);
-        setDeliveryCode(normalizedDeliveryCode);
+        setDeliveryCode(normalizedCode ? '' : normalizedDeliveryCode);
         setSearchCedula('');
         setSearchCelular('');
         setIsLoading(true);
@@ -197,7 +209,7 @@ function RedeemPageComponent() {
         setSearchResults([]);
 
         try {
-            const purchase = await getPurchaseById(normalizedCode);
+            const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode);
             setSearchResults(purchase ? [purchase] : []);
             toast({
                 title: purchase ? 'QR escaneado' : 'Compra no encontrada',
@@ -224,16 +236,25 @@ function RedeemPageComponent() {
         const normalizedCedula = searchCedula.trim();
         const normalizedCelular = searchCelular.trim();
         
-        if (isSeller && !normalizedCode) {
+        if (normalizedCode && normalizedDeliveryCode && searchCode.trim() && deliveryCode.trim()) {
             toast({
                 variant: 'destructive',
-                title: 'Código requerido',
-                description: 'Ingrese o escanee el código de compra para registrar la entrega.'
+                title: 'Use solo un código',
+                description: 'Ingrese el código de compra o el código adicional del QR, no ambos.'
             });
             return;
         }
 
-        if (!normalizedCode && !normalizedCedula && !normalizedCelular) {
+        if (isSeller && !normalizedCode && !normalizedDeliveryCode) {
+            toast({
+                variant: 'destructive',
+                title: 'Código requerido',
+                description: 'Ingrese o escanee el código de compra o el código adicional del QR.'
+            });
+            return;
+        }
+
+        if (!normalizedCode && !normalizedDeliveryCode && !normalizedCedula && !normalizedCelular) {
             toast({
                 variant: 'destructive',
                 title: 'Campo Requerido',
@@ -250,12 +271,14 @@ function RedeemPageComponent() {
             if (normalizedCode) {
                 setSearchCode(normalizedCode);
             }
-            if (normalizedDeliveryCode) {
+            if (!normalizedCode && normalizedDeliveryCode) {
                 setDeliveryCode(normalizedDeliveryCode);
+            } else if (normalizedCode) {
+                setDeliveryCode('');
             }
             let results: Purchase[] = [];
-            if (normalizedCode) {
-                const purchase = await getPurchaseById(normalizedCode);
+            if (normalizedCode || normalizedDeliveryCode) {
+                const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode);
                 if (purchase) {
                     results.push(purchase);
                 }
@@ -501,7 +524,7 @@ function RedeemPageComponent() {
                 purchase.id,
                 deliveryQuantities[purchase.id] || {},
                 currentUser,
-                deliveryCode.trim().toUpperCase() || undefined
+                undefined
             );
             setSearchResults(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
             setRecentPurchases(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
@@ -678,18 +701,42 @@ function RedeemPageComponent() {
                     <CardHeader>
                         <CardTitle>Buscar Compra</CardTitle>
                         <CardDescription>
-                            {isSeller ? 'Escanee el QR o digite el código entregado al cliente.' : 'Ingrese uno de los campos para encontrar el registro de la compra.'}
+                            {isSeller ? 'Escanee el QR o digite solo uno de los códigos entregados al cliente.' : 'Ingrese uno de los campos para encontrar el registro de la compra.'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form id="search-form" onSubmit={handleSearch} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="ticket-code">Código de compra o QR</Label>
-                                <Input id="ticket-code" placeholder="ej., PVX0001" className="font-mono" value={searchCode} onChange={e => setSearchCode(e.target.value)} />
+                                <Input
+                                    id="ticket-code"
+                                    placeholder="ej., PVX0001"
+                                    className="font-mono"
+                                    value={searchCode}
+                                    onChange={e => {
+                                        const nextValue = e.target.value;
+                                        setSearchCode(nextValue);
+                                        if (nextValue.trim()) {
+                                            setDeliveryCode('');
+                                        }
+                                    }}
+                                />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="delivery-code">Código adicional del QR</Label>
-                                <Input id="delivery-code" placeholder="ej., A1B2C3D4" className="font-mono uppercase" value={deliveryCode} onChange={e => setDeliveryCode(e.target.value.toUpperCase())} />
+                                <Input
+                                    id="delivery-code"
+                                    placeholder="ej., A1B2C3D4"
+                                    className="font-mono uppercase"
+                                    value={deliveryCode}
+                                    onChange={e => {
+                                        const nextValue = e.target.value.toUpperCase();
+                                        setDeliveryCode(nextValue);
+                                        if (nextValue.trim()) {
+                                            setSearchCode('');
+                                        }
+                                    }}
+                                />
                             </div>
                             {!isSeller && (
                                 <>

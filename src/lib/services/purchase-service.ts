@@ -272,6 +272,13 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
   return purchase ? ensureReturnedFlags(purchase) : null;
 }
 
+export async function getPurchaseByDeliveryCode(deliveryCode: string): Promise<Purchase | null> {
+  const purchase = await selectSingle<Purchase>('purchases', {
+    deliveryCode: `eq.${sanitizeRecordId(deliveryCode, 'El código adicional del QR')}`,
+  });
+  return purchase ? ensureReturnedFlags(purchase) : null;
+}
+
 export async function getPurchasesByCedula(cedula: string): Promise<Purchase[]> {
   const purchases = await selectRows<Purchase>('purchases', { cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}` });
   return sortByNewest(purchases.map(ensureReturnedFlags));
@@ -614,10 +621,6 @@ export async function deliverPurchaseItems(
   }
 
   const savedDeliveryCode = purchase.deliveryCode || '';
-  if (savedDeliveryCode && !expectedDeliveryCode) {
-    throw new Error('Ingrese el código adicional que aparece junto al QR para validar la entrega.');
-  }
-
   if (expectedDeliveryCode && savedDeliveryCode && expectedDeliveryCode !== savedDeliveryCode) {
     throw new Error('El código adicional de entrega no coincide con esta compra.');
   }
