@@ -669,6 +669,118 @@ $$;
 revoke all on function public.update_purchase_status_with_stock(text, text) from public;
 grant execute on function public.update_purchase_status_with_stock(text, text) to authenticated;
 
+create or replace function public.deliver_purchase_items_for_lookup(
+  p_purchase_id text,
+  p_delivery_quantities jsonb,
+  p_user_id text default 'system',
+  p_user_name text default 'Sistema'
+)
+returns public.purchases
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  purchase_record public.purchases%rowtype;
+  updated_items jsonb := '[]'::jsonb;
+  item_record jsonb;
+  requested_quantity integer;
+  delivered_quantity integer;
+  pending_quantity integer;
+  quantity_to_deliver integer;
+  moved_units integer := 0;
+  all_delivered boolean := true;
+  next_status text;
+begin
+  if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
+    raise exception 'La compra tiene un identificador inválido.';
+  end if;
+
+  if jsonb_typeof(coalesce(p_delivery_quantities, '{}'::jsonb)) <> 'object' then
+    raise exception 'Las cantidades de entrega no son válidas.';
+  end if;
+
+  select *
+  into purchase_record
+  from public.purchases
+  where id = trim(p_purchase_id)
+  for update;
+
+  if not found then
+    raise exception 'Compra no encontrada.';
+  end if;
+
+  if purchase_record.status = 'pending' then
+    raise exception 'No se ha realizado el pago de los productos. Dirijase a caja o pague a la llave Bre-B 3206766574.';
+  end if;
+
+  if purchase_record.status not in ('paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered') then
+    raise exception 'Solo se pueden entregar compras pagadas o preventas confirmadas.';
+  end if;
+
+  for item_record in
+    select item
+    from jsonb_array_elements(purchase_record.items) as input(item)
+  loop
+    requested_quantity := coalesce((p_delivery_quantities ->> (item_record->>'id'))::integer, 0);
+
+    if requested_quantity < 0 then
+      raise exception 'Cantidad inválida para %.', item_record->>'name';
+    end if;
+
+    delivered_quantity := least(greatest(coalesce((item_record->>'deliveredQuantity')::integer, 0), 0), (item_record->>'quantity')::integer);
+    pending_quantity := greatest((item_record->>'quantity')::integer - delivered_quantity, 0);
+    quantity_to_deliver := least(requested_quantity, pending_quantity);
+    moved_units := moved_units + quantity_to_deliver;
+    delivered_quantity := delivered_quantity + quantity_to_deliver;
+
+    if delivered_quantity < (item_record->>'quantity')::integer then
+      all_delivered := false;
+    end if;
+
+    updated_items := updated_items || jsonb_build_array(
+      item_record
+        || jsonb_build_object(
+          'returned', coalesce((item_record->>'returned')::boolean, false),
+          'deliveredQuantity', delivered_quantity
+        )
+    );
+  end loop;
+
+  if moved_units <= 0 then
+    raise exception 'Seleccione al menos una unidad pendiente para entregar.';
+  end if;
+
+  next_status := case when all_delivered then 'delivered' else 'partially-delivered' end;
+
+  update public.purchases
+  set
+    items = updated_items,
+    status = next_status
+  where id = purchase_record.id
+  returning * into purchase_record;
+
+  insert into public."auditLogs" (
+    timestamp,
+    "userId",
+    "userName",
+    action,
+    details
+  ) values (
+    now()::text,
+    coalesce(nullif(trim(p_user_id), ''), 'system'),
+    coalesce(nullif(trim(p_user_name), ''), 'Sistema'),
+    'TICKET_REDEEM',
+    'Se entregaron ' || moved_units || ' unidad(es) de la compra ' || purchase_record.id || '. Estado: ' || next_status || '.'
+  );
+
+  return purchase_record;
+end;
+$$;
+
+revoke all on function public.deliver_purchase_items_for_lookup(text, jsonb, text, text) from public;
+grant execute on function public.deliver_purchase_items_for_lookup(text, jsonb, text, text) to anon, authenticated;
+
 alter table public.products enable row level security;
 
 grant select on public.products to anon, authenticated;

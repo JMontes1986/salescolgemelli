@@ -638,6 +638,37 @@ export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, c
   });
 }
 
+async function deliverPurchaseItemsForLookup(
+  purchaseId: string,
+  deliveryQuantities: Record<string, number>,
+  currentUser: User,
+): Promise<Purchase> {
+  const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  const safeDeliveryQuantities = Object.entries(deliveryQuantities).reduce<Record<string, number>>(
+    (acc, [productId, quantity]) => {
+      const safeProductId = sanitizeRecordId(productId, 'El producto');
+      const normalizedQuantity = Number(quantity);
+
+      if (!Number.isSafeInteger(normalizedQuantity) || normalizedQuantity < 0) {
+        throw new Error('Las cantidades de entrega no son válidas.');
+      }
+
+      acc[safeProductId] = normalizedQuantity;
+      return acc;
+    },
+    {},
+  );
+
+  const updatedPurchase = await callRpc<Purchase>('deliver_purchase_items_for_lookup', {
+    p_purchase_id: safePurchaseId,
+    p_delivery_quantities: safeDeliveryQuantities,
+    p_user_id: currentUser.id,
+    p_user_name: currentUser.name,
+  });
+
+  return ensureReturnedFlags(updatedPurchase);
+}
+
 
 export async function deliverPurchaseItems(
   purchaseId: string,
@@ -646,14 +677,15 @@ export async function deliverPurchaseItems(
   expectedDeliveryCode?: string
 ): Promise<Purchase> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+
+  if (currentUser.role === 'seller') {
+    return deliverPurchaseItemsForLookup(safePurchaseId, deliveryQuantities, currentUser);
+  }
+
   let purchase = await getPurchaseById(safePurchaseId);
   if (!purchase) throw new Error('Compra no encontrada.');
   if (!['pending', 'paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
     throw new Error('Solo se pueden entregar compras pendientes, pagadas o preventas confirmadas.');
-  }
-
-  if (currentUser.role === 'seller' && purchase.status === 'pending') {
-    throw new Error('El vendedor solo puede registrar entregas de compras ya confirmadas.');
   }
 
   const savedDeliveryCode = purchase.deliveryCode || '';
