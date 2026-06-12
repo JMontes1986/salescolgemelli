@@ -294,19 +294,17 @@ export async function getSelfServicePurchasesByCedula(cedula: string): Promise<P
   return sortByNewest(purchases.map(ensureReturnedFlags));
 }
 
-export async function getSelfServicePurchasesByCustomer(cedula: string, celular: string): Promise<Purchase[]> {
+export async function getSelfServicePurchasesByCustomer(cedula: string): Promise<Purchase[]> {
   const safeCedula = sanitizeCustomerIdentifier(cedula, 'La cédula');
-  const safeCelular = sanitizeCustomerPhone(celular);
 
   try {
     const purchases = await callRpc<Purchase[]>('get_self_service_purchases_by_customer', {
       p_cedula: safeCedula,
-      p_celular: safeCelular,
     });
     return sortByNewest(purchases.map(ensureReturnedFlags));
   } catch (error) {
     if (error instanceof Error && error.message.includes('get_self_service_purchases_by_customer')) {
-      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para cargar compras por cédula y celular.');
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para cargar compras por cédula.');
     }
 
     throw error;

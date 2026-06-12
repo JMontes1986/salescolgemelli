@@ -194,9 +194,10 @@ $$;
 revoke all on function public.get_self_service_reserved_quantities(text) from public;
 grant execute on function public.get_self_service_reserved_quantities(text) to anon, authenticated;
 
+drop function if exists public.get_self_service_purchases_by_customer(text, text);
+
 create or replace function public.get_self_service_purchases_by_customer(
-  p_cedula text,
-  p_celular text
+  p_cedula text
 )
 returns setof public.purchases
 language sql
@@ -206,15 +207,13 @@ as $$
   select purchase.*
   from public.purchases purchase
   where trim(p_cedula) ~ '^[0-9A-Za-z.-]{4,30}$'
-    and trim(p_celular) ~ '^[0-9+()[:space:]-]{7,20}$'
     and purchase.cedula = trim(p_cedula)
-    and purchase.celular = trim(p_celular)
   order by purchase.date desc
   limit 50;
 $$;
 
-revoke all on function public.get_self_service_purchases_by_customer(text, text) from public;
-grant execute on function public.get_self_service_purchases_by_customer(text, text) to anon, authenticated;
+revoke all on function public.get_self_service_purchases_by_customer(text) from public;
+grant execute on function public.get_self_service_purchases_by_customer(text) to anon, authenticated;
 
 create or replace function public.create_pos_purchase_with_stock(
   p_items jsonb,

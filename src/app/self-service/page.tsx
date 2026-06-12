@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getSelfServicePurchasesByCustomer, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getSelfServicePurchasesByCustomer, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
@@ -110,8 +110,6 @@ export default function SelfServicePage() {
   const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
   const [searchCedula, setSearchCedula] = useState('');
-  const [searchCelular, setSearchCelular] = useState('');
-  const [customerCelular, setCustomerCelular] = useState('');
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -119,7 +117,6 @@ export default function SelfServicePage() {
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
   const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
   const activeCedula = cedula.trim();
-  const activeCelular = customerCelular.trim();
   const hasActiveCedula = activeCedula.length > 0;
 
   const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
@@ -327,8 +324,6 @@ export default function SelfServicePage() {
         setPaymentCode(addedPurchase.id);
         setLastPurchase(addedPurchase);
         setSearchCedula(addedPurchase.cedula);
-        setSearchCelular(addedPurchase.celular);
-        setCustomerCelular(addedPurchase.celular);
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
@@ -353,36 +348,27 @@ export default function SelfServicePage() {
 
   const handleSearchHistory = async () => {
     const cedulaToSearch = searchCedula.trim() || activeCedula;
-    const celularToSearch = searchCelular.trim() || activeCelular;
 
     if (!cedulaToSearch) {
         toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese la cédula para buscar." });
         return;
     }
-    if (!celularToSearch) {
-        toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese el celular asociado para cargar las compras." });
-        return;
-    }
     let normalizedCedula: string;
-    let normalizedCelular: string;
     try {
         normalizedCedula = sanitizeCustomerIdentifier(cedulaToSearch, 'La cédula');
-        normalizedCelular = sanitizeCustomerPhone(celularToSearch);
     } catch (error) {
         toast({
           variant: "destructive",
-          title: "Revise los datos",
-          description: error instanceof Error ? error.message : "Ingrese una cédula y celular válidos.",
+          title: "Revise la cédula",
+          description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
         });
         return;
     }
     setIsHistoryLoading(true);
     try {
-        const history = await getSelfServicePurchasesByCustomer(normalizedCedula, normalizedCelular);
+        const history = await getSelfServicePurchasesByCustomer(normalizedCedula);
         setSearchCedula(normalizedCedula);
-        setSearchCelular(normalizedCelular);
         setCedula(normalizedCedula);
-        setCustomerCelular(normalizedCelular);
         setPurchaseHistory(history);
         clearCart();
         toast({
@@ -642,23 +628,12 @@ export default function SelfServicePage() {
                   value={searchCedula}
                   onChange={(e) => setSearchCedula(e.target.value)}
                 />
-                <Input
-                  id="access-celular"
-                  name="accessCelular"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  className="h-12 rounded-2xl border-[#0eb9c3]/45 bg-white/95 text-base text-slate-950 placeholder:text-slate-500"
-                  placeholder="Celular"
-                  value={searchCelular}
-                  onChange={(e) => setSearchCelular(e.target.value)}
-                />
                 <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={isHistoryLoading}>
                   {isHistoryLoading ? 'Consultando...' : 'Ingresar'}
                 </Button>
               </div>
               <p className="mt-2 text-xs font-semibold text-[#5f686a]">
-                La cédula y el celular validan el perfil del padre de familia y cargan sus compras.
+                La cédula activa el perfil del padre de familia y carga sus compras.
               </p>
             </div>
           </CardContent>
