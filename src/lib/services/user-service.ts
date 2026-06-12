@@ -4,6 +4,7 @@ import {
   selectSingle,
   supabaseAuthRequest,
   updateById,
+  upsertRow,
 } from "@/lib/supabase";
 import type { User, NewUser, ModulePermission, UserRole } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
@@ -63,6 +64,12 @@ type SupabaseAuthResponse = Partial<SupabaseAuthSession> & {
 
 type StoredUser = User & {
   passwordHash?: string;
+};
+
+export type UpdateUserInput = {
+  name: string;
+  role: UserRole;
+  password?: string;
 };
 
 export type AuthenticatedUser = {
@@ -495,7 +502,51 @@ export async function addUser(user: NewUser): Promise<User> {
       },
     });
 
-    return buildProfileFromAuthUser(response.user, user);
+    const profile = buildProfileFromAuthUser(response.user, user);
+    const persistedProfile = {
+      id: profile.id,
+      name: profile.name.trim(),
+      username,
+      role: profile.role,
+      permissions: getPermissionsForRole(profile.role),
+      avatarUrl: profile.avatarUrl,
+    };
+
+    try {
+      const existingProfile = await selectSingle<StoredUser>("users", {
+        username: `eq.${username}`,
+      });
+
+      if (existingProfile) {
+        const updatedProfile = await updateById<StoredUser>(
+          "users",
+          existingProfile.id,
+          {
+            name: persistedProfile.name,
+            role: persistedProfile.role,
+            permissions: persistedProfile.permissions,
+            avatarUrl: persistedProfile.avatarUrl,
+          },
+        );
+
+        return sanitizeUser(updatedProfile ?? existingProfile);
+      }
+
+      const storedProfile = await upsertRow<StoredUser>(
+        "users",
+        persistedProfile,
+      );
+
+      return sanitizeUser(storedProfile);
+    } catch (error) {
+      if (isUsersRlsError(error)) {
+        throw new Error(
+          "Supabase esta bloqueando la creacion del usuario por RLS. Aplica nuevamente el SQL de supabase/schema.sql para crear las politicas de public.users.",
+        );
+      }
+
+      throw error;
+    }
   }
 
   let localUser: StoredUser;
@@ -521,6 +572,75 @@ export async function addUser(user: NewUser): Promise<User> {
   }
 
   return sanitizeUser(localUser);
+}
+
+export async function updateUser(
+  userId: string,
+  updates: UpdateUserInput,
+): Promise<User> {
+  const existingUser = await selectSingle<StoredUser>("users", {
+    id: `eq.${userId}`,
+  });
+
+  if (!existingUser) {
+    throw new Error("No se encontró el usuario que quieres editar.");
+  }
+
+  const name = updates.name.trim();
+
+  if (!name) {
+    throw new Error("El nombre del usuario es obligatorio.");
+  }
+
+  const patch: Partial<StoredUser> = {
+    name,
+    role: updates.role,
+    permissions: getPermissionsForRole(updates.role),
+  };
+
+  const password = updates.password?.trim();
+
+  if (password) {
+    if (
+      existingUser.role === "admin" ||
+      existingUser.role === "auditor" ||
+      updates.role === "admin" ||
+      updates.role === "auditor"
+    ) {
+      throw new Error(
+        "La contraseña de administradores y auditores se gestiona desde Supabase Authentication.",
+      );
+    }
+
+    patch.passwordHash = await hashPassword(password);
+  }
+
+  let updatedUser: StoredUser | null;
+
+  try {
+    updatedUser = await updateById<StoredUser>("users", userId, patch);
+  } catch (error) {
+    if (isUsersRlsError(error)) {
+      throw new Error(
+        "Supabase esta bloqueando la edicion del usuario por RLS. Aplica nuevamente el SQL de supabase/schema.sql para crear las politicas de public.users.",
+      );
+    }
+
+    throw error;
+  }
+
+  if (!updatedUser) {
+    throw new Error("No se pudo actualizar el usuario.");
+  }
+
+  await addAuditLog({
+    userId: "system",
+    userName: "Sistema",
+    action: "USER_ROLE_CHANGE",
+    details: `Usuario ${existingUser.username} actualizado: rol ${existingUser.role} -> ${updates.role}.`,
+  });
+
+  return sanitizeUser(updatedUser);
 }
 
 export async function addSeedUsers(): Promise<void> {

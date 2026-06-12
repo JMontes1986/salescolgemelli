@@ -20,10 +20,10 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User, NewUser, UserRole } from "@/lib/types";
-import { getUsers, addUser } from "@/lib/services/user-service";
+import { getUsers, addUser, updateUser } from "@/lib/services/user-service";
 import { useToast } from "@/hooks/use-toast";
 import { PermissionGate } from "@/components/permission-gate";
-import { PlusCircle } from "lucide-react";
+import { Pencil, PlusCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -55,60 +55,95 @@ const roleNames: Record<UserRole, string> = {
 function UserForm({
   mode,
   initialData,
-  onUserAdded,
+  onUserSaved,
 }: {
-  mode: "create";
+  mode: "create" | "edit";
   initialData?: User;
-  onUserAdded: (user: User) => void;
+  onUserSaved: (user: User) => void;
 }) {
   const { toast } = useToast();
   const [name, setName] = useState(initialData?.name || "");
   const [username, setUsername] = useState(initialData?.username || "");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("seller");
+  const [role, setRole] = useState<UserRole>(initialData?.role || "seller");
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEmailRole = role === "admin" || role === "auditor";
+  const formId = `user-form-${initialData?.id || "create"}`;
+  const fieldPrefix = `user-${initialData?.id || "create"}`;
+  const isEditMode = mode === "edit";
+  const isAuthManagedPassword = isEditMode && isEmailRole;
+
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
-      setName("");
-      setUsername("");
+      setName(initialData?.name || "");
+      setUsername(initialData?.username || "");
       setPassword("");
-      setRole("seller");
+      setRole(initialData?.role || "seller");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const newUserData: NewUser = {
-      name,
-      username,
-      password,
-      role,
-      avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
-    };
+    setIsSubmitting(true);
 
     try {
-      const addedUser = await addUser(newUserData);
-      onUserAdded(addedUser as User);
-      toast({ title: "Éxito", description: "Usuario añadido correctamente." });
+      if (isEditMode) {
+        if (!initialData) {
+          throw new Error("No se encontró el usuario que quieres editar.");
+        }
+
+        const updatedUser = await updateUser(initialData.id, {
+          name,
+          role,
+          password: password || undefined,
+        });
+
+        onUserSaved(updatedUser);
+        toast({
+          title: "Éxito",
+          description: "Usuario actualizado correctamente.",
+        });
+      } else {
+        const newUserData: NewUser = {
+          name,
+          username,
+          password,
+          role,
+          avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
+        };
+
+        const addedUser = await addUser(newUserData);
+        onUserSaved(addedUser as User);
+        toast({
+          title: "Éxito",
+          description: "Usuario añadido correctamente.",
+        });
+      }
+
       setIsOpen(false);
     } catch (error) {
-      console.error("Error adding user:", error);
+      console.error("Error saving user:", error);
       toast({
         variant: "destructive",
         title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : "No se pudo añadir el usuario.",
+            : "No se pudo guardar el usuario.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const trigger = (
+  const trigger = isEditMode ? (
+    <Button variant="ghost" size="icon" aria-label={`Editar ${initialData?.name}`}>
+      <Pencil className="h-4 w-4" />
+    </Button>
+  ) : (
     <Button>
       <PlusCircle className="mr-2 h-4 w-4" />
       Crear Usuario
@@ -120,56 +155,82 @@ function UserForm({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+          <DialogTitle>
+            {isEditMode ? "Editar Usuario" : "Crear Nuevo Usuario"}
+          </DialogTitle>
           <DialogDescription>
-            Complete los detalles y asigne un rol al nuevo usuario.
+            {isEditMode
+              ? "Actualice los datos principales del usuario."
+              : "Complete los detalles y asigne un rol al nuevo usuario."}
           </DialogDescription>
         </DialogHeader>
-        <form
-          id={`user-form-${initialData?.id || "create"}`}
-          onSubmit={handleSubmit}
-        >
+        <form id={formId} onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="user-name">Nombre Completo</Label>
+              <Label htmlFor={`${fieldPrefix}-name`}>Nombre Completo</Label>
               <Input
-                id="user-name"
+                id={`${fieldPrefix}-name`}
+                name="name"
                 placeholder="Ej: Juan Pérez"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="user-credential">
+              <Label htmlFor={`${fieldPrefix}-credential`}>
                 {isEmailRole ? "Correo Electrónico" : "Usuario"}
               </Label>
               <Input
-                id="user-credential"
+                id={`${fieldPrefix}-credential`}
+                name="username"
                 type={isEmailRole ? "email" : "text"}
                 placeholder={isEmailRole ? "admin@colegio.edu" : "juan.perez"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                disabled={isSubmitting || isEditMode}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="user-password">Contraseña</Label>
+              <Label htmlFor={`${fieldPrefix}-password`}>Contraseña</Label>
               <Input
-                id="user-password"
+                id={`${fieldPrefix}-password`}
+                name="password"
                 type="password"
+                placeholder={
+                  isAuthManagedPassword
+                    ? "Gestionada en Supabase Auth"
+                    : isEditMode
+                      ? "Dejar en blanco para conservarla"
+                      : ""
+                }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
+                required={!isEditMode}
+                disabled={isSubmitting || isAuthManagedPassword}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="user-role">Rol</Label>
+              <Label htmlFor={`${fieldPrefix}-role`}>Rol</Label>
               <Select
+                name="role"
                 value={role}
-                onValueChange={(value) => setRole(value as UserRole)}
+                onValueChange={(value) => {
+                  const nextRole = value as UserRole;
+                  setRole(nextRole);
+
+                  if (
+                    isEditMode &&
+                    (nextRole === "admin" || nextRole === "auditor")
+                  ) {
+                    setPassword("");
+                  }
+                }}
+                disabled={isSubmitting}
               >
-                <SelectTrigger id="user-role">
+                <SelectTrigger id={`${fieldPrefix}-role`}>
                   <SelectValue placeholder="Seleccione un rol" />
                 </SelectTrigger>
                 <SelectContent>
@@ -185,15 +246,12 @@ function UserForm({
         </form>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="secondary">
+            <Button type="button" variant="secondary" disabled={isSubmitting}>
               Cancelar
             </Button>
           </DialogClose>
-          <Button
-            type="submit"
-            form={`user-form-${initialData?.id || "create"}`}
-          >
-            Guardar Usuario
+          <Button type="submit" form={formId} disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Guardar Usuario"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -229,6 +287,14 @@ export default function UsersPage() {
     setUsers((prevUsers) => [...prevUsers, newUser]);
   };
 
+  const handleUserUpdated = (updatedUser: User) => {
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user.id === updatedUser.id ? updatedUser : user,
+      ),
+    );
+  };
+
   return (
     <div>
       <PageHeader
@@ -236,7 +302,7 @@ export default function UsersPage() {
         description="Administrar usuarios y sus roles en el sistema."
       >
         <PermissionGate requiredPermission="users">
-          <UserForm mode="create" onUserAdded={handleUserAdded} />
+          <UserForm mode="create" onUserSaved={handleUserAdded} />
         </PermissionGate>
       </PageHeader>
       <Card>
@@ -255,6 +321,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead className="w-16 text-right">Editar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -278,6 +345,15 @@ export default function UsersPage() {
                       <Badge variant="secondary" className="capitalize">
                         {roleNames[user.role] || user.role}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <PermissionGate requiredPermission="users">
+                        <UserForm
+                          mode="edit"
+                          initialData={user}
+                          onUserSaved={handleUserUpdated}
+                        />
+                      </PermissionGate>
                     </TableCell>
                   </TableRow>
                 ))}
