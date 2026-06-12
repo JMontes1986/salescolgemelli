@@ -174,7 +174,7 @@ El acceso interno está protegido mediante roles y permisos definidos en `src/li
 | --- | --- | --- |
 | `admin` | Administración completa | Dashboard, ventas, preventas, autogestión, productos, canje, caja, devoluciones, usuarios y auditoría. |
 | `cashier` | Operación de caja/POS | Dashboard, ventas, preventas, canje, caja y devoluciones. |
-| `seller` | Ventas y preventas | Dashboard, ventas, preventas y canje. |
+| `seller` | Entrega de compras | Solo canje/entrega por QR o código de compra. |
 | `auditor` | Supervisión | Dashboard y auditoría. |
 
 ### Rutas públicas

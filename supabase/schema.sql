@@ -15,6 +15,10 @@ create table if not exists public.users (
 alter table public.users drop constraint if exists users_id_fkey;
 alter table public.users alter column id set default gen_random_uuid();
 alter table public.users add column if not exists "passwordHash" text;
+update public.users
+set permissions = array['redeem']::text[]
+where role = 'seller'
+  and permissions is distinct from array['redeem']::text[];
 
 alter table public.users enable row level security;
 

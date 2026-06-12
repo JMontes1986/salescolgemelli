@@ -554,6 +554,10 @@ export async function updatePendingPurchase(
 }
 
 export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUser: User): Promise<void> {
+  if (currentUser.role === 'seller') {
+    throw new Error('El vendedor solo puede registrar entregas de compras ya confirmadas.');
+  }
+
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
   const purchase = await getPurchaseById(safePurchaseId);
   if (!purchase) throw new Error("Preventa no encontrada.");
@@ -570,6 +574,10 @@ export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUs
 }
 
 export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, currentUser: User): Promise<void> {
+  if (currentUser.role === 'seller') {
+    throw new Error('El vendedor solo puede registrar entregas de compras ya confirmadas.');
+  }
+
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
   const purchase = await getPurchaseById(safePurchaseId);
   if (!purchase) throw new Error("Compra pendiente no encontrada.");
@@ -599,6 +607,10 @@ export async function deliverPurchaseItems(
   if (!purchase) throw new Error('Compra no encontrada.');
   if (!['pending', 'paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
     throw new Error('Solo se pueden entregar compras pendientes, pagadas o preventas confirmadas.');
+  }
+
+  if (currentUser.role === 'seller' && purchase.status === 'pending') {
+    throw new Error('El vendedor solo puede registrar entregas de compras ya confirmadas.');
   }
 
   const savedDeliveryCode = purchase.deliveryCode || '';

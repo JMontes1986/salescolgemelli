@@ -179,7 +179,9 @@ export default function LoginPage() {
           console.warn("No se pudo registrar auditoría de login.", error);
         });
 
-        if (user.role === "cashier") {
+        if (user.role === "seller") {
+          router.push("/dashboard/redeem");
+        } else if (user.role === "cashier") {
           router.push("/dashboard/sales");
         } else {
           router.push("/dashboard");

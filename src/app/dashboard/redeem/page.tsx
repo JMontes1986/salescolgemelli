@@ -40,11 +40,38 @@ const statusColors: Record<Purchase['status'], string> = {
     'pre-sale-confirmed': 'bg-teal-500/20 text-teal-700',
 };
 
+function parsePurchaseLookup(searchCode: string, deliveryCode: string) {
+    const rawCode = searchCode.trim();
+    let normalizedCode = rawCode.toUpperCase();
+    let normalizedDeliveryCode = deliveryCode.trim().toUpperCase();
+
+    if (rawCode) {
+        try {
+            const parsedUrl = new URL(rawCode, window.location.origin);
+            const codeFromQr = parsedUrl.searchParams.get('code')?.trim();
+            const deliveryFromQr = parsedUrl.searchParams.get('delivery')?.trim();
+
+            if (codeFromQr) {
+                normalizedCode = codeFromQr.toUpperCase();
+            }
+
+            if (deliveryFromQr && !normalizedDeliveryCode) {
+                normalizedDeliveryCode = deliveryFromQr.toUpperCase();
+            }
+        } catch {
+            // The input is a plain purchase code, not a URL payload.
+        }
+    }
+
+    return { normalizedCode, normalizedDeliveryCode };
+}
+
 function RedeemPageComponent() {
     const searchParams = useSearchParams();
     const codeFromUrl = searchParams.get('code');
     const deliveryCodeFromUrl = searchParams.get('delivery');
     const { currentUser } = useAuth();
+    const isSeller = currentUser?.role === 'seller';
 
     const [searchCedula, setSearchCedula] = useState('');
     const [searchCelular, setSearchCelular] = useState('');
@@ -61,6 +88,12 @@ function RedeemPageComponent() {
     const realtimeTables = React.useMemo(() => ['products', 'purchases'] as const, []);
 
     const loadRecentPurchases = useCallback(async (showLoading = true) => {
+        if (isSeller) {
+            setRecentPurchases([]);
+            setIsRecentLoading(false);
+            return;
+        }
+
         if (showLoading) {
             setIsRecentLoading(true);
         }
@@ -79,10 +112,10 @@ function RedeemPageComponent() {
                 setIsRecentLoading(false);
             }
         }
-    }, []);
+    }, [isSeller]);
 
     const refreshSearchResults = useCallback(async () => {
-        const normalizedCode = searchCode.trim().toUpperCase();
+        const { normalizedCode } = parsePurchaseLookup(searchCode, deliveryCode);
         const normalizedCedula = searchCedula.trim();
         const normalizedCelular = searchCelular.trim();
 
@@ -96,22 +129,31 @@ function RedeemPageComponent() {
             if (purchase) {
                 results.push(purchase);
             }
-        } else if (normalizedCedula) {
+        } else if (!isSeller && normalizedCedula) {
             results = await getPurchasesByCedula(normalizedCedula);
-        } else if (normalizedCelular) {
+        } else if (!isSeller && normalizedCelular) {
             results = await getPurchasesByCelular(normalizedCelular);
         }
 
         setSearchResults(results);
-    }, [searchCedula, searchCelular, searchCode, searchPerformed]);
+    }, [deliveryCode, isSeller, searchCedula, searchCelular, searchCode, searchPerformed]);
 
      const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
 
-        const normalizedCode = searchCode.trim().toUpperCase();
+        const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(searchCode, deliveryCode);
         const normalizedCedula = searchCedula.trim();
         const normalizedCelular = searchCelular.trim();
         
+        if (isSeller && !normalizedCode) {
+            toast({
+                variant: 'destructive',
+                title: 'Código requerido',
+                description: 'Ingrese o escanee el código de compra para registrar la entrega.'
+            });
+            return;
+        }
+
         if (!normalizedCode && !normalizedCedula && !normalizedCelular) {
             toast({
                 variant: 'destructive',
@@ -129,15 +171,18 @@ function RedeemPageComponent() {
             if (normalizedCode) {
                 setSearchCode(normalizedCode);
             }
+            if (normalizedDeliveryCode) {
+                setDeliveryCode(normalizedDeliveryCode);
+            }
             let results: Purchase[] = [];
             if (normalizedCode) {
                 const purchase = await getPurchaseById(normalizedCode);
                 if (purchase) {
                     results.push(purchase);
                 }
-            } else if (normalizedCedula) {
+            } else if (!isSeller && normalizedCedula) {
                 results = await getPurchasesByCedula(normalizedCedula);
-            } else if (normalizedCelular) {
+            } else if (!isSeller && normalizedCelular) {
                 results = await getPurchasesByCelular(normalizedCelular);
             }
             setSearchResults(results);
@@ -328,6 +373,14 @@ function RedeemPageComponent() {
     };
 
     const renderActionButton = (purchase: Purchase) => {
+        if (isSeller && !['paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
+            return (
+                <div className="w-full rounded-md border border-dashed bg-muted/50 p-3 text-center text-sm text-muted-foreground">
+                    Esta compra debe estar confirmada antes de entregarla.
+                </div>
+            );
+        }
+
         switch (purchase.status) {
             case 'pre-sale':
                 return (
@@ -364,9 +417,9 @@ function RedeemPageComponent() {
         <div>
             <PageHeader
                 title="Verificar y Canjear Compra"
-                description="Busque una compra por código, cédula o celular para verificar y entregar."
+                description={isSeller ? "Escanee el QR o ingrese el código de compra para entregar productos." : "Busque una compra por código, cédula o celular para verificar y entregar."}
             />
-            <Card className="mb-8">
+            {!isSeller && <Card className="mb-8">
                 <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <CardTitle className="flex items-center gap-2">
@@ -438,13 +491,13 @@ function RedeemPageComponent() {
                         </ScrollArea>
                     )}
                 </CardContent>
-            </Card>
+            </Card>}
             <div className="grid gap-8 md:grid-cols-2">
                 <Card>
                     <CardHeader>
                         <CardTitle>Buscar Compra</CardTitle>
                         <CardDescription>
-                            Ingrese uno de los campos para encontrar el registro de la compra.
+                            {isSeller ? 'Escanee el QR o digite el código entregado al cliente.' : 'Ingrese uno de los campos para encontrar el registro de la compra.'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -453,10 +506,12 @@ function RedeemPageComponent() {
                                 <Label htmlFor="ticket-code">Código de compra o QR</Label>
                                 <Input id="ticket-code" placeholder="ej., PVX0001" className="font-mono" value={searchCode} onChange={e => setSearchCode(e.target.value)} />
                             </div>
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                                 <Label htmlFor="delivery-code">Código adicional del QR</Label>
                                 <Input id="delivery-code" placeholder="ej., A1B2C3D4" className="font-mono uppercase" value={deliveryCode} onChange={e => setDeliveryCode(e.target.value.toUpperCase())} />
                             </div>
+                            {!isSeller && (
+                                <>
                              <div className="space-y-2">
                                 <Label htmlFor="cedula">Cédula del Cliente</Label>
                                 <Input id="cedula" placeholder="ej., 123456789" value={searchCedula} onChange={e => setSearchCedula(e.target.value)} />
@@ -465,6 +520,8 @@ function RedeemPageComponent() {
                                 <Label htmlFor="celular">Celular del Cliente</Label>
                                 <Input id="celular" placeholder="ej., 3001234567" value={searchCelular} onChange={e => setSearchCelular(e.target.value)} />
                             </div>
+                                </>
+                            )}
                         </form>
                     </CardContent>
                     <CardFooter>
@@ -504,7 +561,7 @@ function RedeemPageComponent() {
                                                     <div>
                                                         <CardTitle className="text-lg">Código: <span className="font-mono">{purchase.id}</span></CardTitle>
                                                         <CardDescription>
-                                                            Fecha: {purchase.date} | Cédula: {purchase.cedula} | Celular: {purchase.celular}
+                                                            {isSeller ? `Fecha: ${purchase.date}` : `Fecha: ${purchase.date} | Cédula: ${purchase.cedula} | Celular: ${purchase.celular}`}
                                                         </CardDescription>
                                                     </div>
                                                     <Badge className={cn("capitalize", statusColors[purchase.status])}>

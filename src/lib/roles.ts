@@ -23,9 +23,6 @@ const permissions: Record<UserRole, ModulePermission[]> = {
     'returns',
   ],
   seller: [
-    'dashboard',
-    'sales',
-    'presale',
     'redeem',
   ],
   auditor: [

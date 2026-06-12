@@ -3,12 +3,18 @@
 
 import { Header } from "@/components/dashboard/header";
 import { useAuth } from "@/hooks/use-auth";
-import type { ModulePermission } from "@/lib/types";
 import { navItems, adminNavItems } from "@/components/dashboard/sidebar-nav";
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const allNavItems = [...navItems, ...adminNavItems];
+const dashboardRoutePermissions = [
+  { href: "/dashboard/self-service-pos", permission: "self-service" },
+  { href: "/dashboard/self-service", permission: "self-service" },
+  ...allNavItems
+    .filter(item => item.href.startsWith("/dashboard"))
+    .sort((a, b) => b.href.length - a.href.length),
+] as const;
 
 export default function DashboardLayout({
   children,
@@ -17,6 +23,7 @@ export default function DashboardLayout({
 }) {
   const { currentUser, isMounted } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
@@ -24,10 +31,28 @@ export default function DashboardLayout({
       if (!currentUser) {
         router.push("/");
       } else {
+        const routePermission = dashboardRoutePermissions.find(item =>
+          pathname === item.href || pathname.startsWith(`${item.href}/`)
+        )?.permission;
+        const canAccessRoute = routePermission
+          ? currentUser.permissions.includes(routePermission)
+          : false;
+
+        if (!canAccessRoute) {
+          const fallbackRoute =
+            allNavItems.find(item =>
+              item.href.startsWith("/dashboard") &&
+              currentUser.permissions.includes(item.permission)
+            )?.href ?? "/";
+          router.replace(fallbackRoute);
+          setAuthorized(false);
+          return;
+        }
+
         setAuthorized(true);
       }
     }
-  }, [isMounted, currentUser, router]);
+  }, [isMounted, currentUser, pathname, router]);
 
   const accessibleNavItems = useMemo(() => {
     if (!currentUser?.permissions) {

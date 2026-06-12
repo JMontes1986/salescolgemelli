@@ -113,7 +113,15 @@ function sanitizeUser<T extends User>(user: T): User {
   };
   void password;
   void passwordHash;
-  return safeUser;
+  return {
+    ...safeUser,
+    permissions:
+      safeUser.role === "seller"
+        ? getPermissionsForRole("seller")
+        : safeUser.permissions?.length
+          ? safeUser.permissions
+          : getPermissionsForRole(safeUser.role),
+  };
 }
 
 function getLocalSession(userId: string): SupabaseAuthSession {
