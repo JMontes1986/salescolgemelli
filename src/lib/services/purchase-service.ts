@@ -23,10 +23,43 @@ function sortByNewest(purchases: Purchase[]) {
   return purchases.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
+function normalizeDeliveredQuantity(item: CartItem) {
+  const deliveredQuantity = Number(item.deliveredQuantity ?? 0);
+  if (!Number.isFinite(deliveredQuantity)) return 0;
+  return Math.min(Math.max(Math.trunc(deliveredQuantity), 0), item.quantity);
+}
+
 function ensureReturnedFlags(purchase: Purchase): Purchase {
   return {
     ...purchase,
-    items: purchase.items.map((item: CartItem) => ({ ...item, returned: item.returned || false })),
+    items: purchase.items.map((item: CartItem) => ({
+      ...item,
+      returned: item.returned || false,
+      deliveredQuantity: normalizeDeliveredQuantity(item),
+    })),
+  };
+}
+
+function generateDeliveryCode() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+  }
+
+  return Math.random().toString(36).slice(2, 10).toUpperCase();
+}
+
+function buildDeliveryQrPayload(purchaseId: string, deliveryCode: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || '';
+  const path = `/dashboard/redeem?code=${encodeURIComponent(purchaseId)}&delivery=${encodeURIComponent(deliveryCode)}`;
+  return baseUrl ? `${baseUrl}${path}` : path;
+}
+
+function withDeliveryAccess(purchase: Purchase): Purchase {
+  const deliveryCode = purchase.deliveryCode || generateDeliveryCode();
+  return {
+    ...purchase,
+    deliveryCode,
+    qrPayload: purchase.qrPayload || buildDeliveryQrPayload(purchase.id, deliveryCode),
   };
 }
 
@@ -242,7 +275,6 @@ export async function getDashboardPreSales(): Promise<Purchase[]> {
 export async function getSelfServicePurchasesByCedula(cedula: string): Promise<Purchase[]> {
   const purchases = await selectRows<Purchase>('purchases', {
     cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}`,
-    id: 'like.PV%',
   });
   return sortByNewest(purchases.map(ensureReturnedFlags));
 }
@@ -264,7 +296,14 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
   };
 
   try {
-    return ensureReturnedFlags(await callRpc<Purchase>('create_pos_purchase_with_stock', rpcPayload));
+    const savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_pos_purchase_with_stock', rpcPayload));
+    const purchaseWithDelivery = withDeliveryAccess(savedPurchase);
+    await updateById<Purchase>('purchases', purchaseWithDelivery.id, {
+      deliveryCode: purchaseWithDelivery.deliveryCode,
+      qrPayload: purchaseWithDelivery.qrPayload,
+      items: purchaseWithDelivery.items,
+    });
+    return purchaseWithDelivery;
   } catch (error) {
     if (error instanceof Error && error.message.includes('create_pos_purchase_with_stock')) {
       throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para descontar stock al registrar ventas de forma segura.');
@@ -301,8 +340,8 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     }));
   }
 
-  const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false }));
-  const savedPurchase: Purchase = {
+  const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false, deliveredQuantity: 0 }));
+  const savedPurchase: Purchase = withDeliveryAccess({
     ...purchase,
     id: generatedId,
     date: getCurrentDateLabel(),
@@ -313,7 +352,7 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     sellerId: isSelfService ? undefined : purchase.sellerId,
     sellerName: isSelfService ? undefined : purchase.sellerName,
     status: isSelfService ? 'pending' : 'pre-sale',
-  };
+  });
   await insertRowMinimal('purchases', savedPurchase);
   return savedPurchase;
 }
@@ -428,7 +467,7 @@ export async function updatePendingPurchase(
     return patchProduct(productId, { stock: newStock });
   }));
 
-  const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false }));
+  const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false, deliveredQuantity: 0 }));
   const updatedPurchase: Purchase = {
     ...originalPurchase,
     items: itemsToSave,
@@ -484,4 +523,78 @@ export async function confirmPendingPurchaseAndUpdateStock(purchaseId: string, c
       ? `Compra pendiente ${safePurchaseId} pagada. Stock descontado.`
       : `Compra de autogestión ${safePurchaseId} pagada. Stock descontado al confirmar el pago.`,
   });
+}
+
+
+export async function deliverPurchaseItems(
+  purchaseId: string,
+  deliveryQuantities: Record<string, number>,
+  currentUser: User,
+  expectedDeliveryCode?: string
+): Promise<Purchase> {
+  const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  const purchase = await getPurchaseById(safePurchaseId);
+  if (!purchase) throw new Error('Compra no encontrada.');
+  if (!['paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
+    throw new Error('Solo se pueden entregar compras pagadas o preventas confirmadas.');
+  }
+
+  const savedDeliveryCode = purchase.deliveryCode || '';
+  if (savedDeliveryCode && !expectedDeliveryCode) {
+    throw new Error('Ingrese el código adicional que aparece junto al QR para validar la entrega.');
+  }
+
+  if (expectedDeliveryCode && savedDeliveryCode && expectedDeliveryCode !== savedDeliveryCode) {
+    throw new Error('El código adicional de entrega no coincide con esta compra.');
+  }
+
+  let movedUnits = 0;
+  const updatedItems = purchase.items.map((item) => {
+    const requested = Number(deliveryQuantities[item.id] || 0);
+    if (!Number.isSafeInteger(requested) || requested < 0) {
+      throw new Error(`Cantidad inválida para ${item.name}.`);
+    }
+
+    const deliveredQuantity = normalizeDeliveredQuantity(item);
+    const pendingQuantity = item.quantity - deliveredQuantity;
+    const quantityToDeliver = Math.min(requested, pendingQuantity);
+    movedUnits += quantityToDeliver;
+
+    return {
+      ...item,
+      returned: item.returned || false,
+      deliveredQuantity: deliveredQuantity + quantityToDeliver,
+    };
+  });
+
+  if (movedUnits <= 0) {
+    throw new Error('Seleccione al menos una unidad pendiente para entregar.');
+  }
+
+  const allDelivered = updatedItems.every(item => (item.deliveredQuantity || 0) >= item.quantity);
+  const nextStatus: Purchase['status'] = allDelivered ? 'delivered' : 'partially-delivered';
+  const deliveryCode = purchase.deliveryCode || generateDeliveryCode();
+  const updatedPurchase = ensureReturnedFlags({
+    ...purchase,
+    items: updatedItems,
+    status: nextStatus,
+    deliveryCode,
+    qrPayload: purchase.qrPayload || buildDeliveryQrPayload(purchase.id, deliveryCode),
+  });
+
+  await updateById<Purchase>('purchases', safePurchaseId, {
+    items: updatedPurchase.items,
+    status: nextStatus,
+    deliveryCode: updatedPurchase.deliveryCode,
+    qrPayload: updatedPurchase.qrPayload,
+  });
+
+  await addAuditLog({
+    userId: currentUser.id,
+    userName: currentUser.name,
+    action: 'TICKET_REDEEM',
+    details: `Se entregaron ${movedUnits} unidad(es) de la compra ${safePurchaseId}. Estado: ${nextStatus}.`,
+  });
+
+  return updatedPurchase;
 }

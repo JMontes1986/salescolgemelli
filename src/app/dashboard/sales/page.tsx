@@ -59,6 +59,7 @@ type CartItem = {
 export default function SalesPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerPayment, setCustomerPayment] = useState<number>(0);
+  const [customerCedula, setCustomerCedula] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -184,6 +185,7 @@ export default function SalesPage() {
   const clearCart = () => {
     setCart([]);
     setCustomerPayment(0);
+    setCustomerCedula('');
   };
 
   const handlePurchase = async () => {
@@ -198,7 +200,7 @@ export default function SalesPage() {
         date: new Date().toLocaleString('es-CO'),
         total: subtotal,
         items: cart,
-        cedula: 'N/A', // Not required for POS sales
+        cedula: customerCedula.trim() || 'N/A', // Optional POS customer profile association
         celular: 'N/A',
         sellerId: currentUser?.id,
         sellerName: currentUser?.name,
@@ -282,6 +284,12 @@ export default function SalesPage() {
                                       const selfServiceReserved = selfServiceReservedQuantities[product.id] || 0;
                                       const selfServicePending = selfServicePendingQuantities[product.id] || 0;
                                       const availableStock = Math.max(product.stock - selfServiceReserved, 0);
+                                      const deliveredQuantity = purchases.reduce((total, purchase) => {
+                                        if (purchase.status !== 'delivered' && purchase.status !== 'partially-delivered') return total;
+                                        return total + purchase.items
+                                          .filter(item => item.id === product.id)
+                                          .reduce((itemTotal, item) => itemTotal + (item.deliveredQuantity || (purchase.status === 'delivered' ? item.quantity : 0)), 0);
+                                      }, 0);
                                       const isSoldOut = availableStock <= 0;
                                       return (
                                         <div key={product.id} className={cn("flex items-center justify-between p-3 bg-muted/50 rounded-lg", isSoldOut && "opacity-50")}>
@@ -310,6 +318,9 @@ export default function SalesPage() {
                                                             <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServicePending}</Badge>
                                                         )}
                                                         <Badge variant={availableStock > 0 ? "secondary" : "destructive"}>Disp.: {availableStock}</Badge>
+                                                        {deliveredQuantity > 0 && (
+                                                            <Badge className="bg-green-500/20 text-green-700">Entregados: {deliveredQuantity}</Badge>
+                                                        )}
                                                     </div>
                                                 )}
                                                 <Button onClick={() => addToCart(product)} disabled={isSoldOut}>
@@ -456,6 +467,20 @@ export default function SalesPage() {
                         </Table>
                     )}
                 </ScrollArea>
+
+                    <div className="space-y-2 rounded-lg border border-blue-800 bg-blue-900/40 p-3">
+                        <label htmlFor="customer-cedula" className="text-sm font-semibold text-blue-100">CÉDULA DEL COMPRADOR (OPCIONAL)</label>
+                        <Input
+                            id="customer-cedula"
+                            type="text"
+                            inputMode="numeric"
+                            className="bg-blue-900 border-blue-700 font-mono"
+                            placeholder="Ej. 123456789"
+                            value={customerCedula}
+                            onChange={(event) => setCustomerCedula(event.target.value.replace(/[^0-9A-Za-z.-]/g, ''))}
+                        />
+                        <p className="text-xs text-blue-200">Si se registra, la compra quedará cargada al perfil de autogestión del padre de familia.</p>
+                    </div>
                 <div className="space-y-4 text-lg">
                     <div className="flex justify-between font-bold">
                         <span>SUBTOTAL</span>

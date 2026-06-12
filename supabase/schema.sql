@@ -83,8 +83,13 @@ create table if not exists public.purchases (
   celular text not null default '',
   "sellerId" text,
   "sellerName" text,
-  status text not null
+  status text not null,
+  "deliveryCode" text,
+  "qrPayload" text
 );
+
+alter table public.purchases add column if not exists "deliveryCode" text;
+alter table public.purchases add column if not exists "qrPayload" text;
 
 create table if not exists public.returns (
   id text primary key default gen_random_uuid()::text,
@@ -231,7 +236,8 @@ begin
       'name', product_record.name,
       'price', product_record.price,
       'quantity', normalized_item.quantity,
-      'returned', false
+      'returned', false,
+      'deliveredQuantity', 0
     ));
   end loop;
 

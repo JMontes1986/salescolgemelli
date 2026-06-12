@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Info, CheckCircle, AlertTriangle, CreditCard, PackagePlus, RefreshCw, ClipboardList } from "lucide-react";
-import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases } from '@/lib/services/purchase-service';
+import { Search, Info, CheckCircle, AlertTriangle, CreditCard, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus } from "lucide-react";
+import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems } from '@/lib/services/purchase-service';
 import type { Purchase, User } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ const statusTranslations: Record<Purchase['status'], string> = {
     pending: 'Pendiente',
     paid: 'Pagado',
     delivered: 'Entregado',
+    'partially-delivered': 'Entrega parcial',
     cancelled: 'Cancelado',
     'pre-sale': 'Preventa Pendiente',
     'pre-sale-confirmed': 'Preventa Confirmada',
@@ -33,6 +34,7 @@ const statusColors: Record<Purchase['status'], string> = {
     pending: 'bg-yellow-500/20 text-yellow-700',
     paid: 'bg-blue-500/20 text-blue-700',
     delivered: 'bg-green-500/20 text-green-700',
+    'partially-delivered': 'bg-emerald-500/20 text-emerald-700',
     cancelled: 'bg-red-500/20 text-red-700',
     'pre-sale': 'bg-purple-500/20 text-purple-700',
     'pre-sale-confirmed': 'bg-teal-500/20 text-teal-700',
@@ -41,17 +43,20 @@ const statusColors: Record<Purchase['status'], string> = {
 function RedeemPageComponent() {
     const searchParams = useSearchParams();
     const codeFromUrl = searchParams.get('code');
+    const deliveryCodeFromUrl = searchParams.get('delivery');
     const { currentUser } = useAuth();
 
     const [searchCedula, setSearchCedula] = useState('');
     const [searchCelular, setSearchCelular] = useState('');
     const [searchCode, setSearchCode] = useState(codeFromUrl || '');
+    const [deliveryCode, setDeliveryCode] = useState(deliveryCodeFromUrl || '');
     const [searchResults, setSearchResults] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [recentPurchases, setRecentPurchases] = useState<Purchase[]>([]);
     const [isRecentLoading, setIsRecentLoading] = useState(true);
     const [searchPerformed, setSearchPerformed] = useState(false);
+    const [deliveryQuantities, setDeliveryQuantities] = useState<Record<string, Record<string, number>>>({});
     const { toast } = useToast();
     const realtimeTables = React.useMemo(() => ['products', 'purchases'] as const, []);
 
@@ -164,6 +169,7 @@ function RedeemPageComponent() {
 
     useEffect(() => {
         if (codeFromUrl) {
+            if (deliveryCodeFromUrl) setDeliveryCode(deliveryCodeFromUrl);
             handleSearch();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,6 +235,94 @@ function RedeemPageComponent() {
         setSearchPerformed(true);
     }
 
+    const getSelectedDeliveryQuantity = (purchaseId: string, productId: string) => (
+        deliveryQuantities[purchaseId]?.[productId] || 0
+    );
+
+    const setSelectedDeliveryQuantity = (purchase: Purchase, productId: string, quantity: number) => {
+        const item = purchase.items.find(currentItem => currentItem.id === productId);
+        if (!item) return;
+        const pendingQuantity = Math.max(item.quantity - (item.deliveredQuantity || 0), 0);
+        const nextQuantity = Math.min(Math.max(quantity, 0), pendingQuantity);
+        setDeliveryQuantities(prev => ({
+            ...prev,
+            [purchase.id]: {
+                ...(prev[purchase.id] || {}),
+                [productId]: nextQuantity,
+            },
+        }));
+    };
+
+    const selectAllPendingForDelivery = (purchase: Purchase) => {
+        setDeliveryQuantities(prev => ({
+            ...prev,
+            [purchase.id]: purchase.items.reduce<Record<string, number>>((acc, item) => {
+                acc[item.id] = Math.max(item.quantity - (item.deliveredQuantity || 0), 0);
+                return acc;
+            }, {}),
+        }));
+    };
+
+    const handleDeliverSelectedItems = async (purchase: Purchase) => {
+        if (!currentUser) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo identificar al usuario actual.' });
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            const updatedPurchase = await deliverPurchaseItems(
+                purchase.id,
+                deliveryQuantities[purchase.id] || {},
+                currentUser,
+                deliveryCode.trim().toUpperCase() || undefined
+            );
+            setSearchResults(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
+            setRecentPurchases(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
+            setDeliveryQuantities(prev => ({ ...prev, [purchase.id]: {} }));
+            toast({ title: 'Entrega registrada', description: 'Las unidades seleccionadas fueron marcadas como entregadas.' });
+        } catch (error) {
+            console.error('Error delivering purchase items:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error de entrega',
+                description: (error as Error).message || 'No se pudieron entregar los productos.',
+            });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const renderDeliveryButton = (purchase: Purchase) => {
+        const selectedTotal = Object.values(deliveryQuantities[purchase.id] || {}).reduce((total, quantity) => total + quantity, 0);
+        const pendingTotal = purchase.items.reduce((total, item) => total + Math.max(item.quantity - (item.deliveredQuantity || 0), 0), 0);
+
+        if (pendingTotal <= 0) {
+            return (
+                <div className="flex items-center justify-center w-full text-green-700 font-semibold">
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Compra Entregada
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid w-full gap-2">
+                <Button type="button" variant="outline" onClick={() => selectAllPendingForDelivery(purchase)} disabled={isUpdating}>
+                    Seleccionar todo pendiente ({pendingTotal})
+                </Button>
+                <Button
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={() => handleDeliverSelectedItems(purchase)}
+                    disabled={isUpdating || selectedTotal <= 0}
+                >
+                    <PackageCheck className="mr-2 h-4 w-4" />
+                    {isUpdating ? 'Entregando...' : `Entregar seleccionados (${selectedTotal})`}
+                </Button>
+            </div>
+        );
+    };
+
     const renderActionButton = (purchase: Purchase) => {
         switch (purchase.status) {
             case 'pre-sale':
@@ -243,16 +337,7 @@ function RedeemPageComponent() {
                     </Button>
                 );
              case 'pre-sale-confirmed':
-                return (
-                     <Button 
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        onClick={() => handleUpdateStatus(purchase.id, 'paid')}
-                        disabled={isUpdating}
-                    >
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        {isUpdating ? 'Confirmando...' : 'Confirmar Pago'}
-                    </Button>
-                );
+                return renderDeliveryButton(purchase);
             case 'pending':
                 return (
                     <Button 
@@ -265,16 +350,8 @@ function RedeemPageComponent() {
                     </Button>
                 );
             case 'paid':
-                return (
-                    <Button 
-                        className="w-full bg-green-600 hover:bg-green-700"
-                        onClick={() => handleUpdateStatus(purchase.id, 'delivered')}
-                        disabled={isUpdating}
-                    >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                         {isUpdating ? 'Entregando...' : 'Marcar como Entregado'}
-                    </Button>
-                );
+            case 'partially-delivered':
+                return renderDeliveryButton(purchase);
             case 'delivered':
                  return (
                     <div className="flex items-center justify-center w-full text-green-700 font-semibold">
@@ -381,6 +458,10 @@ function RedeemPageComponent() {
                                 <Label htmlFor="ticket-code">Código de Pago</Label>
                                 <Input id="ticket-code" placeholder="ej., aBcDeFg123" className="font-mono" value={searchCode} onChange={e => setSearchCode(e.target.value)} />
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="delivery-code">Código adicional del QR</Label>
+                                <Input id="delivery-code" placeholder="ej., A1B2C3D4" className="font-mono uppercase" value={deliveryCode} onChange={e => setDeliveryCode(e.target.value.toUpperCase())} />
+                            </div>
                              <div className="space-y-2">
                                 <Label htmlFor="cedula">Cédula del Cliente</Label>
                                 <Input id="cedula" placeholder="ej., 123456789" value={searchCedula} onChange={e => setSearchCedula(e.target.value)} />
@@ -439,11 +520,35 @@ function RedeemPageComponent() {
                                             <CardContent>
                                                 <h4 className="font-semibold mb-2">Artículos Comprados:</h4>
                                                 <ul className="list-disc list-inside space-y-1 text-sm">
-                                                    {purchase.items.map(item => (
-                                                        <li key={item.id}>
-                                                            {item.name} (x{item.quantity}) - {formatCurrency(item.price * item.quantity)}
-                                                        </li>
-                                                    ))}
+                                                    {purchase.items.map(item => {
+                                                        const delivered = item.deliveredQuantity || 0;
+                                                        const pending = Math.max(item.quantity - delivered, 0);
+                                                        const selected = getSelectedDeliveryQuantity(purchase.id, item.id);
+
+                                                        return (
+                                                            <li key={item.id} className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between">
+                                                                <div>
+                                                                    <p className="font-medium">{item.name} (x{item.quantity}) - {formatCurrency(item.price * item.quantity)}</p>
+                                                                    <p className="text-xs text-muted-foreground">Entregado: {delivered} | Pendiente: {pending}</p>
+                                                                </div>
+                                                                {pending > 0 && (purchase.status === 'paid' || purchase.status === 'pre-sale-confirmed' || purchase.status === 'partially-delivered') && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setSelectedDeliveryQuantity(purchase, item.id, selected - 1)}>
+                                                                            <Minus className="h-3 w-3" />
+                                                                        </Button>
+                                                                        <Input
+                                                                            className="h-7 w-14 text-center"
+                                                                            value={selected}
+                                                                            onChange={event => setSelectedDeliveryQuantity(purchase, item.id, Number(event.target.value.replace(/[^0-9]/g, '') || 0))}
+                                                                        />
+                                                                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setSelectedDeliveryQuantity(purchase, item.id, selected + 1)}>
+                                                                            <Plus className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
                                                 <p className="font-bold text-right mt-2">Total: {formatCurrency(purchase.total)}</p>
                                             </CardContent>

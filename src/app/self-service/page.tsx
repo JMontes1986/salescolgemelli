@@ -69,6 +69,12 @@ const buildQrImageUrl = (payload: string) => (
   `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(payload)}`
 );
 
+const buildDeliveryQrPayload = (purchase: Purchase) => (
+  purchase.qrPayload || `/dashboard/redeem?code=${encodeURIComponent(purchase.id)}&delivery=${encodeURIComponent(purchase.deliveryCode || '')}`
+);
+
+const buildDeliveryQrImageUrl = (purchase: Purchase) => buildQrImageUrl(buildDeliveryQrPayload(purchase));
+
 const isDaviplataDeepLink = (href: string) => href.toLowerCase().startsWith(DAVIPLATA_DEEP_LINK_PREFIX);
 
 const isMobileDevice = () => (
@@ -425,6 +431,8 @@ export default function SelfServicePage() {
         return 'Pagado';
       case 'delivered':
         return 'Entregado';
+      case 'partially-delivered':
+        return 'Entrega parcial';
       case 'pre-sale':
         return 'Preventa pendiente';
       case 'pre-sale-confirmed':
@@ -437,7 +445,7 @@ export default function SelfServicePage() {
   };
 
   const getPurchaseStatusClassName = (status: Purchase['status']) => (
-    status === 'paid' || status === 'delivered' || status === 'pre-sale-confirmed'
+    status === 'paid' || status === 'delivered' || status === 'partially-delivered' || status === 'pre-sale-confirmed'
       ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
       : status === 'cancelled'
         ? 'bg-red-100 text-red-700 hover:bg-red-100'
@@ -509,6 +517,22 @@ export default function SelfServicePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3">
+                <div className="flex flex-col items-center gap-3 sm:flex-row">
+                  <img
+                    src={buildDeliveryQrImageUrl(lastPurchase)}
+                    alt={`QR de entrega ${lastPurchase.id}`}
+                    width={116}
+                    height={116}
+                    className="h-28 w-28 rounded-md border bg-white p-2"
+                  />
+                  <div>
+                    <p className="text-sm font-black uppercase text-[#126d74]">QR único para reclamar productos</p>
+                    <p className="text-sm font-semibold text-[#5f686a]">El vendedor debe escanear este QR y validar el código adicional antes de entregar.</p>
+                    <p className="mt-2 font-mono text-2xl font-black text-[#b23178]">{lastPurchase.deliveryCode}</p>
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col gap-1 border-t border-[#0eb9c3]/25 pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm font-semibold text-[#5f686a]">{lastPurchase.date}</span>
@@ -845,10 +869,10 @@ export default function SelfServicePage() {
             <div>
               <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-wide text-[#232328]">
                 <PackageCheck className="h-5 w-5" />
-                Productos adquiridos en autogestión
+                Perfil del padre de familia
               </CardTitle>
               <CardDescription className="text-[#5f686a]">
-                Al final de la página verá sus compras consultadas con cédula, los productos incluidos y el estado actual de cada pedido.
+                Aquí verá todas las compras cargadas a la cédula, incluyendo ventas de caja y autogestión, con QR y código adicional para la entrega.
               </CardDescription>
             </div>
             <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={!hasActiveCedula || isHistoryLoading}>
@@ -874,12 +898,25 @@ export default function SelfServicePage() {
                               <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/18 bg-white p-3">
                                 <p className="font-bold leading-tight text-[#232328]">{item.name}</p>
                                 <p className="text-sm font-semibold text-[#5f686a]">Cantidad: {item.quantity}</p>
+                                <p className="text-xs font-semibold text-[#126d74]">Entregado: {item.deliveredQuantity || 0} | Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
                                 <p className="text-sm font-black text-[#b23178]">{formatCurrency(item.price * item.quantity)}</p>
                               </div>
                             ))}
                           </div>
                         </div>
-                        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+                        <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
+                          <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
+                            <img
+                              src={buildDeliveryQrImageUrl(purchase)}
+                              alt={`QR de entrega ${purchase.id}`}
+                              width={116}
+                              height={116}
+                              className="mx-auto h-28 w-28"
+                            />
+                            <p className="mt-2 text-xs font-black uppercase text-[#126d74]">Código adicional</p>
+                            <p className="font-mono text-lg font-black text-[#b23178]">{purchase.deliveryCode || 'Pendiente'}</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                           <Badge variant="secondary" className={getPurchaseStatusClassName(purchase.status)}>
                             {getPurchaseStatusLabel(purchase.status)}
                           </Badge>
@@ -890,6 +927,7 @@ export default function SelfServicePage() {
                               Modificar
                             </Button>
                           )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -984,6 +1022,23 @@ export default function SelfServicePage() {
                 <p className="text-2xl sm:text-3xl font-bold font-mono tracking-widest text-primary">{paymentCode}</p>
                 </div>
             </div>
+
+            {lastPurchase && (
+              <div className="rounded-md border bg-background p-4 text-center">
+                <div className="mb-3 flex items-center justify-center gap-2 font-black text-primary">
+                  <QrCode className="h-5 w-5" />
+                  QR único de entrega
+                </div>
+                <img
+                  src={buildDeliveryQrImageUrl(lastPurchase)}
+                  alt={`QR de entrega ${lastPurchase.id}`}
+                  width={180}
+                  height={180}
+                  className="mx-auto h-44 w-44 rounded-md border bg-white p-2"
+                />
+                <p className="mt-3 text-sm font-semibold">Código adicional para validar: <span className="font-mono text-lg text-primary">{lastPurchase.deliveryCode}</span></p>
+              </div>
+            )}
 
             <div className="rounded-md border bg-background p-4 text-center">
               <div className="mb-3 flex items-center justify-center gap-2 font-black text-primary">

@@ -109,9 +109,10 @@ export type CartItem = {
   price: number;
   quantity: number;
   returned?: boolean; // Flag to indicate if the item has been returned
+  deliveredQuantity?: number; // Quantity already handed out by sellers/redeemers
 };
 
-export type PurchaseStatus = 'pending' | 'paid' | 'cancelled' | 'delivered' | 'pre-sale' | 'pre-sale-confirmed';
+export type PurchaseStatus = 'pending' | 'paid' | 'cancelled' | 'delivered' | 'partially-delivered' | 'pre-sale' | 'pre-sale-confirmed';
 
 
 // Represents a completed purchase record in Supabase
@@ -125,6 +126,8 @@ export type Purchase = {
   sellerId?: string; // ID of the user who made the sale in POS
   sellerName?: string; // Name of the user who made the sale in POS
   status: PurchaseStatus;
+  deliveryCode?: string;
+  qrPayload?: string;
 };
 
 // Type for creating a new purchase
