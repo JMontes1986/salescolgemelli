@@ -1,5 +1,7 @@
 create extension if not exists "pgcrypto";
 
+grant usage on schema public to anon, authenticated;
+
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -765,3 +767,5 @@ begin
   end if;
 end;
 $$;
+
+notify pgrst, 'reload schema';

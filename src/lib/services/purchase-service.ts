@@ -304,7 +304,7 @@ export async function getSelfServicePurchasesByCustomer(cedula: string): Promise
     return sortByNewest(purchases.map(ensureReturnedFlags));
   } catch (error) {
     if (error instanceof Error && error.message.includes('get_self_service_purchases_by_customer')) {
-      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para cargar compras por cédula.');
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql y recarga el esquema para cargar compras por cédula.');
     }
 
     throw error;
