@@ -222,19 +222,19 @@ function ProductForm({
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor={`${fieldPrefix}-name`}>Nombre del Producto</Label>
-                            <Input id={`${fieldPrefix}-name`} placeholder="Ej: Carne Asada" value={name} onChange={e => setName(e.target.value)} required />
+                            <Input id={`${fieldPrefix}-name`} name={`${fieldPrefix}-name`} placeholder="Ej: Carne Asada" value={name} onChange={e => setName(e.target.value)} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor={`${fieldPrefix}-price`}>Precio</Label>
-                            <Input id={`${fieldPrefix}-price`} type="number" placeholder="0" value={price} onChange={e => setPrice(e.target.value)} required/>
+                            <Input id={`${fieldPrefix}-price`} name={`${fieldPrefix}-price`} type="number" placeholder="0" value={price} onChange={e => setPrice(e.target.value)} required/>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor={`${fieldPrefix}-stock`}>Stock Inicial</Label>
-                            <Input id={`${fieldPrefix}-stock`} type="number" placeholder="100" value={stock} onChange={e => setStock(e.target.value)} required/>
+                            <Input id={`${fieldPrefix}-stock`} name={`${fieldPrefix}-stock`} type="number" placeholder="100" value={stock} onChange={e => setStock(e.target.value)} required/>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor={`${fieldPrefix}-image-url`}>URL de la Imagen</Label>
-                            <Input id={`${fieldPrefix}-image-url`} placeholder="https://ejemplo.com/imagen.jpg" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                            <Input id={`${fieldPrefix}-image-url`} name={`${fieldPrefix}-image-url`} placeholder="https://ejemplo.com/imagen.jpg" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
                             <p className="text-xs text-muted-foreground">
                                 Si usas Supabase Storage, el bucket debe ser público o debes pegar una URL firmada vigente; las URLs públicas de buckets privados no cargan la imagen.
                             </p>
@@ -245,6 +245,7 @@ function ProductForm({
                                 <div className="flex items-center space-x-2 rounded-md border border-dashed p-2">
                                     <Checkbox
                                         id={`${fieldPrefix}-availability-${unavailableProductAvailability}`}
+                                        name={`${fieldPrefix}-availability-${unavailableProductAvailability}`}
                                         checked={availability.includes(unavailableProductAvailability)}
                                         onCheckedChange={() => handleAvailabilityChange(unavailableProductAvailability)}
                                     />
@@ -254,6 +255,7 @@ function ProductForm({
                                     <div key={key} className="flex items-center space-x-2">
                                         <Checkbox
                                             id={`${fieldPrefix}-availability-${key}`}
+                                            name={`${fieldPrefix}-availability-${key}`}
                                             checked={availability.includes(key as ProductAvailability)}
                                             disabled={availability.includes(unavailableProductAvailability)}
                                             onCheckedChange={() => handleAvailabilityChange(key as ProductAvailability)}
@@ -283,6 +285,7 @@ function RestockForm({ product, onStockUpdated }: { product: Product; onStockUpd
     const { currentUser } = useAuth();
     const [quantity, setQuantity] = useState(1);
     const [isOpen, setIsOpen] = useState(false);
+    const quantityFieldId = `restock-${product.id}-quantity`;
 
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
@@ -341,9 +344,10 @@ function RestockForm({ product, onStockUpdated }: { product: Product; onStockUpd
                             <p className="text-sm">Stock Actual: <span className="font-bold">{product.stock}</span></p>
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="quantity-to-add">Cantidad a Añadir</Label>
+                            <Label htmlFor={quantityFieldId}>Cantidad a Añadir</Label>
                             <Input 
-                                id="quantity-to-add" 
+                                id={quantityFieldId}
+                                name={quantityFieldId}
                                 type="number" 
                                 value={quantity} 
                                 onChange={e => setQuantity(Number(e.target.value))} 
