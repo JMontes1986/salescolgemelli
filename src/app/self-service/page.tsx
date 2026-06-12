@@ -474,11 +474,6 @@ export default function SelfServicePage() {
               />
             </div>
           </div>
-          <div className="relative mt-5 grid grid-cols-3 items-stretch gap-2 text-center text-xs font-black uppercase tracking-wide text-[#232328] sm:max-w-2xl sm:text-sm">
-            <div className="flex min-h-14 items-center justify-center rounded-2xl border border-[#0eb9c3]/55 bg-[#0eb9c3]/12 px-2 py-3">1. Escoge</div>
-            <div className="flex min-h-14 items-center justify-center rounded-2xl border border-[#d2528d]/55 bg-[#b23178]/14 px-2 py-3">2. Genera código</div>
-            <div className="flex min-h-14 items-center justify-center rounded-2xl border border-[#ecc643]/60 bg-[#ecc643]/14 px-2 py-3">3. Paga en caja o DaviPlata</div>
-          </div>
         </header>
 
         {editingPurchase && (
