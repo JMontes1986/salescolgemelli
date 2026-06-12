@@ -579,8 +579,8 @@ function RedeemPageComponent() {
     const renderActionButton = (purchase: Purchase) => {
         if (isSeller && !['paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
             return (
-                <div className="w-full rounded-md border border-dashed bg-muted/50 p-3 text-center text-sm text-muted-foreground">
-                    Esta compra debe estar confirmada antes de entregarla.
+                <div className="w-full rounded-md border border-amber-300 bg-amber-50 p-3 text-center text-sm font-semibold text-amber-900">
+                    No se ha realizado el pago de los productos. Dirijase a caja o pague a la llave Bre-B 3206766574.
                 </div>
             );
         }
@@ -802,6 +802,19 @@ function RedeemPageComponent() {
                                                 </div>
                                             </CardHeader>
                                             <CardContent>
+                                                {isSeller && purchase.status === 'pending' && (
+                                                    <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                                                        <div className="flex items-start gap-3">
+                                                            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                                                            <div>
+                                                                <h4 className="font-semibold">Pago pendiente</h4>
+                                                                <p className="mt-1 text-sm">
+                                                                    No se ha realizado el pago de los productos. Dirijase a caja o pague a la llave Bre-B <span className="font-mono font-bold">3206766574</span>.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <h4 className="font-semibold mb-2">Artículos Comprados:</h4>
                                                 <ul className="list-disc list-inside space-y-1 text-sm">
                                                     {purchase.items.map(item => {

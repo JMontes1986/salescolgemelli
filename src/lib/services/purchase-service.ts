@@ -273,10 +273,11 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
 }
 
 export async function getPurchaseByDeliveryCode(deliveryCode: string): Promise<Purchase | null> {
-  const purchase = await selectSingle<Purchase>('purchases', {
-    deliveryCode: `eq.${sanitizeRecordId(deliveryCode, 'El código adicional del QR')}`,
+  const purchases = await selectRows<Purchase>('purchases', {
+    deliveryCode: `ilike.${sanitizeRecordId(deliveryCode, 'El código adicional del QR')}`,
+    limit: 1,
   });
-  return purchase ? ensureReturnedFlags(purchase) : null;
+  return purchases[0] ? ensureReturnedFlags(purchases[0]) : null;
 }
 
 export async function getPurchasesByCedula(cedula: string): Promise<Purchase[]> {
