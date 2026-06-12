@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, Info, CheckCircle, AlertTriangle, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus, Camera, VideoOff } from "lucide-react";
-import { getPurchasesByCedula, getPurchaseById, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, getPurchaseByDeliveryCode } from '@/lib/services/purchase-service';
+import { getPurchasesByCedula, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, getPurchaseForDeliveryLookup } from '@/lib/services/purchase-service';
 import type { Purchase, User } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -83,15 +83,7 @@ function parsePurchaseLookup(searchCode: string, deliveryCode: string) {
 }
 
 async function getPurchaseByCodeOrDeliveryCode(searchCode: string, deliveryCode: string) {
-    if (searchCode) {
-        return getPurchaseById(searchCode);
-    }
-
-    if (deliveryCode) {
-        return getPurchaseByDeliveryCode(deliveryCode);
-    }
-
-    return null;
+    return getPurchaseForDeliveryLookup(searchCode || undefined, deliveryCode || undefined);
 }
 
 function RedeemPageComponent() {

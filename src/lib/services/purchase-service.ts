@@ -274,10 +274,45 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
 
 export async function getPurchaseByDeliveryCode(deliveryCode: string): Promise<Purchase | null> {
   const purchases = await selectRows<Purchase>('purchases', {
-    deliveryCode: `ilike.${sanitizeRecordId(deliveryCode, 'El código adicional del QR')}`,
+    '"deliveryCode"': `ilike.${sanitizeRecordId(deliveryCode, 'El código adicional del QR')}`,
     limit: 1,
   });
   return purchases[0] ? ensureReturnedFlags(purchases[0]) : null;
+}
+
+export async function getPurchaseForDeliveryLookup(
+  code?: string,
+  deliveryCode?: string,
+): Promise<Purchase | null> {
+  const safeCode = code ? sanitizeRecordId(code, 'La compra') : null;
+  const safeDeliveryCode = deliveryCode
+    ? sanitizeRecordId(deliveryCode, 'El código adicional del QR')
+    : null;
+
+  try {
+    const purchase = await callRpc<Purchase | null>('get_purchase_for_delivery_lookup', {
+      p_code: safeCode,
+      p_delivery_code: safeDeliveryCode,
+    });
+    return purchase ? ensureReturnedFlags(purchase) : null;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes('get_purchase_for_delivery_lookup')
+    ) {
+      if (safeCode) {
+        return getPurchaseById(safeCode);
+      }
+
+      if (safeDeliveryCode) {
+        return getPurchaseByDeliveryCode(safeDeliveryCode);
+      }
+
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function getPurchasesByCedula(cedula: string): Promise<Purchase[]> {

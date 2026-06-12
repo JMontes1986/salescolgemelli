@@ -97,6 +97,41 @@ create table if not exists public.purchases (
 alter table public.purchases add column if not exists "deliveryCode" text;
 alter table public.purchases add column if not exists "qrPayload" text;
 
+create or replace function public.get_purchase_for_delivery_lookup(
+  p_code text default null,
+  p_delivery_code text default null
+)
+returns public.purchases
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  lookup_code text := nullif(btrim(coalesce(p_code, '')), '');
+  lookup_delivery_code text := nullif(btrim(coalesce(p_delivery_code, '')), '');
+  found_purchase public.purchases;
+begin
+  if lookup_code is not null then
+    select *
+    into found_purchase
+    from public.purchases
+    where upper(id) = upper(lookup_code)
+    limit 1;
+  elsif lookup_delivery_code is not null then
+    select *
+    into found_purchase
+    from public.purchases
+    where upper("deliveryCode") = upper(lookup_delivery_code)
+    limit 1;
+  end if;
+
+  return found_purchase;
+end;
+$$;
+
+revoke all on function public.get_purchase_for_delivery_lookup(text, text) from public;
+grant execute on function public.get_purchase_for_delivery_lookup(text, text) to anon, authenticated;
+
 alter table public.purchases enable row level security;
 
 grant select, insert, update on public.purchases to authenticated;
