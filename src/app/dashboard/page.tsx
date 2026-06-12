@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -136,6 +137,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeSection, setActiveSection] = useState<'overview' | 'sales' | 'team'>('overview');
+  const router = useRouter();
   const { toast } = useToast();
 
   const loadData = useCallback(async () => {
@@ -241,7 +243,10 @@ export default function Dashboard() {
   const progressCircumference = 2 * Math.PI * 24;
   const progressStrokeOffset = progressCircumference - (progressCircumference * dashboardProgress) / 100;
   const topProducts = sortedProductSales.slice(0, 3);
-
+  const handleProductClick = useCallback((productId: string) => {
+   router.push(`/dashboard/products/${encodeURIComponent(productId)}`);
+  }, [router]);
+ 
   const handleExportCSV = () => {
     if (sortedProductSales.length === 0) {
         toast({
@@ -477,7 +482,18 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-3">
                     {sortedProductSales.slice(0, 8).map(([productId, data]) => (
-                      <div key={productId} className="rounded-2xl border bg-white p-4 transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-sm">
+                      <div
+                        key={productId}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleProductClick(productId)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            handleProductClick(productId);
+                          }
+                        }}
+                        className="rounded-2xl border bg-white p-4 transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
                             <p className="truncate font-medium">{data.name}</p>
