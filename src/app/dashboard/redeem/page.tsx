@@ -504,6 +504,16 @@ function RedeemPageComponent() {
         }));
     };
 
+    const getPendingDeliveryQuantities = (purchase: Purchase) => (
+        purchase.items.reduce<Record<string, number>>((acc, item) => {
+            const pendingQuantity = Math.max(item.quantity - (item.deliveredQuantity || 0), 0);
+            if (pendingQuantity > 0) {
+                acc[item.id] = pendingQuantity;
+            }
+            return acc;
+        }, {})
+    );
+
     const handleDeliverSelectedItems = async (purchase: Purchase) => {
         if (!currentUser) {
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudo identificar al usuario actual.' });
@@ -514,14 +524,19 @@ function RedeemPageComponent() {
         try {
             const updatedPurchase = await deliverPurchaseItems(
                 purchase.id,
-                deliveryQuantities[purchase.id] || {},
+                isSeller ? getPendingDeliveryQuantities(purchase) : deliveryQuantities[purchase.id] || {},
                 currentUser,
                 undefined
             );
             setSearchResults(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
             setRecentPurchases(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
             setDeliveryQuantities(prev => ({ ...prev, [purchase.id]: {} }));
-            toast({ title: 'Entrega registrada', description: 'Las unidades seleccionadas fueron marcadas como entregadas.' });
+            toast({
+                title: 'Entrega registrada',
+                description: isSeller
+                    ? 'Todos los productos pendientes fueron marcados como entregados.'
+                    : 'Las unidades seleccionadas fueron marcadas como entregadas.',
+            });
         } catch (error) {
             console.error('Error delivering purchase items:', error);
             toast({
@@ -544,6 +559,19 @@ function RedeemPageComponent() {
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Compra Entregada
                 </div>
+            );
+        }
+
+        if (isSeller) {
+            return (
+                <Button
+                    className="w-full bg-green-600 text-base font-semibold hover:bg-green-700"
+                    onClick={() => handleDeliverSelectedItems(purchase)}
+                    disabled={isUpdating}
+                >
+                    <PackageCheck className="mr-2 h-5 w-5" />
+                    {isUpdating ? 'Entregando...' : `Registrar entrega (${pendingTotal})`}
+                </Button>
             );
         }
 
@@ -807,12 +835,31 @@ function RedeemPageComponent() {
                                                         </div>
                                                     </div>
                                                 )}
-                                                <h4 className="font-semibold mb-2">Artículos Comprados:</h4>
-                                                <ul className="list-disc list-inside space-y-1 text-sm">
+                                                <h4 className="mb-3 font-semibold">
+                                                    {isSeller ? 'Productos a entregar:' : 'Artículos Comprados:'}
+                                                </h4>
+                                                <ul className={cn(isSeller ? "grid gap-3" : "list-disc list-inside space-y-1 text-sm")}>
                                                     {purchase.items.map(item => {
                                                         const delivered = item.deliveredQuantity || 0;
                                                         const pending = Math.max(item.quantity - delivered, 0);
                                                         const selected = getSelectedDeliveryQuantity(purchase.id, item.id);
+
+                                                        if (isSeller) {
+                                                            return (
+                                                                <li key={item.id} className="grid grid-cols-[88px_1fr] items-center gap-4 rounded-md border bg-background p-4">
+                                                                    <div className="flex aspect-square items-center justify-center rounded-md bg-primary text-5xl font-black leading-none text-primary-foreground">
+                                                                        {pending}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-xs font-semibold uppercase text-muted-foreground">Cantidad a entregar</p>
+                                                                        <p className="break-words text-2xl font-black leading-tight">{item.name}</p>
+                                                                        {pending <= 0 && (
+                                                                            <p className="mt-1 text-sm font-semibold text-green-700">Producto ya entregado</p>
+                                                                        )}
+                                                                    </div>
+                                                                </li>
+                                                            );
+                                                        }
 
                                                         return (
                                                             <li key={item.id} className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between">
@@ -839,7 +886,9 @@ function RedeemPageComponent() {
                                                         );
                                                     })}
                                                 </ul>
-                                                <p className="font-bold text-right mt-2">Total: {formatCurrency(purchase.total)}</p>
+                                                {!isSeller && (
+                                                    <p className="font-bold text-right mt-2">Total: {formatCurrency(purchase.total)}</p>
+                                                )}
                                             </CardContent>
                                             <CardFooter>
                                                 {renderActionButton(purchase)}
