@@ -109,7 +109,6 @@ export default function SelfServicePage() {
   const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
   const [searchCedula, setSearchCedula] = useState('');
-  const [searchCelular, setSearchCelular] = useState('');
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -337,15 +336,54 @@ export default function SelfServicePage() {
     }
   };
 
-  const handleSearchHistory = async () => {
-    const cedulaToSearch = searchCedula.trim() || activeCedula;
+  const handleActivateCedula = () => {
+    const cedulaToActivate = searchCedula.trim() || activeCedula;
 
-    const celularToSearch = searchCelular.trim() || celular.trim();
-
-    if (!cedulaToSearch || !celularToSearch) {
-        toast({ variant: "destructive", title: "Error", description: "Ingrese cédula y celular para consultar el perfil." });
+    if (!cedulaToActivate) {
+        toast({ variant: "destructive", title: "Error", description: "Ingrese la cédula para activar el perfil." });
         return;
     }
+
+    try {
+        const normalizedCedula = sanitizeCustomerIdentifier(cedulaToActivate, 'La cédula');
+        const isSwitchingCedula = normalizedCedula !== activeCedula;
+
+        setSearchCedula(normalizedCedula);
+        setCedula(normalizedCedula);
+
+        if (isSwitchingCedula) {
+          setPurchaseHistory([]);
+          setLastPurchase(null);
+          clearCart();
+        }
+
+        toast({
+          title: "Cédula lista",
+          description: `La cédula ${normalizedCedula} quedó activa para esta compra.`,
+        });
+    } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Revise los datos",
+          description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
+        });
+    }
+  }
+
+  const handleSearchHistory = async () => {
+    const cedulaToSearch = activeCedula || searchCedula.trim();
+    const celularToSearch = celular.trim();
+
+    if (!cedulaToSearch) {
+        toast({ variant: "destructive", title: "Error", description: "Ingrese la cédula para consultar el perfil." });
+        return;
+    }
+
+    if (!celularToSearch) {
+        toast({ variant: "destructive", title: "Falta celular", description: "Ingrese el celular al generar el código para consultar compras anteriores." });
+        return;
+    }
+
     let normalizedCedula: string;
     let normalizedCelular: string;
     try {
@@ -355,7 +393,7 @@ export default function SelfServicePage() {
         toast({
           variant: "destructive",
           title: "Revise los datos",
-          description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
+          description: error instanceof Error ? error.message : "Ingrese datos válidos.",
         });
         return;
     }
@@ -363,7 +401,6 @@ export default function SelfServicePage() {
     try {
         const history = await getSelfServicePurchasesByCustomer(normalizedCedula, normalizedCelular);
         setSearchCedula(normalizedCedula);
-        setSearchCelular(normalizedCelular);
         setCedula(normalizedCedula);
         setCelular(normalizedCelular);
         setPurchaseHistory(history);
@@ -406,7 +443,6 @@ export default function SelfServicePage() {
     setCart(cartItems);
     setEditingPurchase(purchase);
     setSearchCedula(purchase.cedula);
-    setSearchCelular(purchase.celular);
     setCedula(purchase.cedula);
     setCelular(purchase.celular);
     toast({ title: "Modo Edición", description: "Los artículos de su compra han sido cargados en el carrito." });
@@ -589,7 +625,7 @@ export default function SelfServicePage() {
                 ¿Cómo comprar por autogestión?
               </CardTitle>
               <CardDescription className="text-base font-semibold text-[#4b4b52]">
-                Primero ingrese su cédula para consultar compras anteriores y dejar listo el documento de esta compra. Después elija productos, genere el código y pague en caja o por DaviPlata/Bre-B.
+                Primero ingrese su cédula para dejar listo el documento de esta compra. Después elija productos, genere el código y pague en caja o por DaviPlata/Bre-B.
               </CardDescription>
             </div>
             <div className="rounded-2xl border border-[#0eb9c3]/35 bg-[#edfafa] px-4 py-3 text-sm font-bold text-[#126d74]">
@@ -601,7 +637,7 @@ export default function SelfServicePage() {
               <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-4">
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0eb9c3] text-lg font-black text-[#0f1720]">1</div>
                 <h3 className="font-black uppercase text-[#232328]">Ingrese cédula</h3>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Consulte sus pedidos y use el mismo documento para generar el código.</p>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Use el mismo documento para generar el código de pago.</p>
               </div>
               <div className="rounded-2xl border border-[#d2528d]/25 bg-[#fff5fa] p-4">
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#b23178] text-lg font-black text-white">2</div>
@@ -615,8 +651,8 @@ export default function SelfServicePage() {
               </div>
             </div>
             <div className="rounded-3xl border-2 border-[#0eb9c3]/30 bg-white p-4 shadow-inner">
-              <Label htmlFor="access-cedula" className="text-sm font-black uppercase tracking-wide text-[#126d74]">Consultar perfil</Label>
-              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto] lg:grid-cols-1 xl:grid-cols-[1fr_1fr_auto]">
+              <Label htmlFor="access-cedula" className="text-sm font-black uppercase tracking-wide text-[#126d74]">Activar cédula</Label>
+              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] lg:grid-cols-1 xl:grid-cols-[1fr_auto]">
                 <Input
                   id="access-cedula"
                   name="accessCedula"
@@ -627,23 +663,12 @@ export default function SelfServicePage() {
                   value={searchCedula}
                   onChange={(e) => setSearchCedula(e.target.value)}
                 />
-                <Input
-                  id="access-celular"
-                  name="accessCelular"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  className="h-12 rounded-2xl border-[#0eb9c3]/45 bg-white/95 text-base text-slate-950 placeholder:text-slate-500"
-                  placeholder="Celular"
-                  value={searchCelular}
-                  onChange={(e) => setSearchCelular(e.target.value)}
-                />
-                <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={isHistoryLoading}>
-                  {isHistoryLoading ? 'Consultando...' : 'Ingresar'}
+                <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleActivateCedula}>
+                  Ingresar
                 </Button>
               </div>
               <p className="mt-2 text-xs font-semibold text-[#5f686a]">
-                La cédula y el celular activan el perfil del padre de familia y cargan sus compras.
+                La cédula activa el perfil del padre de familia para esta compra.
               </p>
             </div>
           </CardContent>
