@@ -37,17 +37,17 @@ import { MOLLY_LOGO_URL } from '@/components/icons';
 
 const DEFAULT_DAVIPLATA_BREB_KEY = '3206766574';
 const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || DEFAULT_DAVIPLATA_BREB_KEY;
-const DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE = 'daviplata://pagar?llave={key}&valor={amount}&referencia={code}';
+const DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE = 'daviplata://pagar?llave={key}&referencia={code}';
 const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE;
 const DAVIPLATA_DEEP_LINK_PREFIX = 'daviplata:';
 
-const buildDaviplataPaymentHref = (paymentCode: string | null, total: number) => {
+const buildDaviplataPaymentHref = (paymentCode: string | null, _total: number) => {
   if (!DAVIPLATA_BREB_KEY || !DAVIPLATA_BREB_LINK_TEMPLATE) return '';
 
   return DAVIPLATA_BREB_LINK_TEMPLATE
     .replaceAll('{code}', encodeURIComponent(paymentCode || ''))
-    .replaceAll('{amount}', encodeURIComponent(String(total)))
-    .replaceAll('{amount_cents}', encodeURIComponent(String(Math.round(total * 100))))
+    .replaceAll('{amount}', '')
+    .replaceAll('{amount_cents}', '')
     .replaceAll('{key}', encodeURIComponent(DAVIPLATA_BREB_KEY));
 };
 
@@ -60,7 +60,6 @@ const buildDaviplataQrPayload = (paymentCode: string | null, total: number) => {
     'Pago por DaviPlata / Bre-B',
     DAVIPLATA_BREB_KEY ? `Llave: ${DAVIPLATA_BREB_KEY}` : 'Llave Bre-B no configurada',
     paymentCode ? `Referencia: ${paymentCode}` : '',
-    `Valor: ${formatCurrency(total)}`,
   ].filter(Boolean).join('\n');
 };
 
@@ -74,6 +73,17 @@ const buildDeliveryQrPayload = (purchase: Purchase) => (
 
 const buildDeliveryQrImageUrl = (purchase: Purchase) => buildQrImageUrl(buildDeliveryQrPayload(purchase));
 
+const getReservationExpiryLabel = (purchase?: Purchase | null) => {
+  if (!purchase?.reservationExpiresAt || purchase.status !== 'pending') return null;
+  const expiresAt = new Date(purchase.reservationExpiresAt);
+  if (Number.isNaN(expiresAt.getTime())) return null;
+
+  return new Intl.DateTimeFormat('es-CO', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(expiresAt);
+};
+
 const isDaviplataDeepLink = (href: string) => href.toLowerCase().startsWith(DAVIPLATA_DEEP_LINK_PREFIX);
 
 const isMobileDevice = () => (
@@ -86,6 +96,15 @@ const getPaymentLinkTarget = (href: string) => (
 
 const getPaymentLinkRel = (href: string) => (
   getPaymentLinkTarget(href) ? 'noopener noreferrer' : undefined
+);
+
+const toServerCartItems = (items: CartItem[]) => (
+  items.map(({ id, quantity }) => ({
+    id,
+    quantity,
+    name: '',
+    price: 0,
+  }))
 );
 
 type CartItem = {
@@ -143,9 +162,8 @@ export default function SelfServicePage() {
         ]);
         setProducts(fetchedProducts);
         setReservedQuantities(fetchedReservedQuantities);
-    } catch (error)
-        {
-        console.error("Error fetching products:", error);
+    } catch {
+        console.warn("No se pudieron cargar productos de autogestión.");
     } finally {
         if (showLoading) {
           setIsLoading(false);
@@ -280,7 +298,7 @@ export default function SelfServicePage() {
     setIsProcessing(true);
     
     try {
-        const updatedItems = cart.map(({ stock, ...item }) => item);
+        const updatedItems = toServerCartItems(cart);
         const updatedPurchase = await updatePendingPurchase(editingPurchase.id, updatedItems, {
           customerCedula: activeCedula || editingPurchase.cedula,
           customerCelular: editingPurchase.celular,
@@ -295,7 +313,7 @@ export default function SelfServicePage() {
         toast({ title: "Éxito", description: "Su compra ha sido actualizada correctamente." });
 
     } catch (error) {
-        console.error("Error updating purchase:", error);
+        console.warn("No se pudo actualizar la compra de autogestión.");
         toast({ variant: "destructive", title: "Error al Actualizar", description: (error as Error).message || "No se pudo actualizar la compra." });
     } finally {
         setIsProcessing(false);
@@ -323,8 +341,8 @@ export default function SelfServicePage() {
 
     const newPurchaseData: NewPurchase = {
         date: new Date().toLocaleString('es-CO'),
-        total: subtotal,
-        items: cart.map(({ stock, ...item }) => item),
+        total: 0,
+        items: toServerCartItems(cart),
         cedula: activeCedula,
         celular: normalizedCelular,
         status: 'pending', // Autogestión reserva disponibilidad y descuenta stock cuando el vendedor registra la entrega.
@@ -342,7 +360,7 @@ export default function SelfServicePage() {
         toast({ title: "Éxito", description: "Código de pago generado. La disponibilidad quedó reservada y la compra está pendiente de pago." });
         
     } catch (error) {
-        console.error("Error creating purchase:", error);
+        console.warn("No se pudo crear la compra de autogestión.");
         toast({ variant: "destructive", title: "Error en la Compra", description: (error as Error).message || "No se pudo generar el código de pago." });
     } finally {
         setIsProcessing(false);
@@ -420,6 +438,7 @@ export default function SelfServicePage() {
   const lastPurchaseDaviplataQrImageUrl = lastPurchase
     ? buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))
     : '';
+  const reservationExpiryLabel = getReservationExpiryLabel(lastPurchase);
   const getPurchaseStatusLabel = (status: Purchase['status']) => {
     switch (status) {
       case 'pending':
@@ -535,6 +554,11 @@ export default function SelfServicePage() {
                 <span className="text-sm font-semibold text-[#5f686a]">{lastPurchase.date}</span>
                 <span className="text-xl font-black text-[#b23178]">Total: {formatCurrency(lastPurchase.total)}</span>
               </div>
+              {getReservationExpiryLabel(lastPurchase) && (
+                <div className="rounded-2xl border border-[#ecc643]/45 bg-[#fff9df] p-3 text-sm font-bold text-[#5d4b10]">
+                  Reserva de inventario activa hasta las {getReservationExpiryLabel(lastPurchase)}. Después de esa hora el stock puede liberarse.
+                </div>
+              )}
               <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
                   <a
@@ -1062,6 +1086,11 @@ export default function SelfServicePage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Use el código {paymentCode} como referencia y pague exactamente {formatCurrency(paymentTotal)}.
               </p>
+              {reservationExpiryLabel && (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                  La reserva de inventario vence a las {reservationExpiryLabel}.
+                </p>
+              )}
               {DAVIPLATA_BREB_KEY ? (
                 <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs font-semibold">
                   Llave Bre-B DaviPlata del colegio: {DAVIPLATA_BREB_KEY}
@@ -1086,7 +1115,15 @@ export default function SelfServicePage() {
                     </ul>
                 </div>
                  <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t">
-                    <span>Total a Pagar:</span>
+                    <span>Subtotal confirmado:</span>
+                    <span>{formatCurrency(paymentTotal)}</span>
+                </div>
+                 <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Impuestos/cargos:</span>
+                    <span>{formatCurrency(0)}</span>
+                </div>
+                 <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t">
+                    <span>Total a pagar:</span>
                     <span>{formatCurrency(paymentTotal)}</span>
                 </div>
             </div>

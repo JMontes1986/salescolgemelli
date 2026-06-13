@@ -91,11 +91,19 @@ create table if not exists public.purchases (
   "sellerName" text,
   status text not null,
   "deliveryCode" text,
-  "qrPayload" text
+  "qrPayload" text,
+  "reservationExpiresAt" text
 );
 
 alter table public.purchases add column if not exists "deliveryCode" text;
 alter table public.purchases add column if not exists "qrPayload" text;
+alter table public.purchases add column if not exists "reservationExpiresAt" text;
+
+update public.purchases
+set "reservationExpiresAt" = (now() + interval '30 minutes')::text
+where "sellerId" is null
+  and status = 'pending'
+  and "reservationExpiresAt" is null;
 
 create table if not exists public."appSecrets" (
   key text primary key,
@@ -118,6 +126,9 @@ create index if not exists purchases_id_text_pattern_idx
 
 create index if not exists purchases_cedula_idx
   on public.purchases (cedula);
+
+create index if not exists purchases_self_service_reservation_idx
+  on public.purchases (status, "sellerId", "reservationExpiresAt");
 
 create index if not exists products_position_idx
   on public.products (position);
@@ -480,7 +491,13 @@ as $$
     from public.purchases purchase
     cross join jsonb_array_elements(purchase.items) as input(item)
     where purchase."sellerId" is null
-      and purchase.status in ('pending', 'partially-delivered')
+      and (
+        purchase.status = 'partially-delivered'
+        or (
+          purchase.status = 'pending'
+          and coalesce(nullif(purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+        )
+      )
       and (
         p_exclude_purchase_id is null
         or purchase.id <> trim(p_exclude_purchase_id)
@@ -776,7 +793,13 @@ begin
     from public.purchases reserved_purchase
     cross join jsonb_array_elements(reserved_purchase.items) as input(item)
     where reserved_purchase."sellerId" is null
-      and reserved_purchase.status in ('pending', 'partially-delivered')
+      and (
+        reserved_purchase.status = 'partially-delivered'
+        or (
+          reserved_purchase.status = 'pending'
+          and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+        )
+      )
       and trim(item->>'id') = normalized_item.id;
 
     if product_record.stock - reserved_quantity < normalized_item.quantity then
@@ -823,7 +846,8 @@ begin
     "sellerName",
     status,
     "deliveryCode",
-    "qrPayload"
+    "qrPayload",
+    "reservationExpiresAt"
   ) values (
     generated_id,
     now()::text,
@@ -835,7 +859,8 @@ begin
     null,
     'pending',
     delivery_code,
-    public.build_signed_delivery_qr_payload(generated_id, delivery_code)
+    public.build_signed_delivery_qr_payload(generated_id, delivery_code),
+    (now() + interval '30 minutes')::text
   ) returning * into saved_purchase;
 
   return saved_purchase;
@@ -901,6 +926,10 @@ begin
     raise exception 'Los datos del cliente no coinciden con esta compra.';
   end if;
 
+  if coalesce(nullif(purchase_record."reservationExpiresAt", '')::timestamptz, now() - interval '1 second') <= now() then
+    raise exception 'La reserva de esta compra expiró. Genere un nuevo código de pago.';
+  end if;
+
   for normalized_item in
     select
       trim(item->>'id') as id,
@@ -943,7 +972,13 @@ begin
     cross join jsonb_array_elements(reserved_purchase.items) as input(item)
     where reserved_purchase.id <> purchase_record.id
       and reserved_purchase."sellerId" is null
-      and reserved_purchase.status in ('pending', 'partially-delivered')
+      and (
+        reserved_purchase.status = 'partially-delivered'
+        or (
+          reserved_purchase.status = 'pending'
+          and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+        )
+      )
       and trim(item->>'id') = normalized_item.id;
 
     if product_record.stock - reserved_quantity < normalized_item.quantity then
@@ -965,7 +1000,8 @@ begin
   set
     date = now()::text,
     total = purchase_total,
-    items = verified_items
+    items = verified_items,
+    "reservationExpiresAt" = (now() + interval '30 minutes')::text
   where id = purchase_record.id
   returning * into purchase_record;
 
@@ -989,6 +1025,7 @@ declare
   purchase_record public.purchases%rowtype;
   item_record record;
   product_record public.products%rowtype;
+  reserved_quantity integer := 0;
 begin
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
     raise exception 'La compra tiene un identificador inválido.';
@@ -1012,8 +1049,16 @@ begin
       raise exception 'Esta compra ya ha sido confirmada o procesada.';
     end if;
 
+    if purchase_record."sellerId" is null
+      and coalesce(nullif(purchase_record."reservationExpiresAt", '')::timestamptz, now() - interval '1 second') <= now() then
+      raise exception 'La reserva de esta compra expiró. Genere un nuevo código de pago.';
+    end if;
+
     for item_record in
-      select trim(item->>'id') as id, sum((item->>'quantity')::integer) as quantity
+      select
+        trim(item->>'id') as id,
+        sum(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else null end) as quantity,
+        bool_and((item->>'quantity') ~ '^[0-9]+$') as quantities_valid
       from jsonb_array_elements(purchase_record.items) as input(item)
       group by trim(item->>'id')
     loop
@@ -1021,7 +1066,10 @@ begin
         raise exception 'La compra contiene un producto inválido.';
       end if;
 
-      if item_record.quantity is null or item_record.quantity < 1 or item_record.quantity > 99 then
+      if item_record.quantities_valid is not true
+        or item_record.quantity is null
+        or item_record.quantity < 1
+        or item_record.quantity > 99 then
         raise exception 'La compra contiene una cantidad inválida.';
       end if;
 
@@ -1034,7 +1082,27 @@ begin
         raise exception 'Producto con ID % no encontrado.', item_record.id;
       end if;
 
-      if product_record.stock < item_record.quantity then
+      select coalesce(sum(
+        greatest(
+          coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
+            - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
+          0
+        )
+      ), 0)::integer into reserved_quantity
+      from public.purchases reserved_purchase
+      cross join jsonb_array_elements(reserved_purchase.items) as input(item)
+      where reserved_purchase.id <> purchase_record.id
+        and reserved_purchase."sellerId" is null
+        and (
+          reserved_purchase.status = 'partially-delivered'
+          or (
+            reserved_purchase.status = 'pending'
+            and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+          )
+        )
+        and trim(item->>'id') = item_record.id;
+
+      if product_record.stock - reserved_quantity < item_record.quantity then
         raise exception 'Stock insuficiente para %.', product_record.name;
       end if;
 
@@ -1048,7 +1116,10 @@ begin
     end if;
 
     for item_record in
-      select trim(item->>'id') as id, sum((item->>'quantity')::integer) as quantity
+      select
+        trim(item->>'id') as id,
+        sum(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else null end) as quantity,
+        bool_and((item->>'quantity') ~ '^[0-9]+$') as quantities_valid
       from jsonb_array_elements(purchase_record.items) as input(item)
       group by trim(item->>'id')
     loop
@@ -1056,7 +1127,10 @@ begin
         raise exception 'La compra contiene un producto inválido.';
       end if;
 
-      if item_record.quantity is null or item_record.quantity < 1 or item_record.quantity > 99 then
+      if item_record.quantities_valid is not true
+        or item_record.quantity is null
+        or item_record.quantity < 1
+        or item_record.quantity > 99 then
         raise exception 'La compra contiene una cantidad inválida.';
       end if;
 
@@ -1086,7 +1160,12 @@ begin
   end if;
 
   update public.purchases
-  set status = p_target_status
+  set
+    status = p_target_status,
+    "reservationExpiresAt" = case
+      when p_target_status in ('paid', 'pre-sale-confirmed', 'delivered') then null
+      else "reservationExpiresAt"
+    end
   where id = purchase_record.id
   returning * into purchase_record;
 

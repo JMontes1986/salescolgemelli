@@ -136,8 +136,8 @@ function RedeemPageComponent() {
         try {
             const purchases = await getSelfServicePurchases();
             setRecentPurchases(purchases);
-        } catch (error) {
-            console.error("Error loading self-service purchases:", error);
+        } catch {
+            console.warn("No se pudieron cargar compras de autogestión.");
             showToast({
                 variant: 'destructive',
                 title: 'Error al cargar compras',
@@ -225,8 +225,8 @@ function RedeemPageComponent() {
                     ? 'Los productos de la compra ya están listos para revisar.'
                     : 'No se encontró una compra con el código leído.'
             });
-        } catch (error) {
-            console.error("Error searching scanned purchase:", error);
+        } catch {
+            console.warn("No se pudo buscar la compra desde el QR escaneado.");
             toast({
                 variant: 'destructive',
                 title: 'Error de Búsqueda',
@@ -299,8 +299,8 @@ function RedeemPageComponent() {
                 results = await getPurchasesByCelular(normalizedCelular);
             }
             setSearchResults(results);
-        } catch (error) {
-            console.error("Error searching purchases:", error);
+        } catch {
+            console.warn("No se pudo completar la búsqueda de compras.");
             toast({
                 variant: 'destructive',
                 title: 'Error de Búsqueda',
@@ -386,8 +386,8 @@ function RedeemPageComponent() {
                                 return;
                             }
                         }
-                    } catch (error) {
-                        console.warn('No se pudo leer el cuadro actual del QR.', error);
+                    } catch {
+                        console.warn('No se pudo leer el cuadro actual del QR.');
                     }
 
                     scannerFrameRef.current = requestAnimationFrame(scanFrame);
@@ -395,7 +395,7 @@ function RedeemPageComponent() {
 
                 scannerFrameRef.current = requestAnimationFrame(scanFrame);
             } catch (error) {
-                console.error('Error starting QR scanner:', error);
+                console.warn('No se pudo iniciar el escáner de QR.');
                 stopScanner();
                 setScannerError(
                     error instanceof Error
@@ -476,7 +476,7 @@ function RedeemPageComponent() {
             }
 
         } catch (error) {
-            console.error("Error updating purchase status:", error);
+            console.warn("No se pudo actualizar el estado de la compra.");
             toast({
                 variant: 'destructive',
                 title: 'Error de Actualización',
@@ -558,7 +558,7 @@ function RedeemPageComponent() {
                     : 'Las unidades seleccionadas fueron marcadas como entregadas.',
             });
         } catch (error) {
-            console.error('Error delivering purchase items:', error);
+            console.warn('No se pudo registrar la entrega de la compra.');
             toast({
                 variant: 'destructive',
                 title: 'Error de entrega',

@@ -64,7 +64,7 @@ function withDeliveryAccess(purchase: Purchase): Purchase {
   };
 }
 
-const purchaseSelectColumns = 'id,date,total,items,cedula,celular,"sellerId","sellerName",status,"deliveryCode","qrPayload"';
+const purchaseSelectColumns = 'id,date,total,items,cedula,celular,"sellerId","sellerName",status,"deliveryCode","qrPayload","reservationExpiresAt"';
 
 export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
   return purchases
