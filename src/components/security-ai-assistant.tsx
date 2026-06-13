@@ -24,6 +24,19 @@ type SecurityAuditorResponse = {
   detail?: string;
 };
 
+const SELF_SERVICE_SECURITY_EVIDENCE = [
+  "Estado real de /self-service en este checkout:",
+  "- No existe endpoint público de historial por cédula/celular en la UI; la pantalla pública solo muestra compras generadas durante la sesión actual.",
+  "- La función get_self_service_purchases_by_customer existe solo como compatibilidad SQL, pero el execute fue revocado para anon/authenticated y el servicio cliente devuelve error si alguien intenta usarla.",
+  "- La creación pública de compras no inserta directo en purchases: usa RPC create_self_service_purchase con security definer.",
+  "- El cliente envía solo id y quantity del carrito; Supabase vuelve a leer productos, disponibilidad, precio y stock antes de guardar.",
+  "- purchases revocó INSERT para anon; anon solo puede ejecutar create_self_service_purchase.",
+  "- El QR de entrega usa token HMAC con expiración y validación en get_purchase_for_delivery_lookup.",
+  "- El QR/enlace de pago DaviPlata no incluye el monto como parámetro; el total visible viene de la compra confirmada por Supabase.",
+  "- Las reservas de autogestión usan reservationExpiresAt con timeout de 30 minutos y el cálculo de disponibilidad ignora reservas vencidas.",
+  "- No hay tablas orders, order_items ni payment_logs en este esquema; el flujo actual usa purchases con items jsonb.",
+].join("\n");
+
 function getSurfaceFromPath(pathname: string) {
   if (pathname === "/self-service") {
     return "Autogestión pública";
@@ -58,7 +71,13 @@ function getSurfaceFromPath(pathname: string) {
 
 function getAutoPrompt(pathname: string) {
   if (pathname === "/self-service") {
-    return "Revisa la pantalla de autogestión como guardia activo. Prioriza: exposición de historial por cédula/celular, manipulación de carrito/precios, generación de códigos, QR de pago, entrega de productos, stock reservado y mensajes que puedan inducir pagos incorrectos. Devuelve un resumen breve con acciones inmediatas.";
+    return [
+      "Revisa la pantalla de autogestión como guardia activo.",
+      "Usa la evidencia de seguridad actual incluida en el contexto. No repitas como vulnerabilidad activa algo que el contexto indique como mitigado.",
+      "Si hay riesgo residual, descríbelo como residual y explica la condición concreta que faltaría verificar.",
+      "No recomiendes tablas o endpoints que no existan en este proyecto.",
+      "Devuelve un resumen breve con: mitigado, riesgo residual y siguiente acción concreta.",
+    ].join(" ");
   }
 
   if (pathname.startsWith("/dashboard")) {
@@ -100,6 +119,9 @@ export function SecurityAiAssistant() {
               priority: isSelfService
                 ? "public self-service, payments, QR codes, purchase history"
                 : "money-impacting dashboard workflow",
+              implementedControls: isSelfService
+                ? SELF_SERVICE_SECURITY_EVIDENCE
+                : undefined,
               privacy:
                 "Do not request or expose customer identifiers, API keys, tokens, or payment credentials.",
             },
