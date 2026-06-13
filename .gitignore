@@ -20,6 +20,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Archivos de entorno local
+.env
+.env.*
+!.env.example
 .env*.local
 .vscode/mcp.json
 

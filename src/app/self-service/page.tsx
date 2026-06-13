@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getSelfServicePurchasesByCustomer, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getSelfServicePurchasesByCustomer, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { addAuditLog } from '@/lib/services/audit-service';
@@ -110,6 +110,7 @@ export default function SelfServicePage() {
   const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
   const [searchCedula, setSearchCedula] = useState('');
+  const [searchCelular, setSearchCelular] = useState('');
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -349,26 +350,32 @@ export default function SelfServicePage() {
   const handleSearchHistory = async () => {
     const cedulaToSearch = searchCedula.trim() || activeCedula;
 
-    if (!cedulaToSearch) {
-        toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese la cédula para buscar." });
+    const celularToSearch = searchCelular.trim() || celular.trim();
+
+    if (!cedulaToSearch || !celularToSearch) {
+        toast({ variant: "destructive", title: "Error", description: "Ingrese cédula y celular para consultar el perfil." });
         return;
     }
     let normalizedCedula: string;
+    let normalizedCelular: string;
     try {
         normalizedCedula = sanitizeCustomerIdentifier(cedulaToSearch, 'La cédula');
+        normalizedCelular = sanitizeCustomerPhone(celularToSearch);
     } catch (error) {
         toast({
           variant: "destructive",
-          title: "Revise la cédula",
+          title: "Revise los datos",
           description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
         });
         return;
     }
     setIsHistoryLoading(true);
     try {
-        const history = await getSelfServicePurchasesByCustomer(normalizedCedula);
+        const history = await getSelfServicePurchasesByCustomer(normalizedCedula, normalizedCelular);
         setSearchCedula(normalizedCedula);
+        setSearchCelular(normalizedCelular);
         setCedula(normalizedCedula);
+        setCelular(normalizedCelular);
         setPurchaseHistory(history);
         clearCart();
         toast({
@@ -409,7 +416,9 @@ export default function SelfServicePage() {
     setCart(cartItems);
     setEditingPurchase(purchase);
     setSearchCedula(purchase.cedula);
+    setSearchCelular(purchase.celular);
     setCedula(purchase.cedula);
+    setCelular(purchase.celular);
     toast({ title: "Modo Edición", description: "Los artículos de su compra han sido cargados en el carrito." });
   }
 
@@ -617,7 +626,7 @@ export default function SelfServicePage() {
             </div>
             <div className="rounded-3xl border-2 border-[#0eb9c3]/30 bg-white p-4 shadow-inner">
               <Label htmlFor="access-cedula" className="text-sm font-black uppercase tracking-wide text-[#126d74]">Consultar perfil</Label>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto] lg:grid-cols-1 xl:grid-cols-[1fr_1fr_auto]">
                 <Input
                   id="access-cedula"
                   name="accessCedula"
@@ -628,12 +637,23 @@ export default function SelfServicePage() {
                   value={searchCedula}
                   onChange={(e) => setSearchCedula(e.target.value)}
                 />
+                <Input
+                  id="access-celular"
+                  name="accessCelular"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className="h-12 rounded-2xl border-[#0eb9c3]/45 bg-white/95 text-base text-slate-950 placeholder:text-slate-500"
+                  placeholder="Celular"
+                  value={searchCelular}
+                  onChange={(e) => setSearchCelular(e.target.value)}
+                />
                 <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={isHistoryLoading}>
                   {isHistoryLoading ? 'Consultando...' : 'Ingresar'}
                 </Button>
               </div>
               <p className="mt-2 text-xs font-semibold text-[#5f686a]">
-                La cédula activa el perfil del padre de familia y carga sus compras.
+                La cédula y el celular activan el perfil del padre de familia y cargan sus compras.
               </p>
             </div>
           </CardContent>
