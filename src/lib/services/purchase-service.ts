@@ -10,6 +10,7 @@ const MAX_QUANTITY_PER_ITEM = 99;
 const recordIdPattern = /^[0-9A-Za-z_-]{1,80}$/;
 const customerIdPattern = /^[0-9A-Za-z.-]{4,30}$/;
 const colombianPhonePattern = /^[0-9+()\s-]{7,20}$/;
+const signedQrTokenPattern = /^[0-9A-Za-z_-]{20,}\.[0-9A-Za-z_-]{32,}$/;
 
 type PurchaseCartInput = Pick<CartItem, 'id' | 'quantity'> & Partial<Pick<CartItem, 'name' | 'price'>>;
 
@@ -117,6 +118,16 @@ function sanitizeRecordId(value: string, fieldName: string) {
 
   if (!recordIdPattern.test(normalized)) {
     throw new Error(`${fieldName} tiene un identificador inválido.`);
+  }
+
+  return normalized;
+}
+
+function sanitizeSignedQrToken(value: string) {
+  const normalized = String(value ?? '').trim();
+
+  if (!signedQrTokenPattern.test(normalized)) {
+    throw new Error('El QR firmado no tiene un formato válido.');
   }
 
   return normalized;
@@ -301,16 +312,19 @@ export async function getPurchaseByDeliveryCode(deliveryCode: string): Promise<P
 export async function getPurchaseForDeliveryLookup(
   code?: string,
   deliveryCode?: string,
+  signedToken?: string,
 ): Promise<Purchase | null> {
   const safeCode = code ? sanitizeRecordId(code, 'La compra') : null;
   const safeDeliveryCode = deliveryCode
     ? sanitizeRecordId(deliveryCode, 'El código adicional del QR')
     : null;
+  const safeSignedToken = signedToken ? sanitizeSignedQrToken(signedToken) : null;
 
   try {
     const purchase = await callRpc<Purchase | null>('get_purchase_for_delivery_lookup', {
       p_code: safeCode,
       p_delivery_code: safeDeliveryCode,
+      ...(safeSignedToken ? { p_token: safeSignedToken } : {}),
     });
     return purchase ? ensureReturnedFlags(purchase) : null;
   } catch (error) {
@@ -327,6 +341,10 @@ export async function getPurchaseForDeliveryLookup(
       }
 
       return null;
+    }
+
+    if (error instanceof Error && error.message.includes('El QR')) {
+      throw error;
     }
 
     throw error;
@@ -366,31 +384,9 @@ export async function getSelfServicePurchasesByCustomer(
   cedula: string,
   celular: string,
 ): Promise<Purchase[]> {
-  const safeCedula = sanitizeCustomerIdentifier(cedula, 'La cédula');
-  const safeCelular = sanitizeCustomerPhone(celular);
-
-  try {
-    const purchases = await callRpc<Purchase[]>('get_self_service_purchases_by_customer', {
-      p_cedula: safeCedula,
-      p_celular: safeCelular,
-    });
-    const sortedPurchases = sortByNewest(purchases.map(ensureReturnedFlags));
-
-    await addAuditLog({
-      userId: safeCedula,
-      userName: 'Cliente (Autogestión)',
-      action: 'SELF_SERVICE_HISTORY',
-      details: `Cliente consultó historial de autogestión. Coincidencias: ${sortedPurchases.length}.`,
-    });
-
-    return sortedPurchases;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('get_self_service_purchases_by_customer')) {
-      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql y recarga el esquema para cargar compras por cédula y celular.');
-    }
-
-    throw error;
-  }
+  sanitizeCustomerIdentifier(cedula, 'La cédula');
+  sanitizeCustomerPhone(celular);
+  throw new Error('El historial público por cédula y celular fue deshabilitado por seguridad. Consulte el estado con el código de compra o desde el dashboard autenticado.');
 }
 
 export async function getPurchasesByCelular(celular: string): Promise<Purchase[]> {
@@ -435,14 +431,38 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
 
 export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchase> {
   const isSelfService = !purchase.sellerId && !purchase.sellerName;
+  if (isSelfService) {
+    const cedula = sanitizeCustomerIdentifier(purchase.cedula, 'La cédula');
+    const celular = sanitizeCustomerPhone(purchase.celular);
+
+    try {
+      const savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_self_service_purchase', {
+        p_items: normalizeCartInput(purchase.items),
+        p_cedula: cedula,
+        p_celular: celular,
+      }));
+
+      await addAuditLog({
+        userId: savedPurchase.cedula,
+        userName: 'Cliente (Autogestión)',
+        action: 'SELF_SERVICE_PURCHASE',
+        details: `Nueva compra de autogestión ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}.`,
+      });
+
+      return savedPurchase;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('create_self_service_purchase')) {
+        throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para crear compras de autogestión con precios, stock y QR firmados desde la base.');
+      }
+
+      throw error;
+    }
+  }
+
   const verifiedCart = await buildVerifiedCartItems(
     purchase.items,
-    isSelfService ? 'self-service' : 'presale'
+    'presale'
   );
-  if (isSelfService) {
-    const reservedQuantities = await getSelfServiceReservations();
-    assertAvailableStock(verifiedCart.items, verifiedCart.productMap, reservedQuantities);
-  }
 
   const cedula = sanitizeCustomerIdentifier(purchase.cedula, 'La cédula');
   const celular = sanitizeCustomerPhone(purchase.celular);
@@ -469,19 +489,17 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     items: itemsToSave,
     cedula,
     celular,
-    sellerId: isSelfService ? undefined : purchase.sellerId,
-    sellerName: isSelfService ? undefined : purchase.sellerName,
-    status: isSelfService ? 'pending' : 'pre-sale',
+    sellerId: purchase.sellerId,
+    sellerName: purchase.sellerName,
+    status: 'pre-sale',
   });
   await insertRowMinimal('purchases', savedPurchase);
 
   await addAuditLog({
-    userId: isSelfService ? savedPurchase.cedula : (savedPurchase.sellerId ?? 'system'),
-    userName: isSelfService ? 'Cliente (Autogestión)' : (savedPurchase.sellerName ?? 'Sistema'),
-    action: isSelfService ? 'SELF_SERVICE_PURCHASE' : 'TICKET_ISSUE',
-    details: isSelfService
-      ? `Nueva compra de autogestión ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}.`
-      : `Preventa ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}. Cliente: ${savedPurchase.cedula}.`,
+    userId: savedPurchase.sellerId ?? 'system',
+    userName: savedPurchase.sellerName ?? 'Sistema',
+    action: 'TICKET_ISSUE',
+    details: `Preventa ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}. Cliente: ${savedPurchase.cedula}.`,
   });
 
   return savedPurchase;
@@ -699,8 +717,10 @@ async function deliverPurchaseItemsForLookup(
   purchaseId: string,
   deliveryQuantities: Record<string, number>,
   currentUser: User,
+  signedToken?: string,
 ): Promise<Purchase> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  const safeSignedToken = signedToken ? sanitizeSignedQrToken(signedToken) : null;
   const safeDeliveryQuantities = Object.entries(deliveryQuantities).reduce<Record<string, number>>(
     (acc, [productId, quantity]) => {
       const safeProductId = sanitizeRecordId(productId, 'El producto');
@@ -721,6 +741,7 @@ async function deliverPurchaseItemsForLookup(
     p_delivery_quantities: safeDeliveryQuantities,
     p_user_id: currentUser.id,
     p_user_name: currentUser.name,
+    ...(safeSignedToken ? { p_token: safeSignedToken } : {}),
   });
 
   return ensureReturnedFlags(updatedPurchase);
@@ -731,12 +752,13 @@ export async function deliverPurchaseItems(
   purchaseId: string,
   deliveryQuantities: Record<string, number>,
   currentUser: User,
-  expectedDeliveryCode?: string
+  expectedDeliveryCode?: string,
+  signedToken?: string
 ): Promise<Purchase> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
 
   if (currentUser.role === 'seller') {
-    return deliverPurchaseItemsForLookup(safePurchaseId, deliveryQuantities, currentUser);
+    return deliverPurchaseItemsForLookup(safePurchaseId, deliveryQuantities, currentUser, signedToken);
   }
 
   let purchase = await getPurchaseById(safePurchaseId);

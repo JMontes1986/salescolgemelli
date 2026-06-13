@@ -97,6 +97,19 @@ create table if not exists public.purchases (
 alter table public.purchases add column if not exists "deliveryCode" text;
 alter table public.purchases add column if not exists "qrPayload" text;
 
+create table if not exists public."appSecrets" (
+  key text primary key,
+  value text not null,
+  "createdAt" text not null default now()::text
+);
+
+alter table public."appSecrets" enable row level security;
+revoke all on public."appSecrets" from anon, authenticated;
+
+insert into public."appSecrets" (key, value)
+values ('delivery_qr_hmac', encode(gen_random_bytes(32), 'hex'))
+on conflict (key) do nothing;
+
 create index if not exists purchases_status_seller_id_idx
   on public.purchases (status, "sellerId");
 
@@ -109,9 +122,152 @@ create index if not exists purchases_cedula_idx
 create index if not exists products_position_idx
   on public.products (position);
 
+create or replace function public.base64url_encode(p_value bytea)
+returns text
+language sql
+immutable
+as $$
+  select rtrim(translate(encode(p_value, 'base64'), '+/', '-_'), '=');
+$$;
+
+create or replace function public.base64url_decode(p_value text)
+returns bytea
+language plpgsql
+immutable
+as $$
+declare
+  normalized_value text := translate(coalesce(p_value, ''), '-_', '+/');
+  padding_length integer;
+begin
+  padding_length := (4 - length(normalized_value) % 4) % 4;
+  return decode(normalized_value || repeat('=', padding_length), 'base64');
+end;
+$$;
+
+create or replace function public.get_delivery_qr_secret()
+returns bytea
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  secret_value text;
+begin
+  select value
+  into secret_value
+  from public."appSecrets"
+  where key = 'delivery_qr_hmac';
+
+  if secret_value is null or secret_value !~ '^[0-9a-f]{64}$' then
+    raise exception 'No está configurada la firma segura de QR.';
+  end if;
+
+  return decode(secret_value, 'hex');
+end;
+$$;
+
+revoke all on function public.get_delivery_qr_secret() from public;
+
+create or replace function public.sign_delivery_qr_payload(p_encoded_payload text)
+returns text
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select public.base64url_encode(
+    hmac(convert_to(coalesce(p_encoded_payload, ''), 'UTF8'), public.get_delivery_qr_secret(), 'sha256'::text)
+  );
+$$;
+
+revoke all on function public.sign_delivery_qr_payload(text) from public;
+
+create or replace function public.build_signed_delivery_qr_payload(
+  p_purchase_id text,
+  p_delivery_code text,
+  p_expires_at timestamptz default now() + interval '10 minutes'
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  payload text;
+  encoded_payload text;
+  signature text;
+begin
+  if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
+    raise exception 'La compra tiene un identificador inválido.';
+  end if;
+
+  if p_delivery_code is null or trim(p_delivery_code) !~ '^[0-9A-Za-z_-]{1,80}$' then
+    raise exception 'El código adicional del QR es inválido.';
+  end if;
+
+  payload := jsonb_build_object(
+    'orderId', trim(p_purchase_id),
+    'deliveryCode', trim(p_delivery_code),
+    'exp', floor(extract(epoch from p_expires_at))::bigint
+  )::text;
+  encoded_payload := public.base64url_encode(convert_to(payload, 'UTF8'));
+  signature := public.sign_delivery_qr_payload(encoded_payload);
+
+  return '/dashboard/redeem?token=' || encoded_payload || '.' || signature;
+end;
+$$;
+
+revoke all on function public.build_signed_delivery_qr_payload(text, text, timestamptz) from public;
+
+create or replace function public.verify_signed_delivery_qr_token(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  token_parts text[];
+  encoded_payload text;
+  provided_signature text;
+  expected_signature text;
+  payload jsonb;
+  expires_at bigint;
+begin
+  if p_token is null or trim(p_token) !~ '^[0-9A-Za-z_-]{20,}\.[0-9A-Za-z_-]{32,}$' then
+    raise exception 'El QR firmado no tiene un formato válido.';
+  end if;
+
+  token_parts := string_to_array(trim(p_token), '.');
+  if array_length(token_parts, 1) <> 2 then
+    raise exception 'El QR firmado no tiene un formato válido.';
+  end if;
+
+  encoded_payload := token_parts[1];
+  provided_signature := token_parts[2];
+  expected_signature := public.sign_delivery_qr_payload(encoded_payload);
+
+  if provided_signature <> expected_signature then
+    raise exception 'La firma del QR no es válida.';
+  end if;
+
+  payload := convert_from(public.base64url_decode(encoded_payload), 'UTF8')::jsonb;
+  expires_at := (payload->>'exp')::bigint;
+
+  if expires_at is null or expires_at < floor(extract(epoch from now()))::bigint then
+    raise exception 'El QR de entrega expiró. Digite el código manualmente o regenere el comprobante.';
+  end if;
+
+  return payload;
+end;
+$$;
+
+revoke all on function public.verify_signed_delivery_qr_token(text) from public;
+
+drop function if exists public.get_purchase_for_delivery_lookup(text, text);
+
 create or replace function public.get_purchase_for_delivery_lookup(
   p_code text default null,
-  p_delivery_code text default null
+  p_delivery_code text default null,
+  p_token text default null
 )
 returns public.purchases
 language plpgsql
@@ -121,9 +277,29 @@ as $$
 declare
   lookup_code text := nullif(btrim(coalesce(p_code, '')), '');
   lookup_delivery_code text := nullif(btrim(coalesce(p_delivery_code, '')), '');
+  lookup_token text := nullif(btrim(coalesce(p_token, '')), '');
+  token_payload jsonb;
   found_purchase public.purchases;
 begin
-  if lookup_code is not null then
+  if lookup_token is not null then
+    token_payload := public.verify_signed_delivery_qr_token(lookup_token);
+    lookup_code := nullif(btrim(coalesce(token_payload->>'orderId', '')), '');
+    lookup_delivery_code := nullif(btrim(coalesce(token_payload->>'deliveryCode', '')), '');
+
+    if lookup_code is null
+      or lookup_code !~ '^[0-9A-Za-z_-]{1,80}$'
+      or lookup_delivery_code is null
+      or lookup_delivery_code !~ '^[0-9A-Za-z_-]{1,80}$' then
+      raise exception 'El QR firmado no corresponde a una compra válida.';
+    end if;
+
+    select *
+    into found_purchase
+    from public.purchases
+    where id = lookup_code
+      and "deliveryCode" = lookup_delivery_code
+    limit 1;
+  elsif lookup_code is not null then
     select *
     into found_purchase
     from public.purchases
@@ -141,13 +317,13 @@ begin
 end;
 $$;
 
-revoke all on function public.get_purchase_for_delivery_lookup(text, text) from public;
-grant execute on function public.get_purchase_for_delivery_lookup(text, text) to anon, authenticated;
+revoke all on function public.get_purchase_for_delivery_lookup(text, text, text) from public;
+grant execute on function public.get_purchase_for_delivery_lookup(text, text, text) to anon, authenticated;
 
 alter table public.purchases enable row level security;
 
 grant select, insert, update on public.purchases to authenticated;
-grant insert on public.purchases to anon;
+revoke insert on public.purchases from anon;
 
 create table if not exists public.returns (
   id text primary key default gen_random_uuid()::text,
@@ -297,8 +473,8 @@ as $$
     select
       trim(item->>'id') as product_id,
       greatest(
-        coalesce((item->>'quantity')::integer, 0)
-          - coalesce((item->>'deliveredQuantity')::integer, 0),
+        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
+          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
         0
       ) as pending_quantity
     from public.purchases purchase
@@ -347,7 +523,7 @@ as $$
 $$;
 
 revoke all on function public.get_self_service_purchases_by_customer(text, text) from public;
-grant execute on function public.get_self_service_purchases_by_customer(text, text) to anon, authenticated;
+revoke execute on function public.get_self_service_purchases_by_customer(text, text) from anon, authenticated;
 
 create or replace function public.create_pos_purchase_with_stock(
   p_items jsonb,
@@ -510,6 +686,165 @@ $$;
 revoke all on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) from public;
 grant execute on function public.create_pos_purchase(jsonb, text, text, text, text, text, text) to authenticated;
 
+create or replace function public.create_self_service_purchase(
+  p_items jsonb,
+  p_cedula text,
+  p_celular text
+)
+returns public.purchases
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_item record;
+  product_record public.products%rowtype;
+  verified_items jsonb := '[]'::jsonb;
+  first_item_name text := '';
+  first_item_initial text := 'X';
+  generated_id text;
+  next_count integer;
+  purchase_total numeric := 0;
+  delivery_code text;
+  saved_purchase public.purchases%rowtype;
+  reserved_quantity integer := 0;
+  safe_cedula text := btrim(coalesce(p_cedula, ''));
+  safe_celular text := btrim(coalesce(p_celular, ''));
+begin
+  if safe_cedula !~ '^[0-9A-Za-z.-]{4,30}$' then
+    raise exception 'La cédula no tiene un formato válido.';
+  end if;
+
+  if safe_celular !~ '^[0-9+()[:space:]-]{7,20}$' then
+    raise exception 'El celular no tiene un formato válido.';
+  end if;
+
+  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'Debe seleccionar al menos un producto.';
+  end if;
+
+  if jsonb_array_length(p_items) > 30 then
+    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+  end if;
+
+  for normalized_item in
+    select
+      trim(item->>'id') as id,
+      sum(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else null end) as quantity,
+      bool_and((item->>'quantity') ~ '^[0-9]+$') as quantities_valid,
+      min(ord) as first_position
+    from jsonb_array_elements(p_items) with ordinality as input(item, ord)
+    group by trim(item->>'id')
+    order by min(ord)
+  loop
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+      raise exception 'La compra contiene un producto inválido.';
+    end if;
+
+    if normalized_item.quantities_valid is not true
+      or normalized_item.quantity is null
+      or normalized_item.quantity < 1
+      or normalized_item.quantity > 99 then
+      raise exception 'La compra contiene una cantidad inválida.';
+    end if;
+
+    select * into product_record
+    from public.products
+    where id::text = normalized_item.id
+    for update;
+
+    if not found then
+      raise exception 'Producto con ID % no encontrado.', normalized_item.id;
+    end if;
+
+    if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
+      and not coalesce(product_record.availability, '{}'::text[]) @> array['self-service']::text[] then
+      raise exception '% no está disponible para autogestión.', product_record.name;
+    end if;
+
+    if product_record.price < 0 then
+      raise exception '% tiene un precio inválido.', product_record.name;
+    end if;
+
+    select coalesce(sum(
+      greatest(
+        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
+          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
+        0
+      )
+    ), 0)::integer into reserved_quantity
+    from public.purchases reserved_purchase
+    cross join jsonb_array_elements(reserved_purchase.items) as input(item)
+    where reserved_purchase."sellerId" is null
+      and reserved_purchase.status in ('pending', 'partially-delivered')
+      and trim(item->>'id') = normalized_item.id;
+
+    if product_record.stock - reserved_quantity < normalized_item.quantity then
+      raise exception 'Stock insuficiente para %.', product_record.name;
+    end if;
+
+    if first_item_name = '' then
+      first_item_name := product_record.name;
+    end if;
+
+    purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
+    verified_items := verified_items || jsonb_build_array(jsonb_build_object(
+      'id', product_record.id::text,
+      'name', product_record.name,
+      'price', product_record.price,
+      'quantity', normalized_item.quantity,
+      'returned', false,
+      'deliveredQuantity', 0
+    ));
+  end loop;
+
+  first_item_initial := upper(substring(first_item_name from 1 for 1));
+  if first_item_initial !~ '^[A-Z]$' then
+    first_item_initial := 'X';
+  end if;
+
+  insert into public.counters (id, count)
+  values ('preSaleCounter', 1)
+  on conflict (id) do update
+    set count = public.counters.count + 1
+  returning count into next_count;
+
+  generated_id := 'PV' || first_item_initial || lpad(next_count::text, 4, '0');
+  delivery_code := upper(substr(encode(gen_random_bytes(8), 'hex'), 1, 8));
+
+  insert into public.purchases (
+    id,
+    date,
+    total,
+    items,
+    cedula,
+    celular,
+    "sellerId",
+    "sellerName",
+    status,
+    "deliveryCode",
+    "qrPayload"
+  ) values (
+    generated_id,
+    now()::text,
+    purchase_total,
+    verified_items,
+    safe_cedula,
+    safe_celular,
+    null,
+    null,
+    'pending',
+    delivery_code,
+    public.build_signed_delivery_qr_payload(generated_id, delivery_code)
+  ) returning * into saved_purchase;
+
+  return saved_purchase;
+end;
+$$;
+
+revoke all on function public.create_self_service_purchase(jsonb, text, text) from public;
+grant execute on function public.create_self_service_purchase(jsonb, text, text) to anon, authenticated;
+
 create or replace function public.update_self_service_pending_purchase(
   p_purchase_id text,
   p_items jsonb,
@@ -599,8 +934,8 @@ begin
 
     select coalesce(sum(
       greatest(
-        coalesce((item->>'quantity')::integer, 0)
-          - coalesce((item->>'deliveredQuantity')::integer, 0),
+        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
+          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
         0
       )
     ), 0)::integer into reserved_quantity
@@ -762,11 +1097,14 @@ $$;
 revoke all on function public.update_purchase_status_with_stock(text, text) from public;
 grant execute on function public.update_purchase_status_with_stock(text, text) to authenticated;
 
+drop function if exists public.deliver_purchase_items_for_lookup(text, jsonb, text, text);
+
 create or replace function public.deliver_purchase_items_for_lookup(
   p_purchase_id text,
   p_delivery_quantities jsonb,
   p_user_id text default 'system',
-  p_user_name text default 'Sistema'
+  p_user_name text default 'Sistema',
+  p_token text default null
 )
 returns public.purchases
 language plpgsql
@@ -784,9 +1122,22 @@ declare
   moved_units integer := 0;
   all_delivered boolean := true;
   next_status text;
+  lookup_token text := nullif(btrim(coalesce(p_token, '')), '');
+  token_payload jsonb;
 begin
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
     raise exception 'La compra tiene un identificador inválido.';
+  end if;
+
+  if auth.uid() is null then
+    if lookup_token is null then
+      raise exception 'Se requiere un QR firmado vigente para registrar entregas desde una sesión local.';
+    end if;
+
+    token_payload := public.verify_signed_delivery_qr_token(lookup_token);
+    if nullif(btrim(coalesce(token_payload->>'orderId', '')), '') <> trim(p_purchase_id) then
+      raise exception 'El QR firmado no corresponde a esta compra.';
+    end if;
   end if;
 
   if jsonb_typeof(coalesce(p_delivery_quantities, '{}'::jsonb)) <> 'object' then
@@ -801,6 +1152,11 @@ begin
 
   if not found then
     raise exception 'Compra no encontrada.';
+  end if;
+
+  if auth.uid() is null
+    and nullif(btrim(coalesce(token_payload->>'deliveryCode', '')), '') <> purchase_record."deliveryCode" then
+    raise exception 'El QR firmado no corresponde a esta compra.';
   end if;
 
   if purchase_record.status = 'pending' then
@@ -871,8 +1227,8 @@ begin
 end;
 $$;
 
-revoke all on function public.deliver_purchase_items_for_lookup(text, jsonb, text, text) from public;
-grant execute on function public.deliver_purchase_items_for_lookup(text, jsonb, text, text) to anon, authenticated;
+revoke all on function public.deliver_purchase_items_for_lookup(text, jsonb, text, text, text) from public;
+grant execute on function public.deliver_purchase_items_for_lookup(text, jsonb, text, text, text) to anon, authenticated;
 
 alter table public.products enable row level security;
 
@@ -933,36 +1289,6 @@ create policy "dashboard_purchases_update"
   to authenticated
   using (true)
   with check (true);
-
-create policy "self_service_pre_sale_insert"
-  on public.purchases
-  for insert
-  to anon, authenticated
-  with check (
-    id like 'PV%'
-    and status = 'pre-sale'
-    and coalesce(cedula, '') <> ''
-    and coalesce(celular, '') <> ''
-    and "sellerId" is null
-    and "sellerName" is null
-    and total >= 0
-    and jsonb_typeof(items) = 'array'
-  );
-
-create policy "self_service_purchase_insert"
-  on public.purchases
-  for insert
-  to anon, authenticated
-  with check (
-    id like 'PV%'
-    and status = 'pending'
-    and coalesce(cedula, '') <> ''
-    and coalesce(celular, '') <> ''
-    and "sellerId" is null
-    and "sellerName" is null
-    and total >= 0
-    and jsonb_typeof(items) = 'array'
-  );
 
 drop policy if exists "dashboard_returns_select" on public.returns;
 drop policy if exists "dashboard_returns_insert" on public.returns;

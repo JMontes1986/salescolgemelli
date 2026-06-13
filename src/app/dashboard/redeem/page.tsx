@@ -60,12 +60,14 @@ function parsePurchaseLookup(searchCode: string, deliveryCode: string) {
     const rawCode = searchCode.trim();
     let normalizedCode = rawCode.toUpperCase();
     let normalizedDeliveryCode = deliveryCode.trim().toUpperCase();
+    let signedToken = '';
 
     if (rawCode) {
         try {
             const parsedUrl = new URL(rawCode, window.location.origin);
             const codeFromQr = parsedUrl.searchParams.get('code')?.trim();
             const deliveryFromQr = parsedUrl.searchParams.get('delivery')?.trim();
+            const tokenFromQr = parsedUrl.searchParams.get('token')?.trim();
 
             if (codeFromQr) {
                 normalizedCode = codeFromQr.toUpperCase();
@@ -74,28 +76,35 @@ function parsePurchaseLookup(searchCode: string, deliveryCode: string) {
             if (deliveryFromQr && !normalizedDeliveryCode) {
                 normalizedDeliveryCode = deliveryFromQr.toUpperCase();
             }
+
+            if (tokenFromQr) {
+                signedToken = tokenFromQr;
+                normalizedCode = '';
+                normalizedDeliveryCode = '';
+            }
         } catch {
             // The input is a plain purchase code, not a URL payload.
         }
     }
 
-    return { normalizedCode, normalizedDeliveryCode };
+    return { normalizedCode, normalizedDeliveryCode, signedToken };
 }
 
-async function getPurchaseByCodeOrDeliveryCode(searchCode: string, deliveryCode: string) {
-    return getPurchaseForDeliveryLookup(searchCode || undefined, deliveryCode || undefined);
+async function getPurchaseByCodeOrDeliveryCode(searchCode: string, deliveryCode: string, signedToken?: string) {
+    return getPurchaseForDeliveryLookup(searchCode || undefined, deliveryCode || undefined, signedToken || undefined);
 }
 
 function RedeemPageComponent() {
     const searchParams = useSearchParams();
     const codeFromUrl = searchParams.get('code');
     const deliveryCodeFromUrl = searchParams.get('delivery');
+    const tokenFromUrl = searchParams.get('token');
     const { currentUser } = useAuth();
     const isSeller = currentUser?.role === 'seller';
 
     const [searchCedula, setSearchCedula] = useState('');
     const [searchCelular, setSearchCelular] = useState('');
-    const [searchCode, setSearchCode] = useState(codeFromUrl || '');
+    const [searchCode, setSearchCode] = useState(codeFromUrl || (tokenFromUrl ? `/dashboard/redeem?token=${tokenFromUrl}` : ''));
     const [deliveryCode, setDeliveryCode] = useState(deliveryCodeFromUrl || '');
     const [searchResults, setSearchResults] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -103,6 +112,7 @@ function RedeemPageComponent() {
     const [recentPurchases, setRecentPurchases] = useState<Purchase[]>([]);
     const [isRecentLoading, setIsRecentLoading] = useState(true);
     const [searchPerformed, setSearchPerformed] = useState(false);
+    const [purchaseQrTokens, setPurchaseQrTokens] = useState<Record<string, string>>({});
     const [deliveryQuantities, setDeliveryQuantities] = useState<Record<string, Record<string, number>>>({});
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [isScannerStarting, setIsScannerStarting] = useState(false);
@@ -141,19 +151,22 @@ function RedeemPageComponent() {
     }, [isSeller]);
 
     const refreshSearchResults = useCallback(async () => {
-        const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(searchCode, deliveryCode);
+        const { normalizedCode, normalizedDeliveryCode, signedToken } = parsePurchaseLookup(searchCode, deliveryCode);
         const normalizedCedula = searchCedula.trim();
         const normalizedCelular = searchCelular.trim();
 
-        if (!searchPerformed || (!normalizedCode && !normalizedDeliveryCode && !normalizedCedula && !normalizedCelular)) {
+        if (!searchPerformed || (!normalizedCode && !normalizedDeliveryCode && !signedToken && !normalizedCedula && !normalizedCelular)) {
             return;
         }
 
         let results: Purchase[] = [];
-        if (normalizedCode || normalizedDeliveryCode) {
-            const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode);
+        if (normalizedCode || normalizedDeliveryCode || signedToken) {
+            const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode, signedToken);
             if (purchase) {
                 results.push(purchase);
+                if (signedToken) {
+                    setPurchaseQrTokens(prev => ({ ...prev, [purchase.id]: signedToken }));
+                }
             }
         } else if (!isSeller && normalizedCedula) {
             results = await getPurchasesByCedula(normalizedCedula);
@@ -181,9 +194,9 @@ function RedeemPageComponent() {
     }, []);
 
     const searchByQrPayload = useCallback(async (qrPayload: string) => {
-        const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(qrPayload, deliveryCode);
+        const { normalizedCode, normalizedDeliveryCode, signedToken } = parsePurchaseLookup(qrPayload, deliveryCode);
 
-        if (!normalizedCode && !normalizedDeliveryCode) {
+        if (!normalizedCode && !normalizedDeliveryCode && !signedToken) {
             toast({
                 variant: 'destructive',
                 title: 'QR no válido',
@@ -192,7 +205,7 @@ function RedeemPageComponent() {
             return;
         }
 
-        setSearchCode(normalizedCode);
+        setSearchCode(signedToken ? qrPayload : normalizedCode);
         setDeliveryCode(normalizedCode ? '' : normalizedDeliveryCode);
         setSearchCedula('');
         setSearchCelular('');
@@ -201,8 +214,11 @@ function RedeemPageComponent() {
         setSearchResults([]);
 
         try {
-            const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode);
+            const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode, signedToken);
             setSearchResults(purchase ? [purchase] : []);
+            if (purchase && signedToken) {
+                setPurchaseQrTokens(prev => ({ ...prev, [purchase.id]: signedToken }));
+            }
             toast({
                 title: purchase ? 'QR escaneado' : 'Compra no encontrada',
                 description: purchase
@@ -224,7 +240,7 @@ function RedeemPageComponent() {
      const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
 
-        const { normalizedCode, normalizedDeliveryCode } = parsePurchaseLookup(searchCode, deliveryCode);
+        const { normalizedCode, normalizedDeliveryCode, signedToken } = parsePurchaseLookup(searchCode, deliveryCode);
         const normalizedCedula = searchCedula.trim();
         const normalizedCelular = searchCelular.trim();
         
@@ -237,7 +253,7 @@ function RedeemPageComponent() {
             return;
         }
 
-        if (isSeller && !normalizedCode && !normalizedDeliveryCode) {
+        if (isSeller && !normalizedCode && !normalizedDeliveryCode && !signedToken) {
             toast({
                 variant: 'destructive',
                 title: 'Código requerido',
@@ -246,7 +262,7 @@ function RedeemPageComponent() {
             return;
         }
 
-        if (!normalizedCode && !normalizedDeliveryCode && !normalizedCedula && !normalizedCelular) {
+        if (!normalizedCode && !normalizedDeliveryCode && !signedToken && !normalizedCedula && !normalizedCelular) {
             toast({
                 variant: 'destructive',
                 title: 'Campo Requerido',
@@ -269,10 +285,13 @@ function RedeemPageComponent() {
                 setDeliveryCode('');
             }
             let results: Purchase[] = [];
-            if (normalizedCode || normalizedDeliveryCode) {
-                const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode);
+            if (normalizedCode || normalizedDeliveryCode || signedToken) {
+                const purchase = await getPurchaseByCodeOrDeliveryCode(normalizedCode, normalizedDeliveryCode, signedToken);
                 if (purchase) {
                     results.push(purchase);
+                    if (signedToken) {
+                        setPurchaseQrTokens(prev => ({ ...prev, [purchase.id]: signedToken }));
+                    }
                 }
             } else if (!isSeller && normalizedCedula) {
                 results = await getPurchasesByCedula(normalizedCedula);
@@ -409,7 +428,7 @@ function RedeemPageComponent() {
     });
 
     useEffect(() => {
-        if (codeFromUrl) {
+        if (codeFromUrl || tokenFromUrl) {
             if (deliveryCodeFromUrl) setDeliveryCode(deliveryCodeFromUrl);
             handleSearch();
         }
@@ -526,7 +545,8 @@ function RedeemPageComponent() {
                 purchase.id,
                 isSeller ? getPendingDeliveryQuantities(purchase) : deliveryQuantities[purchase.id] || {},
                 currentUser,
-                undefined
+                undefined,
+                purchaseQrTokens[purchase.id]
             );
             setSearchResults(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
             setRecentPurchases(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));

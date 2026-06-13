@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getSelfServicePurchasesByCustomer, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
@@ -109,7 +109,6 @@ export default function SelfServicePage() {
   const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
   const [searchCedula, setSearchCedula] = useState('');
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
@@ -309,12 +308,25 @@ export default function SelfServicePage() {
     if (cart.length === 0 || !activeCedula || !celular) return;
     setIsProcessing(true);
 
+    let normalizedCelular: string;
+    try {
+        normalizedCelular = sanitizeCustomerPhone(celular);
+    } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Revise el celular",
+          description: error instanceof Error ? error.message : "Ingrese un celular válido.",
+        });
+        setIsProcessing(false);
+        return;
+    }
+
     const newPurchaseData: NewPurchase = {
         date: new Date().toLocaleString('es-CO'),
         total: subtotal,
         items: cart.map(({ stock, ...item }) => item),
         cedula: activeCedula,
-        celular,
+        celular: normalizedCelular,
         status: 'pending', // Autogestión reserva disponibilidad y descuenta stock cuando el vendedor registra la entrega.
     };
     
@@ -323,6 +335,7 @@ export default function SelfServicePage() {
         setPaymentCode(addedPurchase.id);
         setLastPurchase(addedPurchase);
         setSearchCedula(addedPurchase.cedula);
+        setCelular(addedPurchase.celular);
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
@@ -367,59 +380,6 @@ export default function SelfServicePage() {
           title: "Revise los datos",
           description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
         });
-    }
-  }
-
-  const handleSearchHistory = async () => {
-    const cedulaToSearch = activeCedula || searchCedula.trim();
-    const celularToSearch = celular.trim();
-
-    if (!cedulaToSearch) {
-        toast({ variant: "destructive", title: "Error", description: "Ingrese la cédula para consultar el perfil." });
-        return;
-    }
-
-    if (!celularToSearch) {
-        toast({ variant: "destructive", title: "Falta celular", description: "Ingrese el celular al generar el código para consultar compras anteriores." });
-        return;
-    }
-
-    let normalizedCedula: string;
-    let normalizedCelular: string;
-    try {
-        normalizedCedula = sanitizeCustomerIdentifier(cedulaToSearch, 'La cédula');
-        normalizedCelular = sanitizeCustomerPhone(celularToSearch);
-    } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Revise los datos",
-          description: error instanceof Error ? error.message : "Ingrese datos válidos.",
-        });
-        return;
-    }
-    setIsHistoryLoading(true);
-    try {
-        const history = await getSelfServicePurchasesByCustomer(normalizedCedula, normalizedCelular);
-        setSearchCedula(normalizedCedula);
-        setCedula(normalizedCedula);
-        setCelular(normalizedCelular);
-        setPurchaseHistory(history);
-        clearCart();
-        toast({
-          title: "Perfil listo",
-          description: history.length > 0
-            ? `Se cargaron ${history.length} compra${history.length === 1 ? '' : 's'} para la cédula ${normalizedCedula}.`
-            : `La cédula ${normalizedCedula} quedó activa para una nueva compra.`,
-        });
-    } catch (error) {
-        console.error("Error fetching purchase history:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error instanceof Error ? error.message : "No se pudo cargar el historial de compras.",
-        });
-    } finally {
-        setIsHistoryLoading(false);
     }
   }
 
@@ -909,17 +869,12 @@ export default function SelfServicePage() {
                 Perfil del padre de familia
               </CardTitle>
               <CardDescription className="text-[#5f686a]">
-                Aquí verá todas las compras cargadas a la cédula, incluyendo ventas de caja y autogestión, con QR y código adicional para la entrega.
+                Por seguridad, esta pantalla pública solo muestra las compras generadas durante esta sesión. El historial completo se consulta desde el dashboard autenticado.
               </CardDescription>
             </div>
-            <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleSearchHistory} disabled={!hasActiveCedula || isHistoryLoading}>
-              {isHistoryLoading ? 'Actualizando...' : 'Actualizar estado'}
-            </Button>
           </CardHeader>
           <CardContent>
-            {isHistoryLoading ? (
-              <p className="text-center text-[#5f686a]">Buscando...</p>
-            ) : purchaseHistory.length > 0 ? (
+            {purchaseHistory.length > 0 ? (
                 <div className="space-y-3">
                   {purchaseHistory.map((purchase) => (
                     <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
@@ -971,7 +926,7 @@ export default function SelfServicePage() {
                   ))}
               </div>
             ) : (
-                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Ingrese su cédula en el primer bloque para ver aquí sus productos adquiridos y su estado.</p>
+                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Las compras nuevas aparecerán aquí después de generar el código de pago.</p>
             )}
           </CardContent>
         </Card>
