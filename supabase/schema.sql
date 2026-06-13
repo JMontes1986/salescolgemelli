@@ -169,6 +169,25 @@ create table if not exists public."auditLogs" (
   details text not null
 );
 
+alter table public."auditLogs" enable row level security;
+
+grant select, insert on public."auditLogs" to authenticated;
+
+drop policy if exists "dashboard_audit_logs_select" on public."auditLogs";
+drop policy if exists "dashboard_audit_logs_insert" on public."auditLogs";
+
+create policy "dashboard_audit_logs_select"
+  on public."auditLogs"
+  for select
+  to authenticated
+  using (true);
+
+create policy "dashboard_audit_logs_insert"
+  on public."auditLogs"
+  for insert
+  to authenticated
+  with check (auth.uid() is not null);
+
 create table if not exists public."cashboxSessions" (
   id text primary key default gen_random_uuid()::text,
   "userId" text not null,
