@@ -73,7 +73,23 @@ export type CashboxSession = {
 export type NewCashboxSession = Omit<CashboxSession, 'id'>;
 
 
-export type AuditLogAction = 'TICKET_ISSUE' | 'TICKET_SELL' | 'TICKET_REDEEM' | 'TICKET_VOID' | 'CASHBOX_OPEN' | 'CASHBOX_CLOSE' | 'USER_ROLE_CHANGE' | 'PAYMENT_CONFIRM' | 'STOCK_RESTOCK' | 'PURCHASE_EDIT' | 'USER_LOGIN' | 'SELF_SERVICE_PURCHASE';
+export type AuditLogAction =
+  | 'TICKET_ISSUE'
+  | 'TICKET_SELL'
+  | 'TICKET_REDEEM'
+  | 'TICKET_VOID'
+  | 'CASHBOX_OPEN'
+  | 'CASHBOX_CLOSE'
+  | 'USER_ROLE_CHANGE'
+  | 'PAYMENT_CONFIRM'
+  | 'STOCK_RESTOCK'
+  | 'PURCHASE_EDIT'
+  | 'USER_LOGIN'
+  | 'SELF_SERVICE_PURCHASE'
+  | 'SELF_SERVICE_HISTORY'
+  | 'PRODUCT_CREATE'
+  | 'PRODUCT_UPDATE'
+  | 'RETURN_PROCESS';
 
 export type AuditLog = {
   id: string;

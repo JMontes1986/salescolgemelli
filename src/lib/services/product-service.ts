@@ -186,7 +186,7 @@ export async function getProductsByAvailability(availability: ProductAvailabilit
   return products.filter(product => product.availability.includes(availability));
 }
 
-export async function addProduct(product: NewProduct): Promise<Product> {
+export async function addProduct(product: NewProduct, user?: User): Promise<Product> {
   const products = await selectRows<Product>('products', { select: 'id' });
   const newPosition = products.length;
   const newProduct = normalizeProductPayload({
@@ -196,7 +196,18 @@ export async function addProduct(product: NewProduct): Promise<Product> {
     position: newPosition,
   });
 
-  return normalizeProduct(await withProductSchemaFallback(newProduct, (payload) => insertRow<Product>('products', payload)));
+  const savedProduct = normalizeProduct(await withProductSchemaFallback(newProduct, (payload) => insertRow<Product>('products', payload)));
+
+  if (user) {
+    await addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: 'PRODUCT_CREATE',
+      details: `Producto '${savedProduct.name}' creado. Stock: ${savedProduct.stock}. Precio: ${savedProduct.price}. Canales: ${savedProduct.availability.join(', ')}.`,
+    });
+  }
+
+  return savedProduct;
 }
 
 export async function addProductWithId(product: Product): Promise<void> {
@@ -205,7 +216,7 @@ export async function addProductWithId(product: Product): Promise<void> {
   await withProductSchemaFallback(normalized, (payload) => upsertRow<Product>('products', payload));
 }
 
-export async function updateProduct(productId: string, product: UpdatableProduct): Promise<Product> {
+export async function updateProduct(productId: string, product: UpdatableProduct, user?: User): Promise<Product> {
   const updatedProduct = await withProductSchemaFallback(
     normalizeProductPayload(product),
     (payload) => updateById<Product>('products', productId, payload)
@@ -215,7 +226,18 @@ export async function updateProduct(productId: string, product: UpdatableProduct
     throw new Error('Supabase no confirmó la actualización del producto. Revisa que hayas iniciado sesión y vuelve a ejecutar supabase/schema.sql para aplicar las políticas RLS de la tabla products.');
   }
 
-  return normalizeProduct(updatedProduct);
+  const normalizedProduct = normalizeProduct(updatedProduct);
+
+  if (user) {
+    await addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: 'PRODUCT_UPDATE',
+      details: `Producto '${normalizedProduct.name}' actualizado. Stock: ${normalizedProduct.stock}. Precio: ${normalizedProduct.price}. Canales: ${normalizedProduct.availability.join(', ')}.`,
+    });
+  }
+
+  return normalizedProduct;
 }
 
 export async function increaseProductStock(productId: string, quantity: number, user?: User): Promise<void> {

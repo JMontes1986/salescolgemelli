@@ -80,6 +80,7 @@ function ProductForm({
     onProductUpdated: (product: Product) => void;
 }) {
     const { toast } = useToast();
+    const { currentUser } = useAuth();
     const [name, setName] = useState(initialData?.name || '');
     const [price, setPrice] = useState(initialData?.price.toString() || '');
     const [stock, setStock] = useState(initialData?.stock.toString() || '');
@@ -153,7 +154,7 @@ function ProductForm({
             };
 
             try {
-                const addedProduct = await addProduct(newProductData);
+                const addedProduct = await addProduct(newProductData, currentUser ?? undefined);
                 onProductAdded(addedProduct);
                 toast({ title: "Éxito", description: "Producto añadido correctamente." });
                 setIsOpen(false);
@@ -176,7 +177,7 @@ function ProductForm({
                 position: initialData.position,
             };
             try {
-                const savedProduct = await updateProduct(initialData.id, updatedProductData);
+                const savedProduct = await updateProduct(initialData.id, updatedProductData, currentUser ?? undefined);
                 onProductUpdated(savedProduct);
                 toast({ title: "Éxito", description: "Producto actualizado correctamente." });
                 setIsOpen(false);
@@ -384,6 +385,7 @@ function SortableProductCard({
 }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: product.id });
     const { toast } = useToast();
+    const { currentUser } = useAuth();
     const isUnavailable = product.availability.includes(unavailableProductAvailability);
     const availableStock = isUnavailable ? 0 : Math.max(product.stock - selfServicePending, 0);
 
@@ -399,7 +401,7 @@ function SortableProductCard({
             const updatedProduct = await updateProduct(product.id, {
                 availability: nextAvailability,
                 position: product.position,
-            });
+            }, currentUser ?? undefined);
             onProductUpdated(updatedProduct);
             toast({
                 title: "Éxito",

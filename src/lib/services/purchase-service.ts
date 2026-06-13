@@ -252,6 +252,10 @@ function getCurrentDateLabel() {
   return new Date().toLocaleString('es-CO');
 }
 
+function countPurchaseUnits(items: Pick<CartItem, 'quantity'>[]) {
+  return items.reduce((total, item) => total + item.quantity, 0);
+}
+
 export async function getPurchases(idPrefix?: string): Promise<Purchase[]> {
   const purchases = await selectRows<Purchase>('purchases', idPrefix ? { id: `like.${idPrefix}%` } : {});
   return sortByNewest(purchases.map(ensureReturnedFlags));
@@ -370,7 +374,16 @@ export async function getSelfServicePurchasesByCustomer(
       p_cedula: safeCedula,
       p_celular: safeCelular,
     });
-    return sortByNewest(purchases.map(ensureReturnedFlags));
+    const sortedPurchases = sortByNewest(purchases.map(ensureReturnedFlags));
+
+    await addAuditLog({
+      userId: safeCedula,
+      userName: 'Cliente (Autogestión)',
+      action: 'SELF_SERVICE_HISTORY',
+      details: `Cliente consultó historial de autogestión. Coincidencias: ${sortedPurchases.length}.`,
+    });
+
+    return sortedPurchases;
   } catch (error) {
     if (error instanceof Error && error.message.includes('get_self_service_purchases_by_customer')) {
       throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql y recarga el esquema para cargar compras por cédula y celular.');
@@ -403,6 +416,12 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
       deliveryCode: purchaseWithDelivery.deliveryCode,
       qrPayload: purchaseWithDelivery.qrPayload,
       items: purchaseWithDelivery.items,
+    });
+    await addAuditLog({
+      userId: purchaseWithDelivery.sellerId ?? 'system',
+      userName: purchaseWithDelivery.sellerName ?? 'Sistema',
+      action: 'TICKET_SELL',
+      details: `Venta POS ${purchaseWithDelivery.id} registrada por ${purchaseWithDelivery.total}. Unidades: ${countPurchaseUnits(purchaseWithDelivery.items)}. Cliente: ${purchaseWithDelivery.cedula || 'N/A'}.`,
     });
     return purchaseWithDelivery;
   } catch (error) {
@@ -455,6 +474,16 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     status: isSelfService ? 'pending' : 'pre-sale',
   });
   await insertRowMinimal('purchases', savedPurchase);
+
+  await addAuditLog({
+    userId: isSelfService ? savedPurchase.cedula : (savedPurchase.sellerId ?? 'system'),
+    userName: isSelfService ? 'Cliente (Autogestión)' : (savedPurchase.sellerName ?? 'Sistema'),
+    action: isSelfService ? 'SELF_SERVICE_PURCHASE' : 'TICKET_ISSUE',
+    details: isSelfService
+      ? `Nueva compra de autogestión ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}.`
+      : `Preventa ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}. Cliente: ${savedPurchase.cedula}.`,
+  });
+
   return savedPurchase;
 }
 
@@ -528,7 +557,7 @@ export async function updatePendingPurchase(
         userId: updatedPurchase.cedula,
         userName: `Cliente (Autogestión)`,
         action: 'PURCHASE_EDIT',
-        details: `Cliente modificó la compra pendiente ${safePurchaseId}.`,
+        details: `Cliente modificó la compra pendiente de autogestión ${safePurchaseId}. Total nuevo: ${updatedPurchase.total}. Unidades: ${countPurchaseUnits(updatedPurchase.items)}.`,
       });
 
       return updatedPurchase;
@@ -613,10 +642,12 @@ export async function updatePendingPurchase(
   });
 
   await addAuditLog({
-    userId: originalPurchase.cedula,
-    userName: `Cliente (Autogestión)`,
+    userId: isSelfService ? originalPurchase.cedula : (originalPurchase.sellerId ?? 'system'),
+    userName: isSelfService ? `Cliente (Autogestión)` : (originalPurchase.sellerName ?? 'Sistema'),
     action: 'PURCHASE_EDIT',
-    details: `Cliente modificó la compra pendiente ${safePurchaseId}.`,
+    details: isSelfService
+      ? `Cliente modificó la compra pendiente de autogestión ${safePurchaseId}. Total nuevo: ${verifiedCart.total}. Unidades: ${countPurchaseUnits(itemsToSave)}.`
+      : `Preventa ${safePurchaseId} modificada. Total nuevo: ${verifiedCart.total}. Unidades: ${countPurchaseUnits(itemsToSave)}.`,
   });
 
   return updatedPurchase;

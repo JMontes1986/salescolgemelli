@@ -30,7 +30,6 @@ import { getProductsByAvailability } from '@/lib/services/product-service';
 import { addPreSalePurchase, getSelfServicePurchasesByCustomer, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { addAuditLog } from '@/lib/services/audit-service';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { MOLLY_LOGO_URL } from '@/components/icons';
 
@@ -330,15 +329,6 @@ export default function SelfServicePage() {
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Código de pago generado. La disponibilidad quedó reservada y la compra está pendiente de pago." });
         
-        addAuditLog({
-          userId: addedPurchase.cedula,
-          userName: 'Cliente (Autogestión)',
-          action: 'SELF_SERVICE_PURCHASE',
-          details: `Nueva compra en sitio #${addedPurchase.id} por ${formatCurrency(addedPurchase.total)} iniciada por C.C. ${addedPurchase.cedula}.`,
-        }).catch((auditError) => {
-          console.warn("No se pudo registrar auditoría de autogestión.", auditError);
-        });
-
     } catch (error) {
         console.error("Error creating purchase:", error);
         toast({ variant: "destructive", title: "Error en la Compra", description: (error as Error).message || "No se pudo generar el código de pago." });

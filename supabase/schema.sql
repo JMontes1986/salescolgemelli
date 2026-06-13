@@ -188,6 +188,64 @@ create policy "dashboard_audit_logs_insert"
   to authenticated
   with check (auth.uid() is not null);
 
+create or replace function public.record_audit_log(
+  p_user_id text,
+  p_user_name text,
+  p_action text,
+  p_details text
+)
+returns public."auditLogs"
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  saved_log public."auditLogs"%rowtype;
+  safe_action text := upper(nullif(btrim(coalesce(p_action, '')), ''));
+begin
+  if safe_action not in (
+    'TICKET_ISSUE',
+    'TICKET_SELL',
+    'TICKET_REDEEM',
+    'TICKET_VOID',
+    'CASHBOX_OPEN',
+    'CASHBOX_CLOSE',
+    'USER_ROLE_CHANGE',
+    'PAYMENT_CONFIRM',
+    'STOCK_RESTOCK',
+    'PURCHASE_EDIT',
+    'USER_LOGIN',
+    'SELF_SERVICE_PURCHASE',
+    'SELF_SERVICE_HISTORY',
+    'PRODUCT_CREATE',
+    'PRODUCT_UPDATE',
+    'RETURN_PROCESS'
+  ) then
+    raise exception 'Acción de auditoría no permitida.';
+  end if;
+
+  insert into public."auditLogs" (
+    timestamp,
+    "userId",
+    "userName",
+    action,
+    details
+  ) values (
+    now()::text,
+    left(coalesce(nullif(btrim(p_user_id), ''), 'anonymous'), 120),
+    left(coalesce(nullif(btrim(p_user_name), ''), 'Anónimo'), 160),
+    safe_action,
+    left(coalesce(nullif(btrim(p_details), ''), 'Sin detalles.'), 1200)
+  )
+  returning * into saved_log;
+
+  return saved_log;
+end;
+$$;
+
+revoke all on function public.record_audit_log(text, text, text, text) from public;
+grant execute on function public.record_audit_log(text, text, text, text) to anon, authenticated;
+
 create table if not exists public."cashboxSessions" (
   id text primary key default gen_random_uuid()::text,
   "userId" text not null,
