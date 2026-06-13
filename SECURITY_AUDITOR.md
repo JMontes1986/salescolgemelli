@@ -13,7 +13,16 @@ export GROQ_API_KEY="tu-api-key"
 
 No guardes claves reales en archivos del proyecto, commits, tickets, capturas o chats. Si una clave se expone, revócala y crea una nueva.
 
-## Ejecutar una auditoría
+## IA activa en la aplicación
+
+La app monta un panel flotante global en `src/components/security-ai-assistant.tsx`.
+
+- En `/self-service` se abre automáticamente y ejecuta una revisión inicial de autogestión.
+- En el resto de la app queda disponible como botón flotante.
+- El navegador llama a `/api/security-auditor`; esa ruta usa `GROQ_API_KEY` solo en servidor.
+- La IA recibe contexto de ruta y superficie, no datos personales de clientes.
+
+## Ejecutar una auditoría por terminal
 
 ```bash
 npm run security:audit
@@ -41,7 +50,7 @@ GROQ_SECURITY_MODEL="openai/gpt-oss-safeguard-20b" npm run security:audit
 
 ## Configuración
 
-La configuración del auditor vive en `agents/security-auditor.groq.mjs` y el ejecutor CLI en `scripts/run-security-audit-groq.mjs`.
+La configuración CLI del auditor vive en `agents/security-auditor.groq.mjs`, el ejecutor de terminal en `scripts/run-security-audit-groq.mjs` y la integración en app en `src/app/api/security-auditor/route.ts`.
 
 ## Alcance recomendado para esta plataforma
 

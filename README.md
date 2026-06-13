@@ -260,6 +260,7 @@ El repositorio incluye una configuración de auditoría de seguridad con Groq en
 - `npm run security:audit` ejecuta el auditor con el modelo `openai/gpt-oss-safeguard-20b`.
 - `agents/security-auditor.groq.mjs` contiene el prompt y la configuración del modelo.
 - `scripts/run-security-audit-groq.mjs` llama al endpoint OpenAI-compatible de Groq y transmite la respuesta.
+- `/api/security-auditor` alimenta el panel flotante de IA visible en la aplicación.
 
 No guardes `GROQ_API_KEY` en el repositorio. Mantén ese valor en tu gestor de secretos o variables privadas.
 
