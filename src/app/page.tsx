@@ -170,14 +170,16 @@ export default function LoginPage() {
           description: `¡Bienvenido de nuevo, ${user.name}!`,
         });
 
-        addAuditLog({
-          userId: user.id,
-          userName: user.name,
-          action: "USER_LOGIN",
-          details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
-        }).catch((error) => {
+        try {
+          await addAuditLog({
+            userId: user.id,
+            userName: user.name,
+            action: "USER_LOGIN",
+            details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
+          });
+        } catch (error) {
           console.warn("No se pudo registrar auditoría de login.", error);
-        });
+        }
 
         if (user.role === "seller") {
           router.push("/dashboard/redeem");

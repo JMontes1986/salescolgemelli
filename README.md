@@ -224,7 +224,6 @@ Crea `.env.local` para desarrollo y configura las mismas variables en **Netlify 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
-NEXT_PUBLIC_ENABLE_CLIENT_AUDIT_LOGS=true
 NEXT_PUBLIC_DAVIPLATA_BREB_KEY=3206766574
 NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL=daviplata://pagar?llave={key}&valor={amount}&referencia={code}
 ```
@@ -297,7 +296,7 @@ Pasos sugeridos:
 - **La venta POS no descuenta stock:** confirma que exista la RPC `create_pos_purchase_with_stock`; la app bloquea ventas si la función no está disponible para evitar inventario inconsistente.
 - **Aparecen compras antiguas sin ajuste de inventario:** corrige una sola vez el stock real de productos afectados y usa la RPC para ventas futuras.
 - **Imágenes remotas bloqueadas:** agrega el host de Supabase Storage en `next.config.ts` si cambias de proyecto o bucket.
-- **No se guardan auditorías:** confirma que `NEXT_PUBLIC_ENABLE_CLIENT_AUDIT_LOGS=true` y que aplicaste la función `record_audit_log` incluida en `supabase/schema.sql`.
+- **No se guardan auditorías:** confirma que aplicaste la función `record_audit_log` incluida en `supabase/schema.sql` y que el despliegue usa el último build.
 
 ---
 
