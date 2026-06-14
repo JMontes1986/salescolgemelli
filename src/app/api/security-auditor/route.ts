@@ -11,6 +11,13 @@ const GROQ_CHAT_COMPLETIONS_URL =
 const SECURITY_AUDITOR_MODEL =
   process.env.GROQ_SECURITY_MODEL || "openai/gpt-oss-safeguard-20b";
 
+const SECURITY_AUDITOR_FALLBACK_MODELS = (
+  process.env.GROQ_SECURITY_FALLBACK_MODELS || "llama-3.1-8b-instant"
+)
+  .split(",")
+  .map((model) => model.trim())
+  .filter(Boolean);
+
 const MAX_PROMPT_LENGTH = 4000;
 
 const DASHBOARD_SECURITY_EVIDENCE = [
@@ -35,6 +42,93 @@ When reviewing a screen or flow: define scope, identify vulnerabilities, classif
 Use the supplied application context as the source of truth. If the context states that a control is already implemented, omit that item from the final answer entirely. Never include a Mitigated/Mitigado section, row, or status for resolved controls. Only list concrete active or residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context. For /dashboard, never recommend orders/payments tables unless the context explicitly says they exist.
 
 Keep responses practical for operators and developers. Never ask users to paste secrets. Never expose API keys, tokens, private customer data, or payment credentials. If the request involves customer records, recommend minimum necessary data and server-side validation.`;
+
+
+function getGroqModelCandidates() {
+  return Array.from(
+    new Set([SECURITY_AUDITOR_MODEL, ...SECURITY_AUDITOR_FALLBACK_MODELS]),
+  );
+}
+
+function supportsReasoningEffort(model: string) {
+  return model.startsWith("openai/gpt-oss");
+}
+
+function buildGroqRequestBody(model: string, mode: string, context: string, prompt: string) {
+  return {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: SECURITY_AUDITOR_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: [
+          `Modo: ${mode}`,
+          `Contexto de aplicación: ${context}`,
+          `Solicitud: ${prompt}`,
+        ].join("\n\n"),
+      },
+    ],
+    temperature: 1,
+    max_completion_tokens: 1200,
+    top_p: 1,
+    ...(supportsReasoningEffort(model) ? { reasoning_effort: "medium" } : {}),
+    stream: false,
+    stop: null,
+  };
+}
+
+async function requestGroqCompletion(apiKey: string, mode: string, context: string, prompt: string) {
+  const modelCandidates = getGroqModelCandidates();
+  let lastErrorText = "";
+  let lastStatus = 0;
+
+  for (const model of modelCandidates) {
+    const groqResponse = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildGroqRequestBody(model, mode, context, prompt)),
+      cache: "no-store",
+    });
+
+    if (groqResponse.ok) {
+      const completion = (await groqResponse.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+
+      return {
+        answer: completion.choices?.[0]?.message?.content?.trim() || "",
+        model,
+      };
+    }
+
+    lastStatus = groqResponse.status;
+    lastErrorText = await groqResponse.text();
+
+    if (groqResponse.status !== 429) {
+      break;
+    }
+  }
+
+  return {
+    error: `Groq no pudo completar la auditoría (${lastStatus}).`,
+    detail: lastErrorText.slice(0, 500),
+    status: lastStatus,
+  };
+}
+
+function getActiveGuardFallbackAnswer(context: string) {
+  if (context.includes('"route":"/self-service"')) {
+    return "IA de seguridad activa en autogestión. Groq está temporalmente limitado; se mantiene la vigilancia base con controles locales y se reintentará cuando el límite se libere.";
+  }
+
+  return "IA de seguridad activa. Groq está temporalmente limitado; revisa roles, MFA reciente, permisos SQL/RLS, caja, stock y trazabilidad antes de ejecutar acciones críticas.";
+}
 
 function getPromptValue(value: unknown) {
   if (typeof value !== "string") {
@@ -175,54 +269,26 @@ export async function POST(request: Request) {
     : baseContext;
   const mode = getPromptValue(payload.mode) || "interactive";
 
-  const groqResponse = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: SECURITY_AUDITOR_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: SECURITY_AUDITOR_SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: [
-            `Modo: ${mode}`,
-            `Contexto de aplicación: ${context}`,
-            `Solicitud: ${prompt}`,
-          ].join("\n\n"),
-        },
-      ],
-      temperature: 1,
-      max_completion_tokens: 1200,
-      top_p: 1,
-      reasoning_effort: "medium",
-      stream: false,
-      stop: null,
-    }),
-    cache: "no-store",
-  });
+  const groqResult = await requestGroqCompletion(apiKey, mode, context, prompt);
 
-  if (!groqResponse.ok) {
-    const errorText = await groqResponse.text();
+  if ("error" in groqResult) {
+    if (groqResult.status === 429 && mode === "active-route-guard") {
+      return NextResponse.json({
+        answer: getActiveGuardFallbackAnswer(context),
+        model: `${SECURITY_AUDITOR_MODEL} (limitado temporalmente)`,
+      });
+    }
 
     return NextResponse.json(
       {
-        error: `Groq no pudo completar la auditoría (${groqResponse.status}).`,
-        detail: errorText.slice(0, 500),
+        error: groqResult.error,
+        detail: groqResult.detail,
       },
-      { status: 502 },
+      { status: groqResult.status === 429 ? 429 : 502 },
     );
   }
 
-  const completion = (await groqResponse.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const rawAnswer = completion.choices?.[0]?.message?.content?.trim();
+  const rawAnswer = groqResult.answer;
   const answer = rawAnswer
     ? shouldHideMitigatedContent
       ? stripMitigatedContent(rawAnswer) ||
@@ -251,6 +317,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     answer: responseAnswer,
-    model: SECURITY_AUDITOR_MODEL,
+    model: groqResult.model,
   });
 }
