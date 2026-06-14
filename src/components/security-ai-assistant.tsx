@@ -73,10 +73,10 @@ function getAutoPrompt(pathname: string) {
   if (pathname === "/self-service") {
     return [
       "Revisa la pantalla de autogestión como guardia activo.",
-      "Usa la evidencia de seguridad actual incluida en el contexto. No repitas como vulnerabilidad activa algo que el contexto indique como mitigado.",
+      "Usa la evidencia de seguridad actual incluida en el contexto. Omite por completo cualquier control ya implementado o resuelto.",
       "Si hay riesgo residual, descríbelo como residual y explica la condición concreta que faltaría verificar.",
       "No recomiendes tablas o endpoints que no existan en este proyecto.",
-      "Devuelve un resumen breve con: mitigado, riesgo residual y siguiente acción concreta.",
+      "Devuelve solo riesgos activos, riesgos residuales y siguientes acciones concretas. No incluyas secciones, filas ni etiquetas llamadas Mitigado.",
     ].join(" ");
   }
 

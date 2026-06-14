@@ -15,7 +15,7 @@ const SECURITY_AUDITOR_SYSTEM_PROMPT = `You are a senior security auditor embedd
 
 When reviewing a screen or flow: define scope, identify vulnerabilities, classify risk as Critical, High, Medium, Low, or Observation, and provide concise actionable remediation.
 
-Use the supplied application context as the source of truth. If the context states that a control is already implemented, do not report that same item as an active vulnerability. Instead, mark it as mitigated and only list concrete residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context.
+Use the supplied application context as the source of truth. If the context states that a control is already implemented, omit that item from the final answer entirely. Never include a Mitigated/Mitigado section, row, or status for resolved controls. Only list concrete active or residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context.
 
 Keep responses practical for operators and developers. Never ask users to paste secrets. Never expose API keys, tokens, private customer data, or payment credentials. If the request involves customer records, recommend minimum necessary data and server-side validation.`;
 
@@ -33,6 +33,25 @@ function getRouteContext(value: unknown) {
   }
 
   return JSON.stringify(value).slice(0, 2000);
+}
+
+function isSelfServiceContext(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  return (value as { route?: unknown }).route === "/self-service";
+}
+
+function stripMitigatedContent(answer: string) {
+  const mitigatedPattern = /\bmitigad[oa]s?\b/i;
+
+  return answer
+    .split(/\r?\n/)
+    .filter((line) => !mitigatedPattern.test(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export async function POST(request: Request) {
@@ -74,6 +93,7 @@ export async function POST(request: Request) {
   }
 
   const context = getRouteContext(payload.context);
+  const shouldHideMitigatedContent = isSelfServiceContext(payload.context);
   const mode = getPromptValue(payload.mode) || "interactive";
 
   const groqResponse = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
@@ -123,7 +143,13 @@ export async function POST(request: Request) {
   const completion = (await groqResponse.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
-  const answer = completion.choices?.[0]?.message?.content?.trim();
+  const rawAnswer = completion.choices?.[0]?.message?.content?.trim();
+  const answer = rawAnswer
+    ? shouldHideMitigatedContent
+      ? stripMitigatedContent(rawAnswer) ||
+        "No quedan hallazgos activos para mostrar en autogestión."
+      : rawAnswer
+    : "";
 
   if (!answer) {
     return NextResponse.json(
