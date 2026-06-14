@@ -562,6 +562,104 @@ create table if not exists public."cashboxSessions" (
 
 alter table public."cashboxSessions" enable row level security;
 
+create or replace function public.open_cashbox_session(
+  p_opening_balance numeric,
+  p_user_name text
+)
+returns public."cashboxSessions"
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  saved_session public."cashboxSessions"%rowtype;
+begin
+  perform public.require_dashboard_strong_permission('cashbox', 'abrir caja');
+
+  if coalesce(p_opening_balance, 0) <= 0 then
+    raise exception 'El saldo de apertura debe ser mayor que cero.';
+  end if;
+
+  if exists (
+    select 1
+    from public."cashboxSessions" session
+    where session."userId" = auth.uid()::text
+      and session.status = 'open'
+  ) then
+    raise exception 'Ya existe una sesión de caja abierta para este usuario.';
+  end if;
+
+  insert into public."cashboxSessions" (
+    "userId",
+    "userName",
+    status,
+    "openingBalance",
+    "openedAt",
+    "totalSales"
+  ) values (
+    auth.uid()::text,
+    left(coalesce(nullif(btrim(p_user_name), ''), 'Usuario'), 160),
+    'open',
+    p_opening_balance,
+    now()::text,
+    0
+  )
+  returning * into saved_session;
+
+  return saved_session;
+end;
+$$;
+
+revoke all on function public.open_cashbox_session(numeric, text) from public;
+grant execute on function public.open_cashbox_session(numeric, text) to authenticated;
+
+create or replace function public.close_cashbox_session(
+  p_session_id text,
+  p_closing_balance numeric
+)
+returns public."cashboxSessions"
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  saved_session public."cashboxSessions"%rowtype;
+begin
+  perform public.require_dashboard_strong_permission('cashbox', 'cerrar caja');
+
+  if p_session_id is null or trim(p_session_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
+    raise exception 'La sesión de caja no es válida.';
+  end if;
+
+  if coalesce(p_closing_balance, 0) < 0 then
+    raise exception 'El saldo de cierre no puede ser negativo.';
+  end if;
+
+  select *
+    into saved_session
+    from public."cashboxSessions" session
+    where session.id = trim(p_session_id)
+      and session."userId" = auth.uid()::text
+    for update;
+
+  if not found or saved_session.status <> 'open' then
+    raise exception 'La sesión no existe o ya ha sido cerrada.';
+  end if;
+
+  update public."cashboxSessions"
+     set status = 'closed',
+         "closingBalance" = p_closing_balance,
+         "closedAt" = now()::text
+   where id = saved_session.id
+   returning * into saved_session;
+
+  return saved_session;
+end;
+$$;
+
+revoke all on function public.close_cashbox_session(text, numeric) from public;
+grant execute on function public.close_cashbox_session(text, numeric) to authenticated;
+
 create table if not exists public.counters (
   id text primary key,
   count integer not null default 0
@@ -1614,7 +1712,8 @@ drop policy if exists "dashboard_cashbox_sessions_select" on public."cashboxSess
 drop policy if exists "dashboard_cashbox_sessions_insert" on public."cashboxSessions";
 drop policy if exists "dashboard_cashbox_sessions_update" on public."cashboxSessions";
 
-grant select, insert, update on public."cashboxSessions" to authenticated;
+grant select on public."cashboxSessions" to authenticated;
+revoke insert, update, delete on public."cashboxSessions" from anon, authenticated;
 
 create policy "dashboard_cashbox_sessions_select"
   on public."cashboxSessions"

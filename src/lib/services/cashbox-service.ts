@@ -1,5 +1,5 @@
-import { insertRow, selectRows, selectSingle, updateById } from "@/lib/supabase";
-import type { CashboxSession, NewCashboxSession, User } from "@/lib/types";
+import { callRpc, selectRows, selectSingle } from "@/lib/supabase";
+import type { CashboxSession, User } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 
 export async function getActiveSessionForUser(userId: string): Promise<CashboxSession | null> {
@@ -19,16 +19,10 @@ export async function openCashboxSession(openingBalance: number, user: User): Pr
     throw new Error("Ya existe una sesión de caja abierta para este usuario.");
   }
 
-  const newSession: NewCashboxSession = {
-    userId: user.id,
-    userName: user.name,
-    status: 'open',
-    openingBalance,
-    openedAt: new Date().toISOString(),
-    totalSales: 0,
-  };
-
-  const session = await insertRow<CashboxSession>('cashboxSessions', newSession);
+  const session = await callRpc<CashboxSession>('open_cashbox_session', {
+    p_opening_balance: openingBalance,
+    p_user_name: user.name,
+  });
 
   await addAuditLog({
     userId: user.id,
@@ -41,18 +35,9 @@ export async function openCashboxSession(openingBalance: number, user: User): Pr
 }
 
 export async function closeCashboxSession(sessionId: string, closingBalance: number, user: User): Promise<void> {
-  const session = await selectSingle<CashboxSession>('cashboxSessions', { id: `eq.${sessionId}` });
-  if (!session || session.status !== 'open') {
-    throw new Error("La sesión no existe o ya ha sido cerrada.");
-  }
-  if (session.userId !== user.id) {
-    throw new Error("No tiene permiso para cerrar esta sesión de caja.");
-  }
-
-  await updateById<CashboxSession>('cashboxSessions', sessionId, {
-    status: 'closed',
-    closingBalance,
-    closedAt: new Date().toISOString(),
+  await callRpc<CashboxSession>('close_cashbox_session', {
+    p_session_id: sessionId,
+    p_closing_balance: closingBalance,
   });
 
   await addAuditLog({
