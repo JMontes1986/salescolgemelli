@@ -1,7 +1,26 @@
+import path from 'node:path';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  webpack: (config, {webpack}) => {
+    const emptyPolyfillsPath = path.resolve(__dirname, 'src/lib/empty-polyfills.ts');
+
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'next/dist/build/polyfills/polyfill-module': false,
+      'next/dist/build/polyfills/polyfill-module.js': false,
+    };
+
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /next[\\/]dist[\\/](?:esm[\\/])?build[\\/]polyfills[\\/]polyfill-module(?:\.js)?$/,
+        emptyPolyfillsPath
+      )
+    );
+
+    return config;
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
