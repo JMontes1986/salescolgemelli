@@ -20,6 +20,10 @@ const SECURITY_AUDITOR_FALLBACK_MODELS = (
 
 const MAX_PROMPT_LENGTH = 4000;
 const MAX_CONTEXT_LENGTH = 2000;
+const GROQ_REQUEST_TIMEOUT_MS = 20_000;
+const RETRYABLE_GROQ_STATUSES = new Set([
+  408, 409, 425, 429, 500, 502, 503, 504,
+]);
 
 const DASHBOARD_SECURITY_EVIDENCE = [
   "Estado real de /dashboard en este checkout:",
@@ -135,13 +139,18 @@ function buildGroqRequestBody(model: string, mode: string, context: string, prom
   };
 }
 
-async function requestGroqCompletion(apiKey: string, mode: string, context: string, prompt: string) {
-  const modelCandidates = getGroqModelCandidates();
-  let lastErrorText = "";
-  let lastStatus = 0;
+async function requestSingleGroqCompletion(
+  apiKey: string,
+  model: string,
+  mode: string,
+  context: string,
+  prompt: string,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GROQ_REQUEST_TIMEOUT_MS);
 
-  for (const model of modelCandidates) {
-    const groqResponse = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+  try {
+    return await fetch(GROQ_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -149,7 +158,42 @@ async function requestGroqCompletion(apiKey: string, mode: string, context: stri
       },
       body: JSON.stringify(buildGroqRequestBody(model, mode, context, prompt)),
       cache: "no-store",
+      signal: controller.signal,
     });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function requestGroqCompletion(
+  apiKey: string,
+  mode: string,
+  context: string,
+  prompt: string,
+) {
+  const modelCandidates = getGroqModelCandidates();
+  let lastErrorText = "";
+  let lastStatus = 0;
+
+  for (const model of modelCandidates) {
+    let groqResponse: Response;
+
+    try {
+      groqResponse = await requestSingleGroqCompletion(
+        apiKey,
+        model,
+        mode,
+        context,
+        prompt,
+      );
+    } catch (error) {
+      lastStatus = 503;
+      lastErrorText =
+        error instanceof Error
+          ? error.message
+          : "Groq no respondió antes del tiempo límite.";
+      continue;
+    }
 
     if (groqResponse.ok) {
       const completion = (await groqResponse.json()) as {
@@ -165,7 +209,7 @@ async function requestGroqCompletion(apiKey: string, mode: string, context: stri
     lastStatus = groqResponse.status;
     lastErrorText = await groqResponse.text();
 
-    if (groqResponse.status !== 429) {
+    if (!RETRYABLE_GROQ_STATUSES.has(groqResponse.status)) {
       break;
     }
   }
@@ -327,10 +371,13 @@ export async function POST(request: Request) {
   const groqResult = await requestGroqCompletion(apiKey, mode, context, prompt);
 
   if ("error" in groqResult) {
-    if (groqResult.status === 429 && mode === "active-route-guard") {
+    if (
+      mode === "active-route-guard" &&
+      RETRYABLE_GROQ_STATUSES.has(groqResult.status ?? 0)
+    ) {
       return NextResponse.json({
         answer: getActiveGuardFallbackAnswer(context),
-        model: `${SECURITY_AUDITOR_MODEL} (limitado temporalmente)`,
+        model: `${SECURITY_AUDITOR_MODEL} (modo local temporal)`,
       });
     }
 
