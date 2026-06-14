@@ -19,6 +19,7 @@ const SECURITY_AUDITOR_FALLBACK_MODELS = (
   .filter(Boolean);
 
 const MAX_PROMPT_LENGTH = 4000;
+const MAX_CONTEXT_LENGTH = 2000;
 
 const DASHBOARD_SECURITY_EVIDENCE = [
   "Estado real de /dashboard en este checkout:",
@@ -43,7 +44,6 @@ Use the supplied application context as the source of truth. If the context stat
 
 Keep responses practical for operators and developers. Never ask users to paste secrets. Never expose API keys, tokens, private customer data, or payment credentials. If the request involves customer records, recommend minimum necessary data and server-side validation.`;
 
-
 function getGroqModelCandidates() {
   return Array.from(
     new Set([SECURITY_AUDITOR_MODEL, ...SECURITY_AUDITOR_FALLBACK_MODELS]),
@@ -52,6 +52,65 @@ function getGroqModelCandidates() {
 
 function supportsReasoningEffort(model: string) {
   return model.startsWith("openai/gpt-oss");
+}
+
+function formatPrimitiveAsToon(value: string | number | boolean | null): string {
+  if (value === null) {
+    return "null";
+  }
+
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function formatValueAsToon(value: unknown, indent = ""): string {
+  if (value === null || ["string", "number", "boolean"].includes(typeof value)) {
+    return formatPrimitiveAsToon(value as string | number | boolean | null);
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return "[]";
+    }
+
+    return value
+      .map((item) => `${indent}- ${formatValueAsToon(item, `${indent}  `)}`)
+      .join("\n");
+  }
+
+  if (typeof value === "object" && value) {
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, entryValue]) => entryValue !== undefined,
+    );
+
+    if (entries.length === 0) {
+      return "{}";
+    }
+
+    return entries
+      .map(([key, entryValue]) => {
+        const formattedValue = formatValueAsToon(entryValue, `${indent}  `);
+
+        if (formattedValue.includes("\n")) {
+          return `${indent}${key}:\n${formattedValue}`;
+        }
+
+        return `${indent}${key}: ${formattedValue}`;
+      })
+      .join("\n");
+  }
+
+  return "";
+}
+
+function buildAiInputToon(mode: string, context: string, prompt: string): string {
+  return [
+    "formato: TOON",
+    `modo: ${formatPrimitiveAsToon(mode)}`,
+    "contexto:",
+    context,
+    "solicitud:",
+    prompt,
+  ].join("\n");
 }
 
 function buildGroqRequestBody(model: string, mode: string, context: string, prompt: string) {
@@ -64,11 +123,7 @@ function buildGroqRequestBody(model: string, mode: string, context: string, prom
       },
       {
         role: "user",
-        content: [
-          `Modo: ${mode}`,
-          `Contexto de aplicación: ${context}`,
-          `Solicitud: ${prompt}`,
-        ].join("\n\n"),
+        content: buildAiInputToon(mode, context, prompt),
       },
     ],
     temperature: 1,
@@ -123,7 +178,7 @@ async function requestGroqCompletion(apiKey: string, mode: string, context: stri
 }
 
 function getActiveGuardFallbackAnswer(context: string) {
-  if (context.includes('"route":"/self-service"')) {
+  if (/^route: \/self-service$/m.test(context)) {
     return "IA de seguridad activa en autogestión. Groq está temporalmente limitado; se mantiene la vigilancia base con controles locales y se reintentará cuando el límite se libere.";
   }
 
@@ -143,7 +198,7 @@ function getRouteContext(value: unknown) {
     return "Sin contexto adicional.";
   }
 
-  return JSON.stringify(value).slice(0, 2000);
+  return formatValueAsToon(value).slice(0, MAX_CONTEXT_LENGTH);
 }
 
 function isSelfServiceContext(value: unknown) {
