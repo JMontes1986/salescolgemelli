@@ -61,6 +61,7 @@ const actionLabels: Record<AuditLogAction, string> = {
   USER_LOGIN: "Ingreso",
   SELF_SERVICE_PURCHASE: "Autogestión",
   SELF_SERVICE_HISTORY: "Historial",
+  SELF_SERVICE_SECURITY_ALERT: "Alerta IA",
   PRODUCT_CREATE: "Producto creado",
   PRODUCT_UPDATE: "Producto editado",
   RETURN_PROCESS: "Devolución",
@@ -87,6 +88,7 @@ const filterActions: Record<Exclude<AuditFilter, "all">, AuditLogAction[]> = {
   "self-service": [
     "SELF_SERVICE_PURCHASE",
     "SELF_SERVICE_HISTORY",
+    "SELF_SERVICE_SECURITY_ALERT",
     "PURCHASE_EDIT",
   ],
   inventory: [
@@ -114,6 +116,8 @@ const getActionVariant = (action: AuditLogAction) => {
         case 'SELF_SERVICE_HISTORY':
         case 'RETURN_PROCESS':
             return 'bg-purple-500/20 text-purple-700';
+        case 'SELF_SERVICE_SECURITY_ALERT':
+            return 'bg-red-500/20 text-red-700';
         case 'TICKET_VOID':
         case 'CASHBOX_CLOSE':
         case 'PURCHASE_EDIT':
@@ -240,7 +244,7 @@ export default function AuditPage() {
         body: JSON.stringify({
           mode: "audit-log-intelligence",
           prompt:
-            "Analiza esta bitácora de auditoría de la aplicación. Resume qué está pasando, marca actividad sensible, patrones inusuales, acciones de autogestión, ingresos al sistema, ventas/pagos/caja e inventario. Devuelve máximo 5 puntos accionables para administrador.",
+            "Analiza esta bitácora de auditoría de la aplicación. Resume qué está pasando, marca actividad sensible, alertas SELF_SERVICE_SECURITY_ALERT, patrones inusuales, acciones de autogestión, ingresos al sistema, ventas/pagos/caja e inventario. Devuelve máximo 5 puntos accionables para administrador y prioriza la solución ideal de ciberseguridad para cada alerta.",
           context: {
             route: "/dashboard/audit",
             totals: stats,
@@ -340,7 +344,7 @@ export default function AuditPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Compras, edición e historial
+            Compras, edición, historial y alertas IA
           </CardContent>
         </Card>
       </div>

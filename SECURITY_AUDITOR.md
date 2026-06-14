@@ -18,9 +18,10 @@ No guardes claves reales en archivos del proyecto, commits, tickets, capturas o 
 La app monta un panel flotante global en `src/components/security-ai-assistant.tsx`.
 
 - En `/self-service` permanece activa en segundo plano y ejecuta una revisión inicial de autogestión, pero el botón público no abre el detalle de hallazgos para padres de familia.
+- Si la revisión automática de `/self-service` describe una posible brecha, ataque o riesgo alto/crítico, el endpoint registra `SELF_SERVICE_SECURITY_ALERT` en Auditoría para que administrador o auditor lo revisen desde la sección de seguridad.
 - En el dashboard administrativo queda disponible como botón flotante con hallazgos y solución ideal de ciberseguridad para cada riesgo activo o residual.
 - El navegador llama a `/api/security-auditor`; esa ruta usa `GROQ_API_KEY` solo en servidor.
-- La IA recibe contexto de ruta y superficie, no datos personales de clientes.
+- La IA recibe contexto de ruta y superficie, no datos personales de clientes. En autogestión pública la respuesta del endpoint se reduce a un estado genérico; el resumen técnico redactado queda solo en la bitácora administrativa.
 
 ## Ejecutar una auditoría por terminal
 

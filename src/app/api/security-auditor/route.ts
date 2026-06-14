@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { addAuditLog } from "@/lib/services/audit-service";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -76,6 +78,56 @@ function stripMitigatedContent(answer: string) {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function redactSecurityAlertDetails(value: string) {
+  return value
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[correo]")
+    .replace(
+      /\b(?:c[eé]dula|celular|tel[eé]fono|cliente)\s*[:#-]?\s*[0-9A-Za-z+().\s-]{4,30}/gi,
+      "[dato cliente]",
+    )
+    .replace(/\b(?:CG|PV)[0-9A-Za-z_-]{3,}\b/g, "[codigo]")
+    .replace(/\b(?:token|api[_ -]?key|bearer|authorization)\s*[:=]?\s*[0-9A-Za-z._-]{8,}/gi, "[secreto]")
+    .replace(/\b[0-9a-f]{16,}\b/gi, "[token]")
+    .replace(/\b\d{5,}\b/g, "[dato]")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shouldNotifySelfServiceSecurityAlert(answer: string, mode: string) {
+  if (mode !== "active-route-guard") {
+    return false;
+  }
+
+  const normalizedAnswer = answer.toLowerCase();
+
+  if (
+    /no (quedan|hay|se detectaron|identifiqu[eé]) (hallazgos|riesgos|brechas|ataques)/i.test(
+      normalizedAnswer,
+    )
+  ) {
+    return false;
+  }
+
+  return /\b(brecha|ataque|atacante|explotaci[oó]n|vulnerabilidad|inyecci[oó]n|xss|csrf|phishing|fuga|filtraci[oó]n|exposici[oó]n|cr[ií]tic[oa]|critical|alto|high)\b/i.test(
+    answer,
+  );
+}
+
+async function notifySelfServiceSecurityAlert(answer: string) {
+  const summary = redactSecurityAlertDetails(answer).slice(0, 900);
+
+  try {
+    await addAuditLog({
+      userId: "security-ai:self-service",
+      userName: "IA seguridad autogestión",
+      action: "SELF_SERVICE_SECURITY_ALERT",
+      details: `La IA de seguridad detectó una posible brecha, ataque o riesgo alto en autogestión. Revisar y validar desde Seguridad/Auditoría. Resumen: ${summary}`,
+    });
+  } catch (error) {
+    console.warn("No se pudo notificar alerta de seguridad de autogestión.", error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -185,8 +237,20 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    shouldHideMitigatedContent &&
+    shouldNotifySelfServiceSecurityAlert(answer, mode)
+  ) {
+    await notifySelfServiceSecurityAlert(answer);
+  }
+
+  const responseAnswer =
+    shouldHideMitigatedContent
+      ? "IA de seguridad activa en autogestión. Si detecta una posible brecha, ataque o riesgo alto, notificará a Seguridad/Auditoría para revisión administrativa."
+      : answer;
+
   return NextResponse.json({
-    answer,
+    answer: responseAnswer,
     model: SECURITY_AUDITOR_MODEL,
   });
 }
