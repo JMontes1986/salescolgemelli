@@ -37,6 +37,17 @@ const SELF_SERVICE_SECURITY_EVIDENCE = [
   "- No hay tablas orders, order_items ni payment_logs en este esquema; el flujo actual usa purchases con items jsonb.",
 ].join("\n");
 
+const DASHBOARD_SECURITY_EVIDENCE = [
+  "Estado real de /dashboard en este checkout:",
+  "- Las rutas internas usan permisos de módulo: dashboard, sales, presale, products, redeem, cashbox, returns, users y audit.",
+  "- Las tablas sensibles del flujo financiero son purchases, products, returns, cashboxSessions, auditLogs, users y counters.",
+  "- No existen tablas orders ni payments en el esquema actual.",
+  "- purchases/products/returns/cashboxSessions/auditLogs tienen RLS y políticas para usuarios autenticados con permisos.",
+  "- Ventas POS, autogestión, confirmación de pago, entrega y QR se validan también en RPC de Supabase.",
+  "- La auditoría persistente usa record_audit_log con acciones permitidas.",
+  "- Riesgos residuales a vigilar: MFA/expiración de sesión dependen de Supabase Auth y configuración del despliegue; las rutas cliente no sustituyen RLS/RPC.",
+].join("\n");
+
 function getSurfaceFromPath(pathname: string) {
   if (pathname === "/self-service") {
     return "Autogestión pública";
@@ -121,7 +132,9 @@ export function SecurityAiAssistant() {
                 : "money-impacting dashboard workflow",
               implementedControls: isSelfService
                 ? SELF_SERVICE_SECURITY_EVIDENCE
-                : undefined,
+                : pathname.startsWith("/dashboard")
+                  ? DASHBOARD_SECURITY_EVIDENCE
+                  : undefined,
               privacy:
                 "Do not request or expose customer identifiers, API keys, tokens, or payment credentials.",
             },

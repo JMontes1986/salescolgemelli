@@ -128,8 +128,15 @@ const getActionVariant = (action: AuditLogAction) => {
 
 function redactSensitiveText(value: string) {
   return value
-    .replace(/\b\d{6,}\b/g, "[dato]")
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[correo]");
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[correo]")
+    .replace(
+      /\b(?:c[eé]dula|celular|tel[eé]fono|cliente)\s*[:#-]?\s*[0-9A-Za-z+().\s-]{4,30}/gi,
+      "[dato cliente]",
+    )
+    .replace(/\b(?:CG|PV)[0-9A-Za-z_-]{3,}\b/g, "[codigo]")
+    .replace(/\b(?:token|api[_ -]?key|bearer|authorization)\s*[:=]?\s*[0-9A-Za-z._-]{8,}/gi, "[secreto]")
+    .replace(/\b[0-9a-f]{16,}\b/gi, "[token]")
+    .replace(/\b\d{5,}\b/g, "[dato]");
 }
 
 function isSameLocalDay(dateValue: string, now = new Date()) {
@@ -239,8 +246,10 @@ export default function AuditPage() {
             totals: stats,
             latestActivity: latestActivityLabel,
             recentLogs,
+            implementedControls:
+              "La bitácora redactada se envía sin userId, cédulas, celulares, tokens, códigos de compra ni secretos. El esquema usa purchases/products/returns/cashboxSessions/auditLogs; no existen orders/payments.",
             privacy:
-              "Los identificadores personales ya fueron redactados; no pidas secretos ni expongas datos privados.",
+              "Los identificadores personales, códigos, tokens, secretos y valores largos ya fueron redactados; no pidas secretos ni expongas datos privados.",
           },
         }),
       });

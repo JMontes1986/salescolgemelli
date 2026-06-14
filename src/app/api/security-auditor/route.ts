@@ -11,11 +11,24 @@ const SECURITY_AUDITOR_MODEL =
 
 const MAX_PROMPT_LENGTH = 4000;
 
+const DASHBOARD_SECURITY_EVIDENCE = [
+  "Estado real de /dashboard en este checkout:",
+  "- El esquema financiero no usa tablas orders/payments; el flujo actual usa purchases, products, returns, cashboxSessions y auditLogs.",
+  "- /dashboard/layout.tsx valida permisos por ruta en el cliente para dashboard, sales, presale, self-service, products, redeem, cashbox, returns, users y audit.",
+  "- Supabase RLS está habilitado para users, products, purchases, returns, auditLogs, cashboxSessions y counters.",
+  "- Las operaciones críticas de ventas, autogestión, confirmación de pago, entrega, QR y counters pasan por RPC security definer con validación de entrada y permisos donde aplica.",
+  "- La auditoría persistente usa record_audit_log con lista cerrada de acciones: login, ventas, pagos, caja, inventario, devoluciones, usuarios y autogestión.",
+  "- Los QR de entrega usan token HMAC con expiración; el lookup por QR firmado valida orderId y deliveryCode antes de entregar.",
+  "- El cliente no debe enviar ni recibir claves API, tokens privados ni credenciales de pago; GROQ_API_KEY vive solo en servidor.",
+  "- Riesgo residual conocido: MFA y expiración de 15 minutos dependen de configuración de Supabase Auth/deployment y no se pueden demostrar desde el código cliente.",
+  "- Riesgo residual conocido: el control de ruta del dashboard es UX/cliente; la defensa de datos debe mantenerse en RLS y RPC.",
+].join("\n");
+
 const SECURITY_AUDITOR_SYSTEM_PROMPT = `You are a senior security auditor embedded inside a Colombian school sales platform. You protect money-impacting workflows, customer privacy, inventory integrity, payment confirmation, delivery codes, role-based access, Supabase RLS, and audit evidence.
 
 When reviewing a screen or flow: define scope, identify vulnerabilities, classify risk as Critical, High, Medium, Low, or Observation, and provide concise actionable remediation.
 
-Use the supplied application context as the source of truth. If the context states that a control is already implemented, omit that item from the final answer entirely. Never include a Mitigated/Mitigado section, row, or status for resolved controls. Only list concrete active or residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context.
+Use the supplied application context as the source of truth. If the context states that a control is already implemented, omit that item from the final answer entirely. Never include a Mitigated/Mitigado section, row, or status for resolved controls. Only list concrete active or residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context. For /dashboard, never recommend orders/payments tables unless the context explicitly says they exist.
 
 Keep responses practical for operators and developers. Never ask users to paste secrets. Never expose API keys, tokens, private customer data, or payment credentials. If the request involves customer records, recommend minimum necessary data and server-side validation.`;
 
@@ -41,6 +54,15 @@ function isSelfServiceContext(value: unknown) {
   }
 
   return (value as { route?: unknown }).route === "/self-service";
+}
+
+function isDashboardContext(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const route = (value as { route?: unknown }).route;
+  return typeof route === "string" && route.startsWith("/dashboard");
 }
 
 function stripMitigatedContent(answer: string) {
@@ -92,8 +114,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const context = getRouteContext(payload.context);
+  const baseContext = getRouteContext(payload.context);
   const shouldHideMitigatedContent = isSelfServiceContext(payload.context);
+  const context = isDashboardContext(payload.context)
+    ? [baseContext, DASHBOARD_SECURITY_EVIDENCE].join("\n\n")
+    : baseContext;
   const mode = getPromptValue(payload.mode) || "interactive";
 
   const groqResponse = await fetch(GROQ_CHAT_COMPLETIONS_URL, {

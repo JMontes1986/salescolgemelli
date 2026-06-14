@@ -347,6 +347,9 @@ create table if not exists public.returns (
   source text not null
 );
 
+alter table public.returns enable row level security;
+grant select, insert on public.returns to authenticated;
+
 create table if not exists public."auditLogs" (
   id text primary key default gen_random_uuid()::text,
   timestamp text not null,
@@ -360,6 +363,27 @@ alter table public."auditLogs" enable row level security;
 
 grant select, insert on public."auditLogs" to authenticated;
 
+create or replace function public.current_user_has_permission(p_permission text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.users app_user
+    where app_user.id::text = auth.uid()::text
+      and (
+        app_user.role = 'admin'
+        or coalesce(app_user.permissions, '{}'::text[]) @> array[p_permission]::text[]
+      )
+  );
+$$;
+
+revoke all on function public.current_user_has_permission(text) from public;
+grant execute on function public.current_user_has_permission(text) to authenticated;
+
 drop policy if exists "dashboard_audit_logs_select" on public."auditLogs";
 drop policy if exists "dashboard_audit_logs_insert" on public."auditLogs";
 
@@ -367,7 +391,7 @@ create policy "dashboard_audit_logs_select"
   on public."auditLogs"
   for select
   to authenticated
-  using (true);
+  using (public.current_user_has_permission('audit'));
 
 create policy "dashboard_audit_logs_insert"
   on public."auditLogs"
@@ -445,10 +469,15 @@ create table if not exists public."cashboxSessions" (
   "totalSales" numeric not null default 0
 );
 
+alter table public."cashboxSessions" enable row level security;
+
 create table if not exists public.counters (
   id text primary key,
   count integer not null default 0
 );
+
+alter table public.counters enable row level security;
+revoke all on public.counters from anon, authenticated;
 
 create or replace function public.next_counter(counter_id text)
 returns integer
@@ -567,6 +596,10 @@ declare
   purchase_total numeric := 0;
   saved_purchase public.purchases%rowtype;
 begin
+  if auth.uid() is not null and not public.current_user_has_permission('sales') then
+    raise exception 'No tiene permiso para registrar ventas POS.';
+  end if;
+
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
     raise exception 'Debe seleccionar al menos un producto.';
   end if;
@@ -1035,6 +1068,23 @@ begin
     raise exception 'Estado de compra no permitido.';
   end if;
 
+  if auth.uid() is not null then
+    if p_target_status = 'paid'
+      and not public.current_user_has_permission('sales') then
+      raise exception 'No tiene permiso para confirmar pagos.';
+    end if;
+
+    if p_target_status = 'pre-sale-confirmed'
+      and not public.current_user_has_permission('presale') then
+      raise exception 'No tiene permiso para confirmar preventas.';
+    end if;
+
+    if p_target_status = 'delivered'
+      and not public.current_user_has_permission('redeem') then
+      raise exception 'No tiene permiso para registrar entregas.';
+    end if;
+  end if;
+
   select * into purchase_record
   from public.purchases
   where id = trim(p_purchase_id)
@@ -1204,6 +1254,10 @@ declare
   lookup_token text := nullif(btrim(coalesce(p_token, '')), '');
   token_payload jsonb;
 begin
+  if auth.uid() is not null and not public.current_user_has_permission('redeem') then
+    raise exception 'No tiene permiso para registrar entregas.';
+  end if;
+
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
     raise exception 'La compra tiene un identificador inválido.';
   end if;
@@ -1329,20 +1383,20 @@ create policy "dashboard_products_insert"
   on public.products
   for insert
   to authenticated
-  with check (auth.uid() is not null);
+  with check (public.current_user_has_permission('products'));
 
 create policy "dashboard_products_update"
   on public.products
   for update
   to authenticated
-  using (auth.uid() is not null)
-  with check (auth.uid() is not null);
+  using (public.current_user_has_permission('products'))
+  with check (public.current_user_has_permission('products'));
 
 create policy "dashboard_products_delete"
   on public.products
   for delete
   to authenticated
-  using (auth.uid() is not null);
+  using (public.current_user_has_permission('products'));
 
 drop policy if exists "dashboard_purchases_select" on public.purchases;
 drop policy if exists "dashboard_purchases_insert" on public.purchases;
@@ -1354,20 +1408,37 @@ create policy "dashboard_purchases_select"
   on public.purchases
   for select
   to authenticated
-  using (true);
+  using (
+    public.current_user_has_permission('dashboard')
+    or public.current_user_has_permission('sales')
+    or public.current_user_has_permission('presale')
+    or public.current_user_has_permission('redeem')
+    or public.current_user_has_permission('audit')
+  );
 
 create policy "dashboard_purchases_insert"
   on public.purchases
   for insert
   to authenticated
-  with check (true);
+  with check (
+    public.current_user_has_permission('sales')
+    or public.current_user_has_permission('presale')
+  );
 
 create policy "dashboard_purchases_update"
   on public.purchases
   for update
   to authenticated
-  using (true)
-  with check (true);
+  using (
+    public.current_user_has_permission('sales')
+    or public.current_user_has_permission('presale')
+    or public.current_user_has_permission('redeem')
+  )
+  with check (
+    public.current_user_has_permission('sales')
+    or public.current_user_has_permission('presale')
+    or public.current_user_has_permission('redeem')
+  );
 
 drop policy if exists "dashboard_returns_select" on public.returns;
 drop policy if exists "dashboard_returns_insert" on public.returns;
@@ -1376,16 +1447,62 @@ create policy "dashboard_returns_select"
   on public.returns
   for select
   to authenticated
-  using (true);
+  using (
+    public.current_user_has_permission('returns')
+    or public.current_user_has_permission('audit')
+  );
 
 create policy "dashboard_returns_insert"
   on public.returns
   for insert
   to authenticated
   with check (
-    auth.uid() is not null
+    public.current_user_has_permission('returns')
     and "processedByUserId" = auth.uid()::text
     and quantity > 0
+  );
+
+drop policy if exists "dashboard_cashbox_sessions_select" on public."cashboxSessions";
+drop policy if exists "dashboard_cashbox_sessions_insert" on public."cashboxSessions";
+drop policy if exists "dashboard_cashbox_sessions_update" on public."cashboxSessions";
+
+grant select, insert, update on public."cashboxSessions" to authenticated;
+
+create policy "dashboard_cashbox_sessions_select"
+  on public."cashboxSessions"
+  for select
+  to authenticated
+  using (
+    public.current_user_has_permission('cashbox')
+    or public.current_user_has_permission('audit')
+  );
+
+create policy "dashboard_cashbox_sessions_insert"
+  on public."cashboxSessions"
+  for insert
+  to authenticated
+  with check (
+    public.current_user_has_permission('cashbox')
+    and "userId" = auth.uid()::text
+    and status = 'open'
+    and "openingBalance" >= 0
+    and "totalSales" >= 0
+  );
+
+create policy "dashboard_cashbox_sessions_update"
+  on public."cashboxSessions"
+  for update
+  to authenticated
+  using (
+    public.current_user_has_permission('cashbox')
+    and "userId" = auth.uid()::text
+  )
+  with check (
+    public.current_user_has_permission('cashbox')
+    and "userId" = auth.uid()::text
+    and status in ('open', 'closed')
+    and coalesce("closingBalance", 0) >= 0
+    and "totalSales" >= 0
   );
 
 alter table public.products replica identity full;
