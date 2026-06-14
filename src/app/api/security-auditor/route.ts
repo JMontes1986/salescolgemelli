@@ -17,10 +17,12 @@ const DASHBOARD_SECURITY_EVIDENCE = [
   "- /dashboard/layout.tsx valida permisos por ruta en el cliente para dashboard, sales, presale, self-service, products, redeem, cashbox, returns, users y audit.",
   "- Supabase RLS está habilitado para users, products, purchases, returns, auditLogs, cashboxSessions y counters.",
   "- Las operaciones críticas de ventas, autogestión, confirmación de pago, entrega, QR y counters pasan por RPC security definer con validación de entrada y permisos donde aplica.",
+  "- Las escrituras autenticadas de dashboard sobre purchases, products, returns y cashboxSessions exigen sesión fuerte en SQL: MFA verificado con aal2 y token emitido hace máximo 15 minutos.",
+  "- Las RPC autenticadas de venta POS, confirmación de pago/preventa y entrega también exigen sesión fuerte antes de modificar datos financieros.",
   "- La auditoría persistente usa record_audit_log con lista cerrada de acciones: login, ventas, pagos, caja, inventario, devoluciones, usuarios y autogestión.",
   "- Los QR de entrega usan token HMAC con expiración; el lookup por QR firmado valida orderId y deliveryCode antes de entregar.",
   "- El cliente no debe enviar ni recibir claves API, tokens privados ni credenciales de pago; GROQ_API_KEY vive solo en servidor.",
-  "- Riesgo residual conocido: MFA y expiración de 15 minutos dependen de configuración de Supabase Auth/deployment y no se pueden demostrar desde el código cliente.",
+  "- Requisito operativo: Supabase Auth debe tener MFA habilitado para que las sesiones puedan elevarse a aal2; si no, las escrituras financieras autenticadas serán rechazadas por SQL.",
   "- Riesgo residual conocido: el control de ruta del dashboard es UX/cliente; la defensa de datos debe mantenerse en RLS y RPC.",
 ].join("\n");
 

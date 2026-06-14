@@ -384,6 +384,94 @@ $$;
 revoke all on function public.current_user_has_permission(text) from public;
 grant execute on function public.current_user_has_permission(text) to authenticated;
 
+create or replace function public.current_session_has_mfa()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select auth.uid() is not null
+    and coalesce(auth.jwt()->>'aal', '') = 'aal2';
+$$;
+
+revoke all on function public.current_session_has_mfa() from public;
+grant execute on function public.current_session_has_mfa() to authenticated;
+
+create or replace function public.current_session_is_recent(
+  p_max_age_seconds integer default 900
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  issued_at_text text := coalesce(auth.jwt()->>'iat', '');
+  issued_at_epoch bigint;
+  now_epoch bigint := floor(extract(epoch from now()))::bigint;
+begin
+  if auth.uid() is null or issued_at_text !~ '^[0-9]+$' then
+    return false;
+  end if;
+
+  issued_at_epoch := issued_at_text::bigint;
+
+  return issued_at_epoch >= now_epoch - greatest(coalesce(p_max_age_seconds, 900), 60)
+    and issued_at_epoch <= now_epoch + 60;
+end;
+$$;
+
+revoke all on function public.current_session_is_recent(integer) from public;
+grant execute on function public.current_session_is_recent(integer) to authenticated;
+
+create or replace function public.current_session_is_dashboard_strong()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.current_session_has_mfa()
+    and public.current_session_is_recent(900);
+$$;
+
+revoke all on function public.current_session_is_dashboard_strong() from public;
+grant execute on function public.current_session_is_dashboard_strong() to authenticated;
+
+create or replace function public.require_dashboard_strong_permission(
+  p_permission text,
+  p_action text default 'realizar esta acción'
+)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Se requiere una sesión autenticada para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+  end if;
+
+  if not public.current_user_has_permission(p_permission) then
+    raise exception 'No tiene permiso para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+  end if;
+
+  if not public.current_session_has_mfa() then
+    raise exception 'Se requiere MFA verificado para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+  end if;
+
+  if not public.current_session_is_recent(900) then
+    raise exception 'La sesión superó 15 minutos. Vuelva a iniciar sesión para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+  end if;
+end;
+$$;
+
+revoke all on function public.require_dashboard_strong_permission(text, text) from public;
+grant execute on function public.require_dashboard_strong_permission(text, text) to authenticated;
+
 drop policy if exists "dashboard_audit_logs_select" on public."auditLogs";
 drop policy if exists "dashboard_audit_logs_insert" on public."auditLogs";
 
@@ -596,9 +684,7 @@ declare
   purchase_total numeric := 0;
   saved_purchase public.purchases%rowtype;
 begin
-  if auth.uid() is not null and not public.current_user_has_permission('sales') then
-    raise exception 'No tiene permiso para registrar ventas POS.';
-  end if;
+  perform public.require_dashboard_strong_permission('sales', 'registrar ventas POS');
 
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
     raise exception 'Debe seleccionar al menos un producto.';
@@ -1069,19 +1155,16 @@ begin
   end if;
 
   if auth.uid() is not null then
-    if p_target_status = 'paid'
-      and not public.current_user_has_permission('sales') then
-      raise exception 'No tiene permiso para confirmar pagos.';
+    if p_target_status = 'paid' then
+      perform public.require_dashboard_strong_permission('sales', 'confirmar pagos');
     end if;
 
-    if p_target_status = 'pre-sale-confirmed'
-      and not public.current_user_has_permission('presale') then
-      raise exception 'No tiene permiso para confirmar preventas.';
+    if p_target_status = 'pre-sale-confirmed' then
+      perform public.require_dashboard_strong_permission('presale', 'confirmar preventas');
     end if;
 
-    if p_target_status = 'delivered'
-      and not public.current_user_has_permission('redeem') then
-      raise exception 'No tiene permiso para registrar entregas.';
+    if p_target_status = 'delivered' then
+      perform public.require_dashboard_strong_permission('redeem', 'registrar entregas');
     end if;
   end if;
 
@@ -1254,8 +1337,8 @@ declare
   lookup_token text := nullif(btrim(coalesce(p_token, '')), '');
   token_payload jsonb;
 begin
-  if auth.uid() is not null and not public.current_user_has_permission('redeem') then
-    raise exception 'No tiene permiso para registrar entregas.';
+  if auth.uid() is not null then
+    perform public.require_dashboard_strong_permission('redeem', 'registrar entregas');
   end if;
 
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
@@ -1383,20 +1466,42 @@ create policy "dashboard_products_insert"
   on public.products
   for insert
   to authenticated
-  with check (public.current_user_has_permission('products'));
+  with check (
+    public.current_user_has_permission('products')
+    and public.current_session_is_dashboard_strong()
+  );
 
 create policy "dashboard_products_update"
   on public.products
   for update
   to authenticated
-  using (public.current_user_has_permission('products'))
-  with check (public.current_user_has_permission('products'));
+  using (
+    public.current_session_is_dashboard_strong()
+    and (
+      public.current_user_has_permission('products')
+      or public.current_user_has_permission('sales')
+      or public.current_user_has_permission('presale')
+      or public.current_user_has_permission('returns')
+    )
+  )
+  with check (
+    public.current_session_is_dashboard_strong()
+    and (
+      public.current_user_has_permission('products')
+      or public.current_user_has_permission('sales')
+      or public.current_user_has_permission('presale')
+      or public.current_user_has_permission('returns')
+    )
+  );
 
 create policy "dashboard_products_delete"
   on public.products
   for delete
   to authenticated
-  using (public.current_user_has_permission('products'));
+  using (
+    public.current_user_has_permission('products')
+    and public.current_session_is_dashboard_strong()
+  );
 
 drop policy if exists "dashboard_purchases_select" on public.purchases;
 drop policy if exists "dashboard_purchases_insert" on public.purchases;
@@ -1421,8 +1526,11 @@ create policy "dashboard_purchases_insert"
   for insert
   to authenticated
   with check (
-    public.current_user_has_permission('sales')
-    or public.current_user_has_permission('presale')
+    public.current_session_is_dashboard_strong()
+    and (
+      public.current_user_has_permission('sales')
+      or public.current_user_has_permission('presale')
+    )
   );
 
 create policy "dashboard_purchases_update"
@@ -1430,14 +1538,20 @@ create policy "dashboard_purchases_update"
   for update
   to authenticated
   using (
-    public.current_user_has_permission('sales')
-    or public.current_user_has_permission('presale')
-    or public.current_user_has_permission('redeem')
+    public.current_session_is_dashboard_strong()
+    and (
+      public.current_user_has_permission('sales')
+      or public.current_user_has_permission('presale')
+      or public.current_user_has_permission('redeem')
+    )
   )
   with check (
-    public.current_user_has_permission('sales')
-    or public.current_user_has_permission('presale')
-    or public.current_user_has_permission('redeem')
+    public.current_session_is_dashboard_strong()
+    and (
+      public.current_user_has_permission('sales')
+      or public.current_user_has_permission('presale')
+      or public.current_user_has_permission('redeem')
+    )
   );
 
 drop policy if exists "dashboard_returns_select" on public.returns;
@@ -1458,6 +1572,7 @@ create policy "dashboard_returns_insert"
   to authenticated
   with check (
     public.current_user_has_permission('returns')
+    and public.current_session_is_dashboard_strong()
     and "processedByUserId" = auth.uid()::text
     and quantity > 0
   );
@@ -1483,6 +1598,7 @@ create policy "dashboard_cashbox_sessions_insert"
   to authenticated
   with check (
     public.current_user_has_permission('cashbox')
+    and public.current_session_is_dashboard_strong()
     and "userId" = auth.uid()::text
     and status = 'open'
     and "openingBalance" >= 0
@@ -1495,10 +1611,12 @@ create policy "dashboard_cashbox_sessions_update"
   to authenticated
   using (
     public.current_user_has_permission('cashbox')
+    and public.current_session_is_dashboard_strong()
     and "userId" = auth.uid()::text
   )
   with check (
     public.current_user_has_permission('cashbox')
+    and public.current_session_is_dashboard_strong()
     and "userId" = auth.uid()::text
     and status in ('open', 'closed')
     and coalesce("closingBalance", 0) >= 0

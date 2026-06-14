@@ -43,9 +43,10 @@ const DASHBOARD_SECURITY_EVIDENCE = [
   "- Las tablas sensibles del flujo financiero son purchases, products, returns, cashboxSessions, auditLogs, users y counters.",
   "- No existen tablas orders ni payments en el esquema actual.",
   "- purchases/products/returns/cashboxSessions/auditLogs tienen RLS y políticas para usuarios autenticados con permisos.",
-  "- Ventas POS, autogestión, confirmación de pago, entrega y QR se validan también en RPC de Supabase.",
+  "- Las escrituras autenticadas sobre purchases, products, returns y cashboxSessions exigen MFA aal2 y token emitido hace máximo 15 minutos desde SQL.",
+  "- Ventas POS, confirmación de pago/preventa, entrega y QR se validan también en RPC de Supabase; las RPC autenticadas exigen sesión fuerte.",
   "- La auditoría persistente usa record_audit_log con acciones permitidas.",
-  "- Riesgos residuales a vigilar: MFA/expiración de sesión dependen de Supabase Auth y configuración del despliegue; las rutas cliente no sustituyen RLS/RPC.",
+  "- Riesgos residuales a vigilar: Supabase Auth debe tener MFA habilitado para que usuarios legítimos obtengan aal2; las rutas cliente no sustituyen RLS/RPC.",
 ].join("\n");
 
 function getSurfaceFromPath(pathname: string) {
