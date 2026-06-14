@@ -519,9 +519,11 @@ begin
     'SELF_SERVICE_SECURITY_ALERT',
     'PRODUCT_CREATE',
     'PRODUCT_UPDATE',
-    'RETURN_PROCESS'
+    'RETURN_PROCESS',
+    'AUDIT_LOG_FAILURE'
   ) then
-    raise exception 'Acción de auditoría no permitida.';
+    p_details := 'Intento de registrar acción de auditoría no permitida: ' || coalesce(nullif(btrim(p_action), ''), '[vacía]');
+    safe_action := 'AUDIT_LOG_FAILURE';
   end if;
 
   insert into public."auditLogs" (
@@ -567,6 +569,36 @@ create table if not exists public.counters (
 
 alter table public.counters enable row level security;
 revoke all on public.counters from anon, authenticated;
+
+drop policy if exists "counters_no_direct_select" on public.counters;
+drop policy if exists "counters_no_direct_insert" on public.counters;
+drop policy if exists "counters_no_direct_update" on public.counters;
+drop policy if exists "counters_no_direct_delete" on public.counters;
+
+create policy "counters_no_direct_select"
+  on public.counters
+  for select
+  to anon, authenticated
+  using (false);
+
+create policy "counters_no_direct_insert"
+  on public.counters
+  for insert
+  to anon, authenticated
+  with check (false);
+
+create policy "counters_no_direct_update"
+  on public.counters
+  for update
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+create policy "counters_no_direct_delete"
+  on public.counters
+  for delete
+  to anon, authenticated
+  using (false);
 
 create or replace function public.next_counter(counter_id text)
 returns integer

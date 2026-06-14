@@ -90,7 +90,8 @@ export type AuditLogAction =
   | 'SELF_SERVICE_SECURITY_ALERT'
   | 'PRODUCT_CREATE'
   | 'PRODUCT_UPDATE'
-  | 'RETURN_PROCESS';
+  | 'RETURN_PROCESS'
+  | 'AUDIT_LOG_FAILURE';
 
 export type AuditLog = {
   id: string;

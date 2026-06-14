@@ -65,6 +65,7 @@ const actionLabels: Record<AuditLogAction, string> = {
   PRODUCT_CREATE: "Producto creado",
   PRODUCT_UPDATE: "Producto editado",
   RETURN_PROCESS: "Devolución",
+  AUDIT_LOG_FAILURE: "Fallo auditoría",
 };
 
 const filterLabels: Record<AuditFilter, string> = {
@@ -76,7 +77,7 @@ const filterLabels: Record<AuditFilter, string> = {
 };
 
 const filterActions: Record<Exclude<AuditFilter, "all">, AuditLogAction[]> = {
-  access: ["USER_LOGIN", "USER_ROLE_CHANGE"],
+  access: ["USER_LOGIN", "USER_ROLE_CHANGE", "AUDIT_LOG_FAILURE"],
   money: [
     "TICKET_ISSUE",
     "TICKET_SELL",
@@ -117,6 +118,7 @@ const getActionVariant = (action: AuditLogAction) => {
         case 'RETURN_PROCESS':
             return 'bg-purple-500/20 text-purple-700';
         case 'SELF_SERVICE_SECURITY_ALERT':
+        case 'AUDIT_LOG_FAILURE':
             return 'bg-red-500/20 text-red-700';
         case 'TICKET_VOID':
         case 'CASHBOX_CLOSE':
