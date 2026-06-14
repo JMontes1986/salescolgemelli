@@ -93,7 +93,7 @@ function getAutoPrompt(pathname: string) {
   }
 
   if (pathname.startsWith("/dashboard")) {
-    return "Revisa esta pantalla interna como guardia activo. Prioriza roles, permisos, acciones con impacto en dinero, stock, caja, auditoría y trazabilidad. Devuelve un resumen breve con el principal riesgo a vigilar.";
+    return "Revisa esta pantalla interna como guardia activo. Prioriza roles, permisos, acciones con impacto en dinero, stock, caja, auditoría y trazabilidad. Para cada riesgo activo o residual, indica también la solución ideal de ciberseguridad y el primer paso concreto para aplicarla. Devuelve un resumen breve y accionable para administrador.";
   }
 
   return "Revisa esta pantalla como guardia activo. Prioriza autenticación, manejo de sesión, exposición de datos y errores visibles.";
@@ -175,7 +175,7 @@ export function SecurityAiAssistant() {
     lastAutoPath.current = pathname;
 
     if (isSelfService) {
-      setIsOpen(true);
+      setIsOpen(false);
     }
 
     runAudit(getAutoPrompt(pathname), "active-route-guard");
@@ -199,7 +199,7 @@ export function SecurityAiAssistant() {
         isSelfService ? "bottom-24 sm:bottom-6" : "bottom-4 sm:bottom-5",
       )}
     >
-      {isOpen && (
+      {isOpen && !isSelfService && (
         <section className="mb-3 w-[min(calc(100vw-1.5rem),390px)] overflow-hidden rounded-lg border border-border/80 bg-background/96 text-foreground shadow-2xl shadow-slate-950/20 backdrop-blur supports-[backdrop-filter]:bg-background/90">
           <div className="flex items-center justify-between gap-3 border-b bg-muted/50 px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
@@ -278,13 +278,27 @@ export function SecurityAiAssistant() {
 
       <Button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          if (!isSelfService) {
+            setIsOpen((current) => !current);
+          }
+        }}
         className={cn(
           "h-12 rounded-full px-4 font-bold shadow-xl shadow-slate-950/20",
           isSelfService &&
-            "bg-[#b23178] text-white hover:bg-[#8d2460] dark:bg-[#b23178] dark:hover:bg-[#8d2460]",
+            "cursor-default bg-[#b23178] text-white hover:bg-[#b23178] dark:bg-[#b23178] dark:hover:bg-[#b23178]",
         )}
-        aria-label="Abrir IA de seguridad"
+        aria-label={
+          isSelfService
+            ? "IA de seguridad activa en autogestión"
+            : "Abrir IA de seguridad"
+        }
+        aria-disabled={isSelfService}
+        title={
+          isSelfService
+            ? "La IA de seguridad vigila autogestión en segundo plano; el detalle es visible solo para administradores."
+            : undefined
+        }
       >
         {status === "loading" ? (
           <Loader2 className="h-5 w-5 animate-spin" />
