@@ -31,6 +31,7 @@ import {
 import { Logo } from "@/components/icons";
 
 type AdminMfaSetup = {
+  accountName?: string;
   manualSecret: string;
   qrDataUrl: string;
 };
@@ -152,12 +153,14 @@ export default function LoginPage() {
   const [totpCode, setTotpCode] = useState("");
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaSetup, setMfaSetup] = useState<AdminMfaSetup | null>(null);
+  const [mfaSetupEnabled, setMfaSetupEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [key, setKey] = useState(0); // Key to force re-render if needed
 
   const resetMfa = () => {
     setMfaRequired(false);
     setMfaSetup(null);
+    setMfaSetupEnabled(false);
     setTotpCode("");
   };
 
@@ -179,12 +182,14 @@ export default function LoginPage() {
         user?: User;
         redirectTo?: string;
         mfaRequired?: boolean;
+        setupEnabled?: boolean;
         setup?: AdminMfaSetup;
         message?: string;
       };
 
       if (body.mfaRequired) {
         setMfaRequired(true);
+        setMfaSetupEnabled(Boolean(body.setupEnabled));
         setMfaSetup(body.setup ?? mfaSetup);
         setTotpCode("");
 
@@ -302,13 +307,21 @@ export default function LoginPage() {
                     </div>
                     <div className="space-y-1 text-center">
                       <p className="text-sm font-medium">
-                        Escanea este QR en FreeOTP
+                        Escanea este QR en FreeOTP como{" "}
+                        {mfaSetup.accountName ?? "Molly Ventas Admin"}
                       </p>
                       <p className="break-all rounded-md bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
                         {mfaSetup.manualSecret}
                       </p>
                     </div>
                   </div>
+                )}
+                {!mfaSetup && !mfaSetupEnabled && (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    Este administrador todavia no puede configurarse aqui.
+                    Activa temporalmente ADMIN_FREEOTP_SETUP_ENABLED=true en el
+                    entorno del servidor y reinicia la app para ver el QR.
+                  </p>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="totp-code">Código FreeOTP</Label>

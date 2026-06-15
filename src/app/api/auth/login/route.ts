@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             mfaRequired: true,
+            setupEnabled,
             setup: setupEnabled ? await getAdminTotpSetup(user) : undefined,
             message:
               setupEnabled

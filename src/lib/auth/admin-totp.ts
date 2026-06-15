@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
 import type { User } from "@/lib/types";
 
-const TOTP_ISSUER = "Sales Colgemelli";
+const TOTP_ISSUER = "Molly Ventas";
 const TOTP_PERIOD_SECONDS = 30;
 const TOTP_DIGITS = 6;
 const TOTP_WINDOW = 1;
@@ -12,6 +12,7 @@ export type AdminTotpSetup = {
   manualSecret: string;
   otpauthUri: string;
   qrDataUrl: string;
+  accountName: string;
 };
 
 function getTotpRootSecret() {
@@ -140,7 +141,8 @@ export function verifyAdminTotpCode(user: User, code: string) {
 
 export async function getAdminTotpSetup(user: User): Promise<AdminTotpSetup> {
   const manualSecret = deriveAdminTotpSecret(user);
-  const label = `${TOTP_ISSUER}:${user.username}`;
+  const accountName = `Administrador ${user.username}`;
+  const label = `${TOTP_ISSUER}:${accountName}`;
   const otpauthUri =
     `otpauth://totp/${encodeURIComponent(label)}` +
     `?secret=${encodeURIComponent(manualSecret)}` +
@@ -150,6 +152,7 @@ export async function getAdminTotpSetup(user: User): Promise<AdminTotpSetup> {
     `&period=${TOTP_PERIOD_SECONDS}`;
 
   return {
+    accountName,
     manualSecret,
     otpauthUri,
     qrDataUrl: await QRCode.toDataURL(otpauthUri, {
