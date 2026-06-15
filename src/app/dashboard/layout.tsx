@@ -6,15 +6,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { navItems, adminNavItems } from "@/components/dashboard/sidebar-nav";
 import { useEffect, useState, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import {
+  canAccessDashboardPath,
+  getDefaultDashboardPath,
+} from "@/lib/auth/route-access";
 
 const allNavItems = [...navItems, ...adminNavItems];
-const dashboardRoutePermissions = [
-  { href: "/dashboard/self-service-pos", permission: "self-service" },
-  { href: "/dashboard/self-service", permission: "self-service" },
-  ...allNavItems
-    .filter(item => item.href.startsWith("/dashboard"))
-    .sort((a, b) => b.href.length - a.href.length),
-] as const;
 
 export default function DashboardLayout({
   children,
@@ -31,20 +28,10 @@ export default function DashboardLayout({
       if (!currentUser) {
         router.push("/");
       } else {
-        const routePermission = dashboardRoutePermissions.find(item =>
-          pathname === item.href || pathname.startsWith(`${item.href}/`)
-        )?.permission;
-        const canAccessRoute = routePermission
-          ? currentUser.permissions.includes(routePermission)
-          : false;
+        const canAccessRoute = canAccessDashboardPath(currentUser, pathname);
 
         if (!canAccessRoute) {
-          const fallbackRoute =
-            allNavItems.find(item =>
-              item.href.startsWith("/dashboard") &&
-              currentUser.permissions.includes(item.permission)
-            )?.href ?? "/";
-          router.replace(fallbackRoute);
+          router.replace(getDefaultDashboardPath(currentUser));
           setAuthorized(false);
           return;
         }

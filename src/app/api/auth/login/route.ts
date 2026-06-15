@@ -1,0 +1,143 @@
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  AuthenticationError,
+  authenticateUser,
+} from "@/lib/services/user-service";
+import { addAuditLog } from "@/lib/services/audit-service";
+import { setAuthCookies } from "@/lib/auth/response-cookies";
+import { getDefaultDashboardPath } from "@/lib/auth/route-access";
+
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
+
+type LoginAttempt = {
+  count: number;
+  resetAt: number;
+};
+
+const loginAttempts = new Map<string, LoginAttempt>();
+
+function getClientAddress(request: NextRequest) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  return (
+    forwardedFor?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+function getAttemptKey(request: NextRequest, username: string) {
+  return `${getClientAddress(request)}:${username.trim().toLowerCase()}`;
+}
+
+function consumeLoginAttempt(key: string) {
+  const now = Date.now();
+  const currentAttempt = loginAttempts.get(key);
+
+  if (!currentAttempt || currentAttempt.resetAt <= now) {
+    loginAttempts.set(key, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    });
+    return { limited: false, retryAfter: 0 };
+  }
+
+  if (currentAttempt.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+    return {
+      limited: true,
+      retryAfter: Math.ceil((currentAttempt.resetAt - now) / 1000),
+    };
+  }
+
+  currentAttempt.count += 1;
+  loginAttempts.set(key, currentAttempt);
+  return { limited: false, retryAfter: 0 };
+}
+
+export async function POST(request: NextRequest) {
+  let username = "";
+
+  try {
+    const body = (await request.json()) as {
+      username?: unknown;
+      password?: unknown;
+    };
+
+    username = typeof body.username === "string" ? body.username.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!username || !password) {
+      return NextResponse.json(
+        { message: "Ingresa usuario y contraseña." },
+        { status: 400 },
+      );
+    }
+
+    const attemptKey = getAttemptKey(request, username);
+    const rateLimit = consumeLoginAttempt(attemptKey);
+
+    if (rateLimit.limited) {
+      return NextResponse.json(
+        {
+          message:
+            "Demasiados intentos de inicio de sesión. Espera unos minutos e inténtalo de nuevo.",
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfter),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+
+    const authenticatedUser = await authenticateUser(username, password);
+
+    if (!authenticatedUser) {
+      return NextResponse.json(
+        { message: "El usuario o la contraseña son incorrectos." },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    loginAttempts.delete(attemptKey);
+
+    const { user, session } = authenticatedUser;
+    const response = NextResponse.json(
+      {
+        user,
+        redirectTo: getDefaultDashboardPath(user),
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+
+    await setAuthCookies(response, user, session);
+
+    try {
+      await addAuditLog({
+        userId: user.id,
+        userName: user.name,
+        action: "USER_LOGIN",
+        details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
+      });
+    } catch {
+      // The login must not fail just because the audit sink is temporarily unavailable.
+    }
+
+    return response;
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { message: error.message },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    console.error("Login failed in auth route.");
+    return NextResponse.json(
+      { message: "No se pudo completar el inicio de sesión." },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+}

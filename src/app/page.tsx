@@ -15,13 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  AuthenticationError,
-  authenticateUser,
-  addUser,
-} from "@/lib/services/user-service";
+import { addUser } from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
-import type { NewUser } from "@/lib/types";
+import type { NewUser, User } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +29,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Logo } from "@/components/icons";
-import { addAuditLog } from "@/lib/services/audit-service";
 
 function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   const { toast } = useToast();
@@ -157,56 +152,38 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log(`Attempting to authenticate user: ${username}`);
-      const authenticatedUser = await authenticateUser(username, password);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        cache: "no-store",
+      });
+      const body = (await response.json()) as {
+        user?: User;
+        redirectTo?: string;
+        message?: string;
+      };
 
-      if (authenticatedUser) {
-        const { user, session } = authenticatedUser;
-
-        console.log("Authentication successful for:", user.name);
-        login(user, session);
-        toast({
-          title: "Inicio de sesión exitoso",
-          description: `¡Bienvenido de nuevo, ${user.name}!`,
-        });
-
-        try {
-          await addAuditLog({
-            userId: user.id,
-            userName: user.name,
-            action: "USER_LOGIN",
-            details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
-          });
-        } catch (error) {
-          console.warn("No se pudo registrar auditoría de login.", error);
-        }
-
-        if (user.role === "seller") {
-          router.push("/dashboard/redeem");
-        } else if (user.role === "cashier") {
-          router.push("/dashboard/sales");
-        } else {
-          router.push("/dashboard");
-        }
-      } else {
-        console.log(`Authentication failed for user: ${username}`);
+      if (!response.ok || !body.user) {
         toast({
           variant: "destructive",
           title: "Error de autenticación",
-          description: "El usuario o la contraseña son incorrectos.",
-        });
-      }
-    } catch (error) {
-      if (error instanceof AuthenticationError) {
-        toast({
-          variant: "destructive",
-          title: "Error de autenticación",
-          description: error.message,
+          description:
+            body.message ?? "El usuario o la contraseña son incorrectos.",
         });
         return;
       }
 
-      console.error("Login system error:", error);
+      login(body.user);
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: `¡Bienvenido de nuevo, ${body.user.name}!`,
+      });
+      router.push(body.redirectTo ?? "/dashboard");
+    } catch {
       toast({
         variant: "destructive",
         title: "Error del sistema",
