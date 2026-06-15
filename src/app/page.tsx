@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn } from "lucide-react";
+import { KeyRound, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addUser } from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +29,11 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Logo } from "@/components/icons";
+
+type AdminMfaSetup = {
+  manualSecret: string;
+  qrDataUrl: string;
+};
 
 function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   const { toast } = useToast();
@@ -144,8 +149,17 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaSetup, setMfaSetup] = useState<AdminMfaSetup | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [key, setKey] = useState(0); // Key to force re-render if needed
+
+  const resetMfa = () => {
+    setMfaRequired(false);
+    setMfaSetup(null);
+    setTotpCode("");
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,14 +172,34 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, totpCode }),
         cache: "no-store",
       });
       const body = (await response.json()) as {
         user?: User;
         redirectTo?: string;
+        mfaRequired?: boolean;
+        setup?: AdminMfaSetup;
         message?: string;
       };
+
+      if (body.mfaRequired) {
+        setMfaRequired(true);
+        setMfaSetup(body.setup ?? mfaSetup);
+        setTotpCode("");
+
+        if (!response.ok) {
+          toast({
+            variant: "destructive",
+            title: "Código FreeOTP requerido",
+            description:
+              body.message ??
+              "Ingresa el código de 6 dígitos generado en FreeOTP.",
+          });
+        }
+
+        return;
+      }
 
       if (!response.ok || !body.user) {
         toast({
@@ -178,6 +212,7 @@ export default function LoginPage() {
       }
 
       login(body.user);
+      resetMfa();
       toast({
         title: "Inicio de sesión exitoso",
         description: `¡Bienvenido de nuevo, ${body.user.name}!`,
@@ -221,25 +256,80 @@ export default function LoginPage() {
               <Label htmlFor="username">Usuario o correo electrónico</Label>
               <Input
                 id="username"
+                name="username"
                 type="text"
                 placeholder="usuario123 o admin@colegio.edu"
                 required
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  resetMfa();
+                }}
                 disabled={isLoading}
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  resetMfa();
+                }}
                 disabled={isLoading}
+                autoComplete="current-password"
               />
             </div>
+            {mfaRequired && (
+              <div className="space-y-4 rounded-md border border-border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Abre FreeOTP e ingresa el código de 6 dígitos del
+                  administrador.
+                </p>
+                {mfaSetup && (
+                  <div className="grid gap-3">
+                    <div className="flex justify-center">
+                      <img
+                        src={mfaSetup.qrDataUrl}
+                        alt="QR para configurar FreeOTP"
+                        className="h-40 w-40 rounded-md border border-border bg-white p-2"
+                      />
+                    </div>
+                    <div className="space-y-1 text-center">
+                      <p className="text-sm font-medium">
+                        Escanea este QR en FreeOTP
+                      </p>
+                      <p className="break-all rounded-md bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {mfaSetup.manualSecret}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="totp-code">Código FreeOTP</Label>
+                  <Input
+                    id="totp-code"
+                    name="totpCode"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    required={mfaRequired}
+                    value={totpCode}
+                    onChange={(e) =>
+                      setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    disabled={isLoading}
+                    autoComplete="one-time-code"
+                  />
+                </div>
+              </div>
+            )}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col">
@@ -249,8 +339,16 @@ export default function LoginPage() {
             form="login-form"
             disabled={isLoading}
           >
-            <LogIn className="mr-2 h-4 w-4" />
-            {isLoading ? "Ingresando..." : "Ingresar"}
+            {mfaRequired ? (
+              <KeyRound className="mr-2 h-4 w-4" />
+            ) : (
+              <LogIn className="mr-2 h-4 w-4" />
+            )}
+            {isLoading
+              ? "Validando..."
+              : mfaRequired
+                ? "Verificar FreeOTP"
+                : "Ingresar"}
           </Button>
           <CreateUserForm onUserCreated={handleUserCreation} />
         </CardFooter>

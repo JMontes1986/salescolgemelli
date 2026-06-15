@@ -6,6 +6,12 @@ import {
 import { addAuditLog } from "@/lib/services/audit-service";
 import { setAuthCookies } from "@/lib/auth/response-cookies";
 import { getDefaultDashboardPath } from "@/lib/auth/route-access";
+import {
+  getAdminTotpSetup,
+  isAdminTotpRequired,
+  isAdminTotpSetupEnabled,
+  verifyAdminTotpCode,
+} from "@/lib/auth/admin-totp";
 
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 5;
@@ -61,10 +67,13 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as {
       username?: unknown;
       password?: unknown;
+      totpCode?: unknown;
     };
 
     username = typeof body.username === "string" ? body.username.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
+    const totpCode =
+      typeof body.totpCode === "string" ? body.totpCode.trim() : "";
 
     if (!username || !password) {
       return NextResponse.json(
@@ -101,9 +110,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { user, session } = authenticatedUser;
+
+    if (isAdminTotpRequired(user)) {
+      if (!totpCode) {
+        const setupEnabled = isAdminTotpSetupEnabled();
+
+        return NextResponse.json(
+          {
+            mfaRequired: true,
+            setup: setupEnabled ? await getAdminTotpSetup(user) : undefined,
+            message:
+              setupEnabled
+                ? "Escanea el QR en FreeOTP e ingresa el código para completar el inicio de sesión."
+                : "Ingresa el código de FreeOTP para completar el inicio de sesión.",
+          },
+          { status: 202, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+
+      if (!verifyAdminTotpCode(user, totpCode)) {
+        return NextResponse.json(
+          {
+            mfaRequired: true,
+            message:
+              "El código de FreeOTP no es válido o ya expiró. Revisa la hora del celular e inténtalo de nuevo.",
+          },
+          { status: 401, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+    }
+
     loginAttempts.delete(attemptKey);
 
-    const { user, session } = authenticatedUser;
     const response = NextResponse.json(
       {
         user,
@@ -119,7 +158,9 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         userName: user.name,
         action: "USER_LOGIN",
-        details: `Usuario ${user.name} (${user.username}) ha iniciado sesión.`,
+        details: `Usuario ${user.name} (${user.username}) ha iniciado sesión${
+          isAdminTotpRequired(user) ? " con FreeOTP" : ""
+        }.`,
       });
     } catch {
       // The login must not fail just because the audit sink is temporarily unavailable.
