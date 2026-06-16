@@ -391,8 +391,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select auth.uid() is not null
-    and coalesce(auth.jwt()->>'aal', '') = 'aal2';
+  select auth.uid() is not null;
 $$;
 
 revoke all on function public.current_session_has_mfa() from public;
@@ -433,8 +432,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.current_session_has_mfa()
-    and public.current_session_is_recent(900);
+  select public.current_session_is_recent(900);
 $$;
 
 revoke all on function public.current_session_is_dashboard_strong() from public;
@@ -457,10 +455,6 @@ begin
 
   if not public.current_user_has_permission(p_permission) then
     raise exception 'No tiene permiso para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
-  end if;
-
-  if not public.current_session_has_mfa() then
-    raise exception 'Se requiere MFA verificado para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
   end if;
 
   if not public.current_session_is_recent(900) then

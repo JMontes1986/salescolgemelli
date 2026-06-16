@@ -44,7 +44,6 @@ type SupabaseAuthUser = {
   email?: string;
   user_metadata?: AuthUserMetadata;
   app_metadata?: AuthUserMetadata;
-  factors?: SupabaseMfaFactor[];
 };
 
 export type SupabaseAuthSession = {
@@ -63,26 +62,6 @@ type SupabaseAuthResponse = Partial<SupabaseAuthSession> & {
   user: SupabaseAuthUser;
 };
 
-type SupabaseMfaFactor = {
-  id: string;
-  factor_type?: string;
-  friendly_name?: string;
-  status?: "unverified" | "verified";
-  totp?: {
-    qr_code?: string;
-    secret?: string;
-    uri?: string;
-  };
-};
-
-type SupabaseMfaChallengeResponse = {
-  id: string;
-};
-
-type SupabaseMfaVerifyResponse = Partial<SupabaseAuthSession> & {
-  user: SupabaseAuthUser;
-};
-
 type StoredUser = User & {
   passwordHash?: string;
 };
@@ -97,13 +76,6 @@ export type AuthenticatedUser = {
   user: User;
   session: SupabaseAuthSession;
   authUser?: SupabaseAuthUser;
-};
-
-export type SupabaseMfaSetup = {
-  factorId: string;
-  accountName?: string;
-  manualSecret: string;
-  qrDataUrl: string;
 };
 
 export type AuthenticationErrorCode =
@@ -124,15 +96,6 @@ export class AuthenticationError extends Error {
 const userRoles: UserRole[] = ["admin", "cashier", "seller", "auditor"];
 const adminEmails = ["sistemas@colgemelli.edu.co"];
 const safeUserSelect = "id,name,username,role,permissions,avatarUrl";
-const strongActionPermissions: ModulePermission[] = [
-  "sales",
-  "presale",
-  "redeem",
-  "cashbox",
-  "products",
-  "returns",
-  "users",
-];
 
 function isUserRole(value: unknown): value is UserRole {
   return typeof value === "string" && userRoles.includes(value as UserRole);
@@ -231,40 +194,6 @@ function getAuthSession(
     expires_in: response.expires_in,
     token_type: response.token_type,
   };
-}
-
-function decodeJwtPayload(accessToken: string): Record<string, unknown> | null {
-  const [, encodedPayload] = accessToken.split(".");
-
-  if (!encodedPayload) {
-    return null;
-  }
-
-  try {
-    const normalized = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(
-      normalized.length + ((4 - (normalized.length % 4)) % 4),
-      "=",
-    );
-
-    return JSON.parse(globalThis.atob(padded)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-export function sessionHasSupabaseMfa(session: SupabaseAuthSession) {
-  if (session.access_token.startsWith(localSessionPrefix)) {
-    return false;
-  }
-
-  return decodeJwtPayload(session.access_token)?.aal === "aal2";
-}
-
-export function userNeedsSupabaseMfa(user: User) {
-  return user.permissions.some((permission) =>
-    strongActionPermissions.includes(permission),
-  );
 }
 
 function buildProfileFromAuthUser(
@@ -634,124 +563,6 @@ async function authenticateLocalUser(
   });
 
   return { user, session: getLocalSession(storedUser.id) };
-}
-
-function getSupabaseTotpFactors(authUser?: SupabaseAuthUser) {
-  return (authUser?.factors ?? []).filter(
-    (factor) => factor.factor_type === "totp",
-  );
-}
-
-function getSupabaseTotpFactor(
-  authUser: SupabaseAuthUser | undefined,
-  factorId?: string,
-) {
-  const factors = getSupabaseTotpFactors(authUser);
-
-  if (factorId) {
-    return factors.find((factor) => factor.id === factorId) ?? null;
-  }
-
-  return (
-    factors.find((factor) => factor.status === "verified") ??
-    factors.find((factor) => factor.status === "unverified") ??
-    null
-  );
-}
-
-function buildSupabaseMfaSetup(
-  factor: SupabaseMfaFactor,
-  user: User,
-): SupabaseMfaSetup {
-  return {
-    factorId: factor.id,
-    accountName: factor.friendly_name ?? `Molly Ventas ${user.username}`,
-    manualSecret: factor.totp?.secret ?? "",
-    qrDataUrl: factor.totp?.qr_code ?? "",
-  };
-}
-
-export async function getSupabaseMfaSetup(
-  authenticatedUser: AuthenticatedUser,
-  factorId?: string,
-): Promise<SupabaseMfaSetup | null> {
-  const existingFactor = getSupabaseTotpFactor(
-    authenticatedUser.authUser,
-    factorId,
-  );
-
-  if (existingFactor?.status === "verified") {
-    return null;
-  }
-
-  if (
-    existingFactor?.status === "unverified" &&
-    (existingFactor.totp?.qr_code || existingFactor.totp?.secret)
-  ) {
-    return buildSupabaseMfaSetup(existingFactor, authenticatedUser.user);
-  }
-
-  const enrolledFactor = await supabaseAuthRequest<SupabaseMfaFactor>(
-    "factors",
-    {
-      method: "POST",
-      accessToken: authenticatedUser.session.access_token,
-      body: {
-        factor_type: "totp",
-        friendly_name: `Molly Ventas ${authenticatedUser.user.username}`,
-      },
-    },
-  );
-
-  return buildSupabaseMfaSetup(enrolledFactor, authenticatedUser.user);
-}
-
-export async function verifySupabaseMfaCode(
-  authenticatedUser: AuthenticatedUser,
-  code: string,
-  factorId?: string,
-): Promise<AuthenticatedUser | null> {
-  const factor = getSupabaseTotpFactor(authenticatedUser.authUser, factorId);
-
-  if (!factor && !factorId) {
-    return null;
-  }
-
-  const resolvedFactorId = factor?.id ?? factorId;
-
-  const challenge = await supabaseAuthRequest<SupabaseMfaChallengeResponse>(
-    `factors/${resolvedFactorId}/challenge`,
-    {
-      method: "POST",
-      accessToken: authenticatedUser.session.access_token,
-    },
-  );
-
-  const response = await supabaseAuthRequest<SupabaseMfaVerifyResponse>(
-    `factors/${resolvedFactorId}/verify`,
-    {
-      method: "POST",
-      accessToken: authenticatedUser.session.access_token,
-      body: {
-        challenge_id: challenge.id,
-        code,
-      },
-    },
-  );
-
-  const session = getAuthSession(response);
-
-  if (!session || !sessionHasSupabaseMfa(session)) {
-    return null;
-  }
-
-  const user = await getProfileForAuthUser(
-    response.user,
-    undefined,
-    session.access_token,
-  );
-
-  return { user, session, authUser: response.user };
 }
 
 export async function addUser(user: NewUser): Promise<User> {
