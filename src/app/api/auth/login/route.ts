@@ -2,16 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   AuthenticationError,
   authenticateUser,
+  getSupabaseMfaSetup,
+  sessionHasSupabaseMfa,
+  userNeedsSupabaseMfa,
+  verifySupabaseMfaCode,
 } from "@/lib/services/user-service";
 import { addAuditLog } from "@/lib/services/audit-service";
 import { setAuthCookies } from "@/lib/auth/response-cookies";
 import { getDefaultDashboardPath } from "@/lib/auth/route-access";
-import {
-  getAdminTotpSetup,
-  isAdminTotpRequired,
-  isAdminTotpSetupEnabled,
-  verifyAdminTotpCode,
-} from "@/lib/auth/admin-totp";
 
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 5;
@@ -68,12 +66,15 @@ export async function POST(request: NextRequest) {
       username?: unknown;
       password?: unknown;
       totpCode?: unknown;
+      mfaFactorId?: unknown;
     };
 
     username = typeof body.username === "string" ? body.username.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const totpCode =
       typeof body.totpCode === "string" ? body.totpCode.trim() : "";
+    const mfaFactorId =
+      typeof body.mfaFactorId === "string" ? body.mfaFactorId.trim() : "";
 
     if (!username || !password) {
       return NextResponse.json(
@@ -110,36 +111,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { user, session } = authenticatedUser;
+    let { user, session } = authenticatedUser;
 
-    if (isAdminTotpRequired(user)) {
+    if (userNeedsSupabaseMfa(user) && !sessionHasSupabaseMfa(session)) {
+      if (!authenticatedUser.authUser) {
+        return NextResponse.json(
+          {
+            message:
+              "Este usuario necesita MFA nativo de Supabase para registrar ventas. Créalo o vuelve a crearlo desde Supabase Authentication antes de usar acciones financieras.",
+          },
+          { status: 401, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+
       if (!totpCode) {
-        const setupEnabled = isAdminTotpSetupEnabled();
+        const setup = await getSupabaseMfaSetup(
+          authenticatedUser,
+          mfaFactorId || undefined,
+        );
 
         return NextResponse.json(
           {
             mfaRequired: true,
-            setupEnabled,
-            setup: setupEnabled ? await getAdminTotpSetup(user) : undefined,
+            setupEnabled: Boolean(setup),
+            setup: setup ?? undefined,
             message:
-              setupEnabled
-                ? "Escanea el QR en FreeOTP e ingresa el código para completar el inicio de sesión."
-                : "Ingresa el código de FreeOTP para completar el inicio de sesión.",
+              setup
+                ? "Escanea el QR de MFA de Supabase en FreeOTP e ingresa el código para elevar la sesión."
+                : "Ingresa el código de FreeOTP registrado en Supabase para elevar la sesión.",
           },
           { status: 202, headers: { "Cache-Control": "no-store" } },
         );
       }
 
-      if (!verifyAdminTotpCode(user, totpCode)) {
+      const mfaAuthenticatedUser = await verifySupabaseMfaCode(
+        authenticatedUser,
+        totpCode,
+        mfaFactorId || undefined,
+      );
+
+      if (!mfaAuthenticatedUser) {
         return NextResponse.json(
           {
             mfaRequired: true,
             message:
-              "El código de FreeOTP no es válido o ya expiró. Revisa la hora del celular e inténtalo de nuevo.",
+              "El código de FreeOTP no es válido, expiró o no pertenece al MFA de Supabase de este usuario.",
           },
           { status: 401, headers: { "Cache-Control": "no-store" } },
         );
       }
+
+      user = mfaAuthenticatedUser.user;
+      session = mfaAuthenticatedUser.session;
     }
 
     loginAttempts.delete(attemptKey);
@@ -160,7 +183,7 @@ export async function POST(request: NextRequest) {
         userName: user.name,
         action: "USER_LOGIN",
         details: `Usuario ${user.name} (${user.username}) ha iniciado sesión${
-          isAdminTotpRequired(user) ? " con FreeOTP" : ""
+          userNeedsSupabaseMfa(user) ? " con MFA Supabase" : ""
         }.`,
       });
     } catch {

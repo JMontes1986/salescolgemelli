@@ -31,12 +31,13 @@ import {
 import { Logo } from "@/components/icons";
 
 type AdminMfaSetup = {
+  factorId?: string;
   accountName?: string;
   manualSecret: string;
   qrDataUrl: string;
 };
 
-const MFA_SETUP_ACK_PREFIX = "salescolgemelli:mfa-setup-ack:";
+const MFA_SETUP_ACK_PREFIX = "salescolgemelli:supabase-mfa-setup-ack:";
 
 function getMfaSetupAckKey(username: string) {
   return `${MFA_SETUP_ACK_PREFIX}${username.trim().toLowerCase()}`;
@@ -184,6 +185,7 @@ export default function LoginPage() {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaSetup, setMfaSetup] = useState<AdminMfaSetup | null>(null);
   const [mfaSetupEnabled, setMfaSetupEnabled] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [key, setKey] = useState(0); // Key to force re-render if needed
 
@@ -191,6 +193,7 @@ export default function LoginPage() {
     setMfaRequired(false);
     setMfaSetup(null);
     setMfaSetupEnabled(false);
+    setMfaFactorId("");
     setTotpCode("");
   };
 
@@ -205,7 +208,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password, totpCode }),
+        body: JSON.stringify({ username, password, totpCode, mfaFactorId }),
         cache: "no-store",
       });
       const body = (await response.json()) as {
@@ -223,6 +226,7 @@ export default function LoginPage() {
         setMfaRequired(true);
         setMfaSetupEnabled(Boolean(body.setupEnabled));
         setMfaSetup(body.setup && !setupAcknowledged ? body.setup : null);
+        setMfaFactorId(body.setup?.factorId ?? mfaFactorId);
         setTotpCode("");
 
         if (!response.ok) {
@@ -326,34 +330,37 @@ export default function LoginPage() {
             {mfaRequired && (
               <div className="space-y-4 rounded-md border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
-                  Abre FreeOTP e ingresa el código de 6 dígitos del
-                  administrador.
+                  Abre FreeOTP e ingresa el código de 6 dígitos del MFA de
+                  Supabase.
                 </p>
                 {mfaSetup && (
                   <div className="grid gap-3">
-                    <div className="flex justify-center">
-                      <img
-                        src={mfaSetup.qrDataUrl}
-                        alt="QR para configurar FreeOTP"
-                        className="h-40 w-40 rounded-md border border-border bg-white p-2"
-                      />
-                    </div>
+                    {mfaSetup.qrDataUrl && (
+                      <div className="flex justify-center">
+                        <img
+                          src={mfaSetup.qrDataUrl}
+                          alt="QR para configurar FreeOTP"
+                          className="h-40 w-40 rounded-md border border-border bg-white p-2"
+                        />
+                      </div>
+                    )}
                     <div className="space-y-1 text-center">
                       <p className="text-sm font-medium">
                         Escanea este QR en FreeOTP como{" "}
-                        {mfaSetup.accountName ?? "Molly Ventas Admin"}
+                        {mfaSetup.accountName ?? "Molly Ventas Supabase"}
                       </p>
-                      <p className="break-all rounded-md bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
-                        {mfaSetup.manualSecret}
-                      </p>
+                      {mfaSetup.manualSecret && (
+                        <p className="break-all rounded-md bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
+                          {mfaSetup.manualSecret}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
                 {!mfaSetup && !mfaSetupEnabled && (
                   <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Este administrador todavia no puede configurarse aqui.
-                    Activa temporalmente ADMIN_FREEOTP_SETUP_ENABLED=true en el
-                    entorno del servidor y reinicia la app para ver el QR.
+                    Este usuario ya tiene un factor MFA en Supabase. Usa el
+                    código actual de FreeOTP para elevar la sesión.
                   </p>
                 )}
                 <div className="space-y-2">
@@ -373,11 +380,6 @@ export default function LoginPage() {
                         .slice(0, 6);
 
                       setTotpCode(nextCode);
-
-                      if (nextCode.length === 6) {
-                        acknowledgeMfaSetup(username);
-                        setMfaSetup(null);
-                      }
                     }}
                     disabled={isLoading}
                     autoComplete="one-time-code"
