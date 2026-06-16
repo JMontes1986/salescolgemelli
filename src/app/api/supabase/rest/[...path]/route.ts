@@ -14,6 +14,8 @@ type RouteContext = {
   }>;
 };
 
+const STRONG_SESSION_REFRESH_AFTER_SECONDS = 12 * 60;
+
 function buildSupabaseRestUrl(pathParts: string[], request: NextRequest) {
   const { supabaseUrl } = getSupabaseEnv();
   const url = new URL(
@@ -27,16 +29,80 @@ function buildSupabaseRestUrl(pathParts: string[], request: NextRequest) {
   return url.toString();
 }
 
+function isBodyAllowed(method: string) {
+  return method !== "GET" && method !== "HEAD";
+}
+
+function decodeJwtIssuedAt(accessToken?: string) {
+  if (!accessToken || !accessToken.includes(".")) {
+    return null;
+  }
+
+  const [, encodedPayload] = accessToken.split(".");
+
+  if (!encodedPayload) {
+    return null;
+  }
+
+  try {
+    const normalized = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+    const payload = JSON.parse(
+      Buffer.from(padded, "base64").toString("utf8"),
+    ) as { iat?: unknown };
+
+    return typeof payload.iat === "number" ? payload.iat : null;
+  } catch {
+    return null;
+  }
+}
+
+function shouldRefreshBeforeForwarding(
+  request: NextRequest,
+  accessToken?: string,
+) {
+  if (!isBodyAllowed(request.method)) {
+    return false;
+  }
+
+  const issuedAt = decodeJwtIssuedAt(accessToken);
+
+  if (!issuedAt) {
+    return false;
+  }
+
+  return (
+    Math.floor(Date.now() / 1000) - issuedAt >=
+    STRONG_SESSION_REFRESH_AFTER_SECONDS
+  );
+}
+
+function isExpiredStrongSessionResponse(status: number, responseBody: string) {
+  if (status !== 400) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(responseBody) as { message?: unknown };
+    return (
+      typeof parsed.message === "string" &&
+      parsed.message.includes("La sesión superó 15 minutos")
+    );
+  } catch {
+    return responseBody.includes("La sesión superó 15 minutos");
+  }
+}
+
 async function forwardSupabaseRequest(
   request: NextRequest,
   pathParts: string[],
   accessToken: string | undefined,
+  body: string | undefined,
 ) {
   const { supabaseAnonKey } = getSupabaseEnv();
-  const body =
-    request.method === "GET" || request.method === "HEAD"
-      ? undefined
-      : await request.text();
 
   return fetch(buildSupabaseRestUrl(pathParts, request), {
     method: request.method,
@@ -58,17 +124,42 @@ async function handleRequest(request: NextRequest, context: RouteContext) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(AUTH_ACCESS_COOKIE)?.value;
   const refreshToken = cookieStore.get(AUTH_REFRESH_COOKIE)?.value;
+  const requestBody = isBodyAllowed(request.method)
+    ? await request.text()
+    : undefined;
+
+  let refreshedAuth:
+    | Awaited<ReturnType<typeof refreshAuthenticatedSession>>
+    | null = null;
+  let forwardedAccessToken = accessToken;
+
+  if (
+    refreshToken &&
+    shouldRefreshBeforeForwarding(request, forwardedAccessToken)
+  ) {
+    try {
+      refreshedAuth = await refreshAuthenticatedSession(refreshToken);
+      if (refreshedAuth) {
+        forwardedAccessToken = refreshedAuth.session.access_token;
+      }
+    } catch {
+      refreshedAuth = null;
+    }
+  }
 
   let supabaseResponse = await forwardSupabaseRequest(
     request,
     path,
-    accessToken,
+    forwardedAccessToken,
+    requestBody,
   );
-  let refreshedAuth:
-    | Awaited<ReturnType<typeof refreshAuthenticatedSession>>
-    | null = null;
+  let responseBody = await supabaseResponse.text();
 
-  if (supabaseResponse.status === 401 && refreshToken) {
+  if (
+    refreshToken &&
+    (supabaseResponse.status === 401 ||
+      isExpiredStrongSessionResponse(supabaseResponse.status, responseBody))
+  ) {
     try {
       refreshedAuth = await refreshAuthenticatedSession(refreshToken);
       if (refreshedAuth) {
@@ -76,14 +167,15 @@ async function handleRequest(request: NextRequest, context: RouteContext) {
           request,
           path,
           refreshedAuth.session.access_token,
+          requestBody,
         );
+        responseBody = await supabaseResponse.text();
       }
     } catch {
       refreshedAuth = null;
     }
   }
 
-  const responseBody = await supabaseResponse.text();
   const response = new NextResponse(responseBody, {
     status: supabaseResponse.status,
     headers: {
