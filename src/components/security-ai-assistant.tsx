@@ -50,7 +50,7 @@ const DASHBOARD_SECURITY_EVIDENCE = [
 ].join("\n");
 
 function getSurfaceFromPath(pathname: string) {
-  if (pathname === "/self-service") {
+  if (pathname === "/self-service" || pathname.startsWith("/self-service/")) {
     return "Autogestión pública";
   }
 
@@ -82,7 +82,7 @@ function getSurfaceFromPath(pathname: string) {
 }
 
 function getAutoPrompt(pathname: string) {
-  if (pathname === "/self-service") {
+  if (pathname === "/self-service" || pathname.startsWith("/self-service/")) {
     return [
       "Revisa la pantalla de autogestión como guardia activo.",
       "Usa la evidencia de seguridad actual incluida en el contexto. Omite por completo cualquier control ya implementado o resuelto.",
@@ -108,7 +108,7 @@ export function SecurityAiAssistant() {
   const [question, setQuestion] = useState("");
   const [lastError, setLastError] = useState("");
   const lastAutoPath = useRef("");
-  const isSelfService = pathname === "/self-service";
+  const isSelfService = pathname === "/self-service" || pathname.startsWith("/self-service/");
   const surface = useMemo(() => getSurfaceFromPath(pathname), [pathname]);
 
   const runAudit = useCallback(
@@ -276,37 +276,30 @@ export function SecurityAiAssistant() {
         </section>
       )}
 
-      <Button
-        type="button"
-        onClick={() => {
-          if (!isSelfService) {
-            setIsOpen((current) => !current);
-          }
-        }}
-        className={cn(
-          "h-12 rounded-full px-4 font-bold shadow-xl shadow-slate-950/20",
-          isSelfService &&
-            "cursor-default bg-[#b23178] text-white hover:bg-[#b23178] dark:bg-[#b23178] dark:hover:bg-[#b23178]",
-        )}
-        aria-label={
-          isSelfService
-            ? "IA de seguridad activa en autogestión"
-            : "Abrir IA de seguridad"
-        }
-        aria-disabled={isSelfService}
-        title={
-          isSelfService
-            ? "La IA de seguridad vigila autogestión en segundo plano; el detalle es visible solo para administradores."
-            : undefined
-        }
-      >
-        {status === "loading" ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
+      {isSelfService ? (
+        <div
+          className="flex h-12 items-center gap-2 rounded-full bg-[#b23178] px-4 font-bold text-white shadow-xl shadow-slate-950/20 dark:bg-[#b23178]"
+          aria-label="IA activa en autogestión"
+          role="status"
+        >
           <Sparkles className="h-5 w-5" />
-        )}
-        IA activa
-      </Button>
+          IA activa
+        </div>
+      ) : (
+        <Button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
+          className="h-12 rounded-full px-4 font-bold shadow-xl shadow-slate-950/20"
+          aria-label="Abrir IA de seguridad"
+        >
+          {status === "loading" ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Sparkles className="h-5 w-5" />
+          )}
+          IA activa
+        </Button>
+      )}
     </div>
   );
 }

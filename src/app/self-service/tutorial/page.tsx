@@ -13,7 +13,9 @@ import {
   History,
   Home,
   IdCard,
+  Minus,
   PackageCheck,
+  Plus,
   RefreshCcw,
   ShoppingCart,
   Smartphone,
@@ -113,14 +115,16 @@ export default function SelfServiceTutorialPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [cedula, setCedula] = useState("");
   const [isCedulaActive, setIsCedulaActive] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<boolean[]>(() => products.map(() => false));
+  const [quantities, setQuantities] = useState<number[]>(() => products.map(() => 0));
   const [paymentMethod, setPaymentMethod] = useState<"caja" | "davi" | null>(null);
 
   const cart = useMemo(
-    () => products.filter((_, index) => selectedProducts[index]),
-    [selectedProducts],
+    () => products
+      .map((product, index) => ({ ...product, quantity: quantities[index] }))
+      .filter((product) => product.quantity > 0),
+    [quantities],
   );
-  const total = cart.reduce((sum, product) => sum + product.price, 0);
+  const total = cart.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
   const goToStep = (nextStep: number) => {
     setCurrentStep(nextStep);
@@ -130,7 +134,7 @@ export default function SelfServiceTutorialPage() {
   const resetTutorial = () => {
     setCedula("");
     setIsCedulaActive(false);
-    setSelectedProducts(products.map(() => false));
+    setQuantities(products.map(() => 0));
     setPaymentMethod(null);
     goToStep(0);
   };
@@ -141,10 +145,16 @@ export default function SelfServiceTutorialPage() {
     setIsCedulaActive(false);
   };
 
-  const toggleProduct = (index: number) => {
-    setSelectedProducts((current) => current.map((selected, currentIndex) => (
-      currentIndex === index ? !selected : selected
+  const setProductQuantity = (index: number, quantity: number) => {
+    const nextQuantity = Math.max(0, Math.min(20, Math.floor(quantity) || 0));
+
+    setQuantities((current) => current.map((currentQuantity, currentIndex) => (
+      currentIndex === index ? nextQuantity : currentQuantity
     )));
+  };
+
+  const addProduct = (index: number) => {
+    setProductQuantity(index, Math.max(quantities[index], 1));
   };
 
   return (
@@ -367,17 +377,16 @@ export default function SelfServiceTutorialPage() {
 
                   <div className="mb-3 grid grid-cols-3 gap-2">
                     {products.map((product, index) => {
-                      const isSelected = selectedProducts[index];
+                      const quantity = quantities[index];
+                      const isSelected = quantity > 0;
 
                       return (
-                        <button
+                        <div
                           key={product.name}
-                          type="button"
                           className={cn(
                             "relative overflow-hidden rounded-2xl border-2 bg-[#fff8ee] text-left transition hover:border-[#00b5bd]",
                             isSelected ? "border-[#00b5bd] shadow-[0_8px_20px_rgba(0,181,189,0.22)]" : "border-[#e8ddd0]",
                           )}
-                          onClick={() => toggleProduct(index)}
                         >
                           {isSelected && (
                             <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#00b5bd] text-xs font-black text-white">
@@ -388,11 +397,46 @@ export default function SelfServiceTutorialPage() {
                           <span className="block p-2">
                             <span className="block text-xs font-black uppercase leading-tight">{product.name}</span>
                             <span className="mt-1 block text-sm font-black text-[#d4006a]">{formatCurrency(product.price)}</span>
-                            <span className={cn("mt-2 flex h-8 items-center justify-center rounded-lg text-[11px] font-black text-white", isSelected ? "bg-[#00a878]" : "bg-gradient-to-r from-[#00b5bd] to-[#f5c842]")}>
-                              {isSelected ? "Agregado" : "Agregar"}
-                            </span>
+                            {isSelected ? (
+                              <span className="mt-2 grid h-9 grid-cols-[28px_1fr_28px] items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00a878] text-white"
+                                  onClick={() => setProductQuantity(index, quantity - 1)}
+                                  aria-label={`Quitar una unidad de ${product.name}`}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </button>
+                                <input
+                                  aria-label={`Cantidad de ${product.name}`}
+                                  inputMode="numeric"
+                                  min={0}
+                                  max={20}
+                                  type="number"
+                                  value={quantity}
+                                  onChange={(event) => setProductQuantity(index, Number(event.target.value))}
+                                  className="h-8 min-w-0 rounded-lg border border-[#00b5bd]/45 bg-white text-center text-sm font-black text-[#1a1a1a]"
+                                />
+                                <button
+                                  type="button"
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00a878] text-white"
+                                  onClick={() => setProductQuantity(index, quantity + 1)}
+                                  aria-label={`Agregar una unidad de ${product.name}`}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="mt-2 flex h-8 w-full items-center justify-center rounded-lg bg-gradient-to-r from-[#00b5bd] to-[#f5c842] text-[11px] font-black text-white"
+                                onClick={() => addProduct(index)}
+                              >
+                                Agregar
+                              </button>
+                            )}
                           </span>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -402,9 +446,9 @@ export default function SelfServiceTutorialPage() {
                     {cart.length > 0 ? (
                       <div className="space-y-2">
                         {cart.map((product) => (
-                          <div key={product.name} className="flex justify-between border-b border-[#e8ddd0] py-1 text-sm font-bold last:border-0">
-                            <span>{product.name}</span>
-                            <span className="font-black text-[#d4006a]">{formatCurrency(product.price)}</span>
+                          <div key={product.name} className="flex justify-between gap-3 border-b border-[#e8ddd0] py-1 text-sm font-bold last:border-0">
+                            <span>{product.name} x {product.quantity}</span>
+                            <span className="shrink-0 font-black text-[#d4006a]">{formatCurrency(product.price * product.quantity)}</span>
                           </div>
                         ))}
                         <div className="flex items-center justify-between border-t-2 border-[#e8ddd0] pt-3">
