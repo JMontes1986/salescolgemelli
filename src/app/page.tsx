@@ -36,6 +36,36 @@ type AdminMfaSetup = {
   qrDataUrl: string;
 };
 
+const MFA_SETUP_ACK_PREFIX = "salescolgemelli:mfa-setup-ack:";
+
+function getMfaSetupAckKey(username: string) {
+  return `${MFA_SETUP_ACK_PREFIX}${username.trim().toLowerCase()}`;
+}
+
+function hasAcknowledgedMfaSetup(username: string) {
+  if (typeof window === "undefined" || !username.trim()) {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(getMfaSetupAckKey(username)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function acknowledgeMfaSetup(username: string) {
+  if (typeof window === "undefined" || !username.trim()) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(getMfaSetupAckKey(username), "true");
+  } catch {
+    // If storage is blocked, the current login attempt can still continue.
+  }
+}
+
 function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -188,9 +218,11 @@ export default function LoginPage() {
       };
 
       if (body.mfaRequired) {
+        const setupAcknowledged = hasAcknowledgedMfaSetup(username);
+
         setMfaRequired(true);
         setMfaSetupEnabled(Boolean(body.setupEnabled));
-        setMfaSetup(body.setup ?? mfaSetup);
+        setMfaSetup(body.setup && !setupAcknowledged ? body.setup : null);
         setTotpCode("");
 
         if (!response.ok) {
@@ -217,6 +249,7 @@ export default function LoginPage() {
       }
 
       login(body.user);
+      acknowledgeMfaSetup(username);
       resetMfa();
       toast({
         title: "Inicio de sesión exitoso",
@@ -334,9 +367,18 @@ export default function LoginPage() {
                     maxLength={6}
                     required={mfaRequired}
                     value={totpCode}
-                    onChange={(e) =>
-                      setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
+                    onChange={(e) => {
+                      const nextCode = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 6);
+
+                      setTotpCode(nextCode);
+
+                      if (nextCode.length === 6) {
+                        acknowledgeMfaSetup(username);
+                        setMfaSetup(null);
+                      }
+                    }}
                     disabled={isLoading}
                     autoComplete="one-time-code"
                   />
