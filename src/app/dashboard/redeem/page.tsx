@@ -121,6 +121,7 @@ function RedeemPageComponent() {
     const scannerStreamRef = useRef<MediaStream | null>(null);
     const scannerFrameRef = useRef<number | null>(null);
     const { toast } = useToast();
+    const resultsCardRef = useRef<HTMLDivElement | null>(null);
     const realtimeTables = React.useMemo(() => ['products', 'purchases'] as const, []);
 
     const loadRecentPurchases = useCallback(async (showLoading = true) => {
@@ -487,12 +488,20 @@ function RedeemPageComponent() {
         }
     }
 
+    const scrollToResults = () => {
+        window.requestAnimationFrame(() => {
+            resultsCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    };
+
     const handleSelectRecentPurchase = (purchase: Purchase) => {
         setSearchCode(purchase.id);
+        setDeliveryCode('');
         setSearchCedula('');
         setSearchCelular('');
         setSearchResults([purchase]);
         setSearchPerformed(true);
+        scrollToResults();
     }
 
     const getSelectedDeliveryQuantity = (purchaseId: string, productId: string) => (
@@ -689,7 +698,7 @@ function RedeemPageComponent() {
                             No hay compras de autogestión registradas.
                         </div>
                     ) : (
-                        <ScrollArea className="h-[360px] pr-4">
+                        <ScrollArea className="h-[360px] w-full overflow-x-hidden pr-4">
                             <div className="space-y-3">
                                 {recentPurchases.map(purchase => {
                                     const itemCount = purchase.items.reduce((total, item) => total + item.quantity, 0);
@@ -698,8 +707,8 @@ function RedeemPageComponent() {
                                         .join(', ');
 
                                     return (
-                                        <div key={purchase.id} className="rounded-md border bg-background p-4">
-                                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                        <div key={purchase.id} className="overflow-hidden rounded-md border bg-background p-4">
+                                            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
                                                 <div className="min-w-0 space-y-2">
                                                     <div className="flex flex-wrap items-center gap-2">
                                                         <span className="font-mono text-lg font-black">{purchase.id}</span>
@@ -712,19 +721,21 @@ function RedeemPageComponent() {
                                                         {itemSummary}
                                                     </p>
                                                 </div>
-                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
+                                                <div className="grid min-w-0 gap-3 sm:grid-cols-[auto_minmax(0,12rem)] sm:items-center xl:justify-end">
                                                     <div className="text-left sm:text-right">
                                                         <p className="text-xs font-semibold uppercase text-muted-foreground">
                                                             {itemCount} producto{itemCount === 1 ? '' : 's'}
                                                         </p>
                                                         <p className="text-xl font-black">{formatCurrency(purchase.total)}</p>
                                                     </div>
-                                                    <div className="grid gap-2 sm:w-48">
-                                                        <Button variant="outline" onClick={() => handleSelectRecentPurchase(purchase)}>
+                                                    <div className="grid min-w-0 gap-2">
+                                                        <Button className="w-full" variant="outline" onClick={() => handleSelectRecentPurchase(purchase)}>
                                                             <Search className="mr-2 h-4 w-4" />
                                                             Ver detalle
                                                         </Button>
-                                                        {renderActionButton(purchase)}
+                                                        <p className="text-center text-xs font-medium text-muted-foreground">
+                                                            {purchase.status === 'delivered' ? 'Compra entregada' : 'Abra el detalle para entregar.'}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -804,7 +815,7 @@ function RedeemPageComponent() {
                     </CardFooter>
                 </Card>
 
-                <Card className="bg-muted/30">
+                <Card ref={resultsCardRef} className="bg-muted/30">
                      <CardHeader>
                         <CardTitle>Resultados de la Búsqueda</CardTitle>
                         <CardDescription>
