@@ -374,10 +374,20 @@ export async function getDashboardPreSales(): Promise<Purchase[]> {
 }
 
 export async function getSelfServicePurchasesByCedula(cedula: string): Promise<Purchase[]> {
-  const purchases = await selectRows<Purchase>('purchases', {
-    cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}`,
-  });
-  return sortByNewest(purchases.map(ensureReturnedFlags));
+  const safeCedula = sanitizeCustomerIdentifier(cedula, 'La cédula');
+
+  try {
+    const purchases = await callRpc<Purchase[]>('get_self_service_purchases_by_cedula', {
+      p_cedula: safeCedula,
+    });
+    return sortByNewest((purchases ?? []).map(ensureReturnedFlags));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('get_self_service_purchases_by_cedula')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para consultar el historial de compras por cédula en autogestión.');
+    }
+
+    throw error;
+  }
 }
 
 export async function getSelfServicePurchasesByCustomer(

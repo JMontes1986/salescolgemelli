@@ -27,7 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getSelfServicePurchasesByCedula, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
@@ -125,6 +125,8 @@ export default function SelfServicePage() {
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState(false);
   const [paymentCode, setPaymentCode] = useState<string | null>(null);
   const [purchaseHistory, setPurchaseHistory] = useState<Purchase[]>([]);
+  const [editablePurchaseIds, setEditablePurchaseIds] = useState<Set<string>>(() => new Set());
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
   const [searchCedula, setSearchCedula] = useState('');
@@ -308,6 +310,7 @@ export default function SelfServicePage() {
         setPaymentCode(editingPurchase.id);
         setLastPurchase(updatedPurchase);
         setSearchCedula(updatedPurchase.cedula);
+        setEditablePurchaseIds(prev => new Set(prev).add(updatedPurchase.id));
         setPurchaseHistory(prev => [updatedPurchase, ...prev.filter(purchase => purchase.id !== updatedPurchase.id)]);
         setIsPaymentModalOpen(true);
         toast({ title: "Éxito", description: "Su compra ha sido actualizada correctamente." });
@@ -354,6 +357,7 @@ export default function SelfServicePage() {
         setLastPurchase(addedPurchase);
         setSearchCedula(addedPurchase.cedula);
         setCelular(addedPurchase.celular);
+        setEditablePurchaseIds(prev => new Set(prev).add(addedPurchase.id));
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
         setIsUserInfoModalOpen(false);
         setIsPaymentModalOpen(true);
@@ -367,7 +371,7 @@ export default function SelfServicePage() {
     }
   };
 
-  const handleActivateCedula = () => {
+  const handleActivateCedula = async () => {
     const cedulaToActivate = searchCedula.trim() || activeCedula;
 
     if (!cedulaToActivate) {
@@ -378,19 +382,33 @@ export default function SelfServicePage() {
     try {
         const normalizedCedula = sanitizeCustomerIdentifier(cedulaToActivate, 'La cédula');
         const isSwitchingCedula = normalizedCedula !== activeCedula;
+        const sessionEditableIds = isSwitchingCedula ? new Set<string>() : editablePurchaseIds;
 
         setSearchCedula(normalizedCedula);
         setCedula(normalizedCedula);
 
         if (isSwitchingCedula) {
           setPurchaseHistory([]);
+          setEditablePurchaseIds(new Set());
           setLastPurchase(null);
           clearCart();
         }
 
+        setIsHistoryLoading(true);
+        const purchases = await getSelfServicePurchasesByCedula(normalizedCedula);
+        setPurchaseHistory(prev => {
+          const editablePurchases = new Map(
+            prev
+              .filter(purchase => sessionEditableIds.has(purchase.id))
+              .map(purchase => [purchase.id, purchase])
+          );
+
+          return purchases.map(purchase => editablePurchases.get(purchase.id) ?? purchase);
+        });
+
         toast({
           title: "Cédula lista",
-          description: `La cédula ${normalizedCedula} quedó activa para esta compra.`,
+          description: `La cédula ${normalizedCedula} quedó activa y se cargó su historial de compras.`,
         });
     } catch (error) {
         toast({
@@ -398,6 +416,8 @@ export default function SelfServicePage() {
           title: "Revise los datos",
           description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
         });
+    } finally {
+        setIsHistoryLoading(false);
     }
   }
 
@@ -439,6 +459,7 @@ export default function SelfServicePage() {
     ? buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))
     : '';
   const reservationExpiryLabel = getReservationExpiryLabel(lastPurchase);
+  const canShowSessionActions = (purchase: Purchase) => editablePurchaseIds.has(purchase.id);
   const getPurchaseStatusLabel = (status: Purchase['status']) => {
     switch (status) {
       case 'pending':
@@ -647,8 +668,8 @@ export default function SelfServicePage() {
                   value={searchCedula}
                   onChange={(e) => setSearchCedula(e.target.value)}
                 />
-                <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleActivateCedula}>
-                  Ingresar
+                <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleActivateCedula} disabled={isHistoryLoading}>
+                  {isHistoryLoading ? 'Consultando...' : 'Ingresar'}
                 </Button>
               </div>
               <p className="mt-2 text-xs font-semibold text-[#5f686a]">
@@ -893,15 +914,18 @@ export default function SelfServicePage() {
                 Perfil del padre de familia
               </CardTitle>
               <CardDescription className="text-[#5f686a]">
-                Por seguridad, esta pantalla pública solo muestra las compras generadas durante esta sesión. El historial completo se consulta desde el dashboard autenticado.
+                Al activar la cédula se muestran las compras registradas a ese documento. El QR y la edición quedan disponibles para compras generadas durante esta sesión.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             {purchaseHistory.length > 0 ? (
                 <div className="space-y-3">
-                  {purchaseHistory.map((purchase) => (
-                    <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
+                  {purchaseHistory.map((purchase) => {
+                    const hasSessionActions = canShowSessionActions(purchase);
+
+                    return (
+                      <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0 space-y-3">
                           <div className="space-y-1">
@@ -921,36 +945,44 @@ export default function SelfServicePage() {
                           </div>
                         </div>
                         <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
-                          <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
-                            <img
-                              src={buildDeliveryQrImageUrl(purchase)}
-                              alt={`QR de entrega ${purchase.id}`}
-                              width={116}
-                              height={116}
-                              className="mx-auto h-28 w-28"
-                            />
-                            <p className="mt-2 text-xs font-black uppercase text-[#126d74]">Código adicional</p>
-                            <p className="font-mono text-lg font-black text-[#b23178]">{purchase.deliveryCode || 'Pendiente'}</p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                          <Badge variant="secondary" className={getPurchaseStatusClassName(purchase.status)}>
-                            {getPurchaseStatusLabel(purchase.status)}
-                          </Badge>
-                          <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
-                          {(purchase.status === 'pending' || purchase.status === 'pre-sale') && (
-                            <Button variant="outline" className="h-11 rounded-2xl border-[#d2528d]/45 bg-white text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={() => handleEditPurchase(purchase)}>
-                              <Pencil className="h-4 w-4" />
-                              Modificar
-                            </Button>
+                          {hasSessionActions ? (
+                            <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
+                              <img
+                                src={buildDeliveryQrImageUrl(purchase)}
+                                alt={`QR de entrega ${purchase.id}`}
+                                width={116}
+                                height={116}
+                                className="mx-auto h-28 w-28"
+                              />
+                              <p className="mt-2 text-xs font-black uppercase text-[#126d74]">Código adicional</p>
+                              <p className="font-mono text-lg font-black text-[#b23178]">{purchase.deliveryCode || 'Pendiente'}</p>
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
+                              <p className="text-xs font-black uppercase text-[#126d74]">Historial por cédula</p>
+                              <p className="mt-1 text-sm font-semibold text-[#5f686a]">Compra registrada anteriormente.</p>
+                            </div>
                           )}
+                          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                            <Badge variant="secondary" className={getPurchaseStatusClassName(purchase.status)}>
+                              {getPurchaseStatusLabel(purchase.status)}
+                            </Badge>
+                            <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
+                            {hasSessionActions && (purchase.status === 'pending' || purchase.status === 'pre-sale') && (
+                              <Button variant="outline" className="h-11 rounded-2xl border-[#d2528d]/45 bg-white text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={() => handleEditPurchase(purchase)}>
+                                <Pencil className="h-4 w-4" />
+                                Modificar
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
               </div>
             ) : (
-                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Las compras nuevas aparecerán aquí después de generar el código de pago.</p>
+                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">{isHistoryLoading ? 'Consultando compras registradas para esta cédula...' : 'Active una cédula para ver las compras registradas a ese documento.'}</p>
             )}
           </CardContent>
         </Card>
