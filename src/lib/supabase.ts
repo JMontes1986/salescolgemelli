@@ -157,15 +157,20 @@ export async function supabaseAuthRequest<T>(
 export async function selectRows<T>(
   table: string,
   query: SupabaseRequestOptions["query"] = {},
+  accessToken?: string,
 ): Promise<T[]> {
-  return supabaseRequest<T[]>(table, { query: { select: "*", ...query } });
+  return supabaseRequest<T[]>(table, {
+    query: { select: "*", ...query },
+    accessToken,
+  });
 }
 
 export async function selectSingle<T>(
   table: string,
   query: SupabaseRequestOptions["query"] = {},
+  accessToken?: string,
 ): Promise<T | null> {
-  const rows = await selectRows<T>(table, { ...query, limit: 1 });
+  const rows = await selectRows<T>(table, { ...query, limit: 1 }, accessToken);
   return rows[0] ?? null;
 }
 
@@ -200,12 +205,14 @@ export async function upsertRow<T>(
   table: string,
   row: unknown,
   onConflict = "id",
+  accessToken?: string,
 ): Promise<T> {
   const rows = await supabaseRequest<T[]>(table, {
     method: "POST",
     query: { on_conflict: onConflict },
     body: row,
     prefer: "resolution=merge-duplicates,return=representation",
+    accessToken,
   });
   return rows[0];
 }
@@ -224,12 +231,14 @@ export async function updateRows<T>(
   table: string,
   query: SupabaseRequestOptions["query"],
   patch: unknown,
+  accessToken?: string,
 ): Promise<T[]> {
   return supabaseRequest<T[]>(table, {
     method: "PATCH",
     query: { select: "*", ...query },
     body: patch,
     prefer: "return=representation",
+    accessToken,
   });
 }
 
@@ -237,7 +246,13 @@ export async function updateById<T>(
   table: string,
   id: string,
   patch: unknown,
+  accessToken?: string,
 ): Promise<T | null> {
-  const rows = await updateRows<T>(table, { id: `eq.${id}` }, patch);
+  const rows = await updateRows<T>(
+    table,
+    { id: `eq.${id}` },
+    patch,
+    accessToken,
+  );
   return rows[0] ?? null;
 }

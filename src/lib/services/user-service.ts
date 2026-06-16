@@ -241,6 +241,72 @@ function applyAuthOverrides(user: User, authUser: SupabaseAuthUser): User {
   };
 }
 
+function buildPersistedAuthProfile(
+  authUser: SupabaseAuthUser,
+  fallback?: Partial<NewUser>,
+  existingProfile?: StoredUser | null,
+) {
+  const generatedProfile = buildProfileFromAuthUser(authUser, fallback);
+  const metadata = getAuthMetadata(authUser);
+  const normalizedEmail = authUser.email?.trim().toLowerCase();
+  const role = adminEmails.includes(normalizedEmail ?? "")
+    ? "admin"
+    : isUserRole(fallback?.role)
+      ? fallback.role
+      : isUserRole(metadata.role)
+        ? metadata.role
+        : existingProfile?.role ?? generatedProfile.role;
+
+  return {
+    id: authUser.id,
+    name: (existingProfile?.name ?? generatedProfile.name).trim(),
+    username: (existingProfile?.username ?? generatedProfile.username).trim(),
+    role,
+    permissions: getPermissionsForRole(role),
+    avatarUrl: existingProfile?.avatarUrl || generatedProfile.avatarUrl,
+  };
+}
+
+async function syncAuthProfile(
+  authUser: SupabaseAuthUser,
+  fallback?: Partial<NewUser>,
+  existingProfile?: StoredUser | null,
+  accessToken?: string,
+): Promise<User> {
+  const persistedProfile = buildPersistedAuthProfile(
+    authUser,
+    fallback,
+    existingProfile,
+  );
+
+  if (!accessToken) {
+    return applyAuthOverrides(
+      sanitizeUser(existingProfile ?? persistedProfile),
+      authUser,
+    );
+  }
+
+  const storedProfile =
+    existingProfile && existingProfile.id !== authUser.id
+      ? await updateById<StoredUser>(
+          "users",
+          existingProfile.id,
+          persistedProfile,
+          accessToken,
+        )
+      : await upsertRow<StoredUser>(
+          "users",
+          persistedProfile,
+          "id",
+          accessToken,
+        );
+
+  return applyAuthOverrides(
+    sanitizeUser(storedProfile ?? persistedProfile),
+    authUser,
+  );
+}
+
 function getAuthenticationError(error: unknown): AuthenticationError | null {
   if (!(error instanceof Error)) {
     return null;
@@ -287,12 +353,17 @@ function isUsersRlsError(error: unknown): boolean {
 async function getProfileForAuthUser(
   authUser: SupabaseAuthUser,
   fallback?: Partial<NewUser>,
+  accessToken?: string,
 ): Promise<User> {
   try {
-    const existingProfile = await getUserById(authUser.id);
+    const existingProfile = await selectSingle<StoredUser>(
+      "users",
+      { select: safeUserSelect, id: `eq.${authUser.id}` },
+      accessToken,
+    );
 
     if (existingProfile) {
-      return applyAuthOverrides(existingProfile, authUser);
+      return syncAuthProfile(authUser, fallback, existingProfile, accessToken);
     }
 
     const username =
@@ -300,15 +371,21 @@ async function getProfileForAuthUser(
       authUser.email ??
       getAuthMetadata(authUser).username;
     const legacyProfile = username
-      ? await selectSingle<StoredUser>("users", { username: `eq.${username}` })
+      ? await selectSingle<StoredUser>(
+          "users",
+          { username: `eq.${username}` },
+          accessToken,
+        )
       : null;
 
     if (legacyProfile) {
-      return applyAuthOverrides(sanitizeUser(legacyProfile), authUser);
+      return syncAuthProfile(authUser, fallback, legacyProfile, accessToken);
     }
+
+    return syncAuthProfile(authUser, fallback, null, accessToken);
   } catch (error) {
     console.warn(
-      "No se pudo leer el perfil público del usuario. Se usará Supabase Authentication.",
+      "No se pudo sincronizar el perfil público del usuario con Supabase Authentication.",
       error,
     );
   }
@@ -369,7 +446,7 @@ export async function authenticateUser(
 
   const user = await getProfileForAuthUser(response.user, {
     username: fallbackUsername,
-  });
+  }, session.access_token);
 
   return { user, session };
 }
@@ -386,7 +463,7 @@ export async function getAuthenticatedUser(
   const authUser = await supabaseAuthRequest<SupabaseAuthUser>("user", {
     accessToken,
   });
-  return getProfileForAuthUser(authUser);
+  return getProfileForAuthUser(authUser, undefined, accessToken);
 }
 
 export async function refreshAuthenticatedSession(
@@ -417,7 +494,11 @@ export async function refreshAuthenticatedSession(
     return null;
   }
 
-  const user = await getProfileForAuthUser(response.user);
+  const user = await getProfileForAuthUser(
+    response.user,
+    undefined,
+    session.access_token,
+  );
   return { user, session };
 }
 
@@ -511,6 +592,7 @@ export async function addUser(user: NewUser): Promise<User> {
     });
 
     const profile = buildProfileFromAuthUser(response.user, user);
+    const session = getAuthSession(response);
     const persistedProfile = {
       id: profile.id,
       name: profile.name.trim(),
@@ -530,11 +612,13 @@ export async function addUser(user: NewUser): Promise<User> {
           "users",
           existingProfile.id,
           {
+            id: persistedProfile.id,
             name: persistedProfile.name,
             role: persistedProfile.role,
             permissions: persistedProfile.permissions,
             avatarUrl: persistedProfile.avatarUrl,
           },
+          session?.access_token,
         );
 
         return sanitizeUser(updatedProfile ?? existingProfile);
@@ -543,6 +627,8 @@ export async function addUser(user: NewUser): Promise<User> {
       const storedProfile = await upsertRow<StoredUser>(
         "users",
         persistedProfile,
+        "id",
+        session?.access_token,
       );
 
       return sanitizeUser(storedProfile);
