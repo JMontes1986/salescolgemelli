@@ -100,7 +100,7 @@ alter table public.purchases add column if not exists "qrPayload" text;
 alter table public.purchases add column if not exists "reservationExpiresAt" text;
 
 update public.purchases
-set "reservationExpiresAt" = (now() + interval '30 minutes')::text
+set "reservationExpiresAt" = (now() + interval '2 hours')::text
 where "sellerId" is null
   and status = 'pending'
   and "reservationExpiresAt" is null;
@@ -737,7 +737,7 @@ as $$
         purchase.status = 'partially-delivered'
         or (
           purchase.status = 'pending'
-          and coalesce(nullif(purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+          and coalesce(nullif(purchase."reservationExpiresAt", '')::timestamptz, now() + interval '2 hours') > now()
         )
       )
       and (
@@ -1086,7 +1086,7 @@ begin
         reserved_purchase.status = 'partially-delivered'
         or (
           reserved_purchase.status = 'pending'
-          and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+          and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '2 hours') > now()
         )
       )
       and trim(item->>'id') = normalized_item.id;
@@ -1149,7 +1149,7 @@ begin
     'pending',
     delivery_code,
     public.build_signed_delivery_qr_payload(generated_id, delivery_code),
-    (now() + interval '30 minutes')::text
+    (now() + interval '2 hours')::text
   ) returning * into saved_purchase;
 
   return saved_purchase;
@@ -1265,7 +1265,7 @@ begin
         reserved_purchase.status = 'partially-delivered'
         or (
           reserved_purchase.status = 'pending'
-          and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+          and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '2 hours') > now()
         )
       )
       and trim(item->>'id') = normalized_item.id;
@@ -1290,7 +1290,7 @@ begin
     date = now()::text,
     total = purchase_total,
     items = verified_items,
-    "reservationExpiresAt" = (now() + interval '30 minutes')::text
+    "reservationExpiresAt" = (now() + interval '2 hours')::text
   where id = purchase_record.id
   returning * into purchase_record;
 
@@ -1400,7 +1400,7 @@ begin
           reserved_purchase.status = 'partially-delivered'
           or (
             reserved_purchase.status = 'pending'
-            and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '30 minutes') > now()
+            and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '2 hours') > now()
           )
         )
         and trim(item->>'id') = item_record.id;

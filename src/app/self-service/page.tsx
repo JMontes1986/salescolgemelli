@@ -455,10 +455,6 @@ export default function SelfServicePage() {
   const daviplataPaymentHref = buildDaviplataPaymentHref(paymentCode, paymentTotal);
   const daviplataQrPayload = buildDaviplataQrPayload(paymentCode, paymentTotal);
   const daviplataQrImageUrl = buildQrImageUrl(daviplataQrPayload);
-  const lastPurchaseDaviplataPaymentHref = lastPurchase ? buildDaviplataPaymentHref(lastPurchase.id, lastPurchase.total) : '';
-  const lastPurchaseDaviplataQrImageUrl = lastPurchase
-    ? buildQrImageUrl(buildDaviplataQrPayload(lastPurchase.id, lastPurchase.total))
-    : '';
   const reservationExpiryLabel = getReservationExpiryLabel(lastPurchase);
   const canShowSessionActions = (purchase: Purchase) => editablePurchaseIds.has(purchase.id);
   const getPurchaseStatusLabel = (status: Purchase['status']) => {
@@ -558,98 +554,6 @@ export default function SelfServicePage() {
           <div className="rounded-2xl border-2 border-[#ecc643]/80 bg-[#fff7cf]/80 px-4 py-3 text-sm font-bold text-[#5d4b10] shadow-[0_18px_36px_rgba(35,35,40,0.10)] backdrop-blur">
             Está modificando la compra {editingPurchase.id}. Revise el pedido y guarde los cambios.
           </div>
-        )}
-
-        {lastPurchase && !editingPurchase && (
-          <Card className="border-2 border-[#0eb9c3]/35 bg-white/88 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur">
-            <CardHeader className="gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-xl font-black uppercase tracking-wide text-[#232328]">Última compra generada</CardTitle>
-                <CardDescription className="text-[#4b4b52]">
-                  Presente este código en caja o úselo como referencia al pagar por DaviPlata.
-                </CardDescription>
-              </div>
-              <div className="rounded-2xl border border-[#0eb9c3]/40 bg-[#edfafa] px-4 py-3 text-center">
-                <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código</p>
-                <p className="font-mono text-2xl font-black tracking-widest text-[#b23178]">{lastPurchase.id}</p>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {lastPurchase.items.map(item => (
-                  <div key={`${lastPurchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-bold leading-tight">{item.name}</p>
-                        <p className="text-sm font-semibold text-[#5f686a]">Cantidad: {item.quantity}</p>
-                      </div>
-                      <p className="shrink-0 font-black">{formatCurrency(item.price * item.quantity)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3">
-                <div className="flex flex-col items-center gap-3 sm:flex-row">
-                  <img
-                    src={buildDeliveryQrImageUrl(lastPurchase)}
-                    alt={`QR de entrega ${lastPurchase.id}`}
-                    width={116}
-                    height={116}
-                    className="h-28 w-28 rounded-md border bg-white p-2"
-                  />
-                  <div>
-                    <p className="text-sm font-black uppercase text-[#126d74]">QR único para reclamar productos</p>
-                    <p className="text-sm font-semibold text-[#5f686a]">El vendedor debe escanear este QR y validar el código adicional antes de entregar.</p>
-                    <p className="mt-2 font-mono text-2xl font-black text-[#b23178]">{lastPurchase.deliveryCode}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1 border-t border-[#0eb9c3]/25 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm font-semibold text-[#5f686a]">{lastPurchase.date}</span>
-                <span className="text-xl font-black text-[#b23178]">Total: {formatCurrency(lastPurchase.total)}</span>
-              </div>
-              {getReservationExpiryLabel(lastPurchase) && (
-                <div className="rounded-2xl border border-[#ecc643]/45 bg-[#fff9df] p-3 text-sm font-bold text-[#5d4b10]">
-                  Reserva de inventario activa hasta las {getReservationExpiryLabel(lastPurchase)}. Después de esa hora el stock puede liberarse.
-                </div>
-              )}
-              <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
-                <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
-                  <a
-                    href={lastPurchaseDaviplataPaymentHref || undefined}
-                    target={getPaymentLinkTarget(lastPurchaseDaviplataPaymentHref)}
-                    rel={getPaymentLinkRel(lastPurchaseDaviplataPaymentHref)}
-                    onClick={(event) => handleDaviplataPaymentClick(event, lastPurchaseDaviplataPaymentHref)}
-                    aria-label="Abrir pago por DaviPlata Bre-B"
-                    className={cn(
-                      "flex shrink-0 rounded-md border bg-white p-2 shadow-sm",
-                      lastPurchaseDaviplataPaymentHref ? "cursor-pointer hover:ring-2 hover:ring-primary" : "cursor-default"
-                    )}
-                  >
-                    <img
-                      src={lastPurchaseDaviplataQrImageUrl}
-                      alt="QR de pago DaviPlata Bre-B"
-                      width={116}
-                      height={116}
-                      className="h-28 w-28"
-                    />
-                  </a>
-                  <div className="space-y-1 text-center sm:text-left">
-                    <p className="flex items-center justify-center gap-2 text-sm font-black uppercase text-[#126d74] sm:justify-start">
-                      <QrCode className="h-4 w-4" />
-                      Pago por DaviPlata / Bre-B
-                    </p>
-                    <p className="text-sm text-[#4b4b52]">
-                      Escanee el QR desde el celular o toquelo desde el telefono para abrir DaviPlata. Use el codigo {lastPurchase.id} como referencia.
-                    </p>
-                    {DAVIPLATA_BREB_KEY && (
-                      <p className="text-xs font-semibold text-[#5f686a]">Llave Bre-B: {DAVIPLATA_BREB_KEY}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         )}
 
         <Card className="border-2 border-[#d2528d]/30 bg-white/92 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.10)] backdrop-blur">
