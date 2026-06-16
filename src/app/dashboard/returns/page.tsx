@@ -164,6 +164,7 @@ export default function ReturnsPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="product-select">Producto a Devolver</Label>
                                 <Select 
+                                    name="returned-product"
                                     value={selectedProductId}
                                     onValueChange={setSelectedProductId}
                                     disabled={isLoading || isProcessing}
@@ -187,6 +188,7 @@ export default function ReturnsPage() {
                             <div className="space-y-2">
                                 <Label>Origen de la Venta</Label>
                                 <RadioGroup 
+                                    name="return-source"
                                     value={source} 
                                     onValueChange={(value) => setSource(value as ReturnSource)}
                                     className="flex space-x-4"
@@ -206,6 +208,7 @@ export default function ReturnsPage() {
                                 <Label htmlFor="quantity">Cantidad a Devolver</Label>
                                 <Input 
                                     id="quantity" 
+                                    name="quantity"
                                     type="number"
                                     min="1"
                                     value={quantity}
