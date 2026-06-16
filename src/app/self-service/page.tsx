@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, ClipboardList, PackageCheck } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, ClipboardList, PackageCheck, PlayCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -123,6 +123,7 @@ export default function SelfServicePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState(false);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
   const [paymentCode, setPaymentCode] = useState<string | null>(null);
   const [purchaseHistory, setPurchaseHistory] = useState<Purchase[]>([]);
   const [editablePurchaseIds, setEditablePurchaseIds] = useState<Set<string>>(() => new Set());
@@ -520,6 +521,37 @@ export default function SelfServicePage() {
             </div>
           </div>
         </header>
+
+
+        <Card className="border-2 border-[#0eb9c3]/35 bg-white/92 text-[#232328] shadow-[0_18px_38px_rgba(35,35,40,0.10)] backdrop-blur">
+          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#0eb9c3]/40 bg-white p-1 shadow-sm">
+                <Image
+                  src={MOLLY_LOGO_URL}
+                  alt="Logo de Molly Ventas"
+                  width={96}
+                  height={96}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#126d74]">Tutorial de autogestión</p>
+                <h2 className="text-xl font-black uppercase text-[#232328]">Antes de comprar, revise cómo funciona Molly Ventas</h2>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Los papás pueden ver los pasos completos para consultar la cédula, armar el pedido, generar el código y pagar con seguridad.</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 shrink-0 rounded-2xl border-[#d2528d]/50 bg-white px-5 font-black uppercase text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]"
+              onClick={() => setIsTutorialModalOpen(true)}
+            >
+              <PlayCircle className="h-5 w-5" />
+              Abrir tutorial
+            </Button>
+          </CardContent>
+        </Card>
 
         {editingPurchase && (
           <div className="rounded-2xl border-2 border-[#ecc643]/80 bg-[#fff7cf]/80 px-4 py-3 text-sm font-bold text-[#5d4b10] shadow-[0_18px_36px_rgba(35,35,40,0.10)] backdrop-blur">
@@ -1004,6 +1036,42 @@ export default function SelfServicePage() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={isTutorialModalOpen} onOpenChange={setIsTutorialModalOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#0eb9c3]/40 bg-white p-2 shadow-[0_14px_30px_rgba(35,35,40,0.14)]">
+              <Image src={MOLLY_LOGO_URL} alt="Logo de Molly Ventas" width={140} height={140} className="h-full w-full object-contain" />
+            </div>
+            <DialogTitle className="text-center text-2xl font-black uppercase text-[#232328]">Tutorial para comprar por autogestión</DialogTitle>
+            <DialogDesc className="text-center text-base">Siga estos pasos antes de realizar la compra para que el pedido quede asociado correctamente al padre de familia.</DialogDesc>
+          </DialogHeader>
+          <div className="grid gap-3 py-4 sm:grid-cols-2">
+            {[
+              ['1', 'Active la cédula', 'Escriba el documento del padre de familia y presione Ingresar para cargar su perfil e historial.'],
+              ['2', 'Seleccione productos', 'Toque Agregar en cada producto disponible y ajuste las cantidades desde el carrito.'],
+              ['3', 'Revise el pedido', 'Confirme productos, cantidades y total antes de generar el código de pago.'],
+              ['4', 'Genere el código', 'Ingrese el celular cuando se solicite. Molly Ventas creará el código único de pago y reserva.'],
+              ['5', 'Pague y conserve el QR', 'Pague en caja o por DaviPlata/Bre-B usando la referencia mostrada y guarde el QR de entrega.'],
+              ['6', 'Reclame productos', 'Presente el QR y el código adicional al vendedor para validar y entregar los productos.'],
+            ].map(([step, title, description]) => (
+              <div key={step} className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-4">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0eb9c3] text-lg font-black text-[#0f1720]">{step}</div>
+                <h3 className="font-black uppercase text-[#232328]">{title}</h3>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">{description}</p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-2xl border border-[#ecc643]/45 bg-[#fff9df] p-4 text-sm font-bold text-[#5d4b10]">
+            Consejo: si va a modificar una compra recién creada, use la opción Modificar dentro del perfil del padre de familia durante esta misma sesión.
+          </div>
+          <DialogFooter>
+            <Button type="button" className="h-12 w-full rounded-2xl bg-[#0eb9c3] font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={() => setIsTutorialModalOpen(false)}>
+              Entendido, empezar compra
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isUserInfoModalOpen} onOpenChange={setIsUserInfoModalOpen}>
         <DialogContent>
