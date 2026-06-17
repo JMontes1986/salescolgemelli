@@ -771,7 +771,7 @@ export async function deliverPurchaseItems(
     return deliverPurchaseItemsForLookup(safePurchaseId, deliveryQuantities, currentUser, signedToken);
   }
 
-  let purchase = await getPurchaseById(safePurchaseId);
+  const purchase = await getPurchaseById(safePurchaseId);
   if (!purchase) throw new Error('Compra no encontrada.');
   if (!['pending', 'paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered'].includes(purchase.status)) {
     throw new Error('Solo se pueden entregar compras pendientes, pagadas o preventas confirmadas.');
@@ -782,64 +782,5 @@ export async function deliverPurchaseItems(
     throw new Error('El código adicional de entrega no coincide con esta compra.');
   }
 
-  if (purchase.status === 'pending') {
-    purchase = await updatePurchaseStatusWithStock(safePurchaseId, 'paid');
-
-    await addAuditLog({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      action: 'PAYMENT_CONFIRM',
-      details: `Compra de autogestión ${safePurchaseId} confirmada desde entrega. Stock descontado al registrar la entrega.`,
-    });
-  }
-
-  let movedUnits = 0;
-  const updatedItems = purchase.items.map((item) => {
-    const requested = Number(deliveryQuantities[item.id] || 0);
-    if (!Number.isSafeInteger(requested) || requested < 0) {
-      throw new Error(`Cantidad inválida para ${item.name}.`);
-    }
-
-    const deliveredQuantity = normalizeDeliveredQuantity(item);
-    const pendingQuantity = item.quantity - deliveredQuantity;
-    const quantityToDeliver = Math.min(requested, pendingQuantity);
-    movedUnits += quantityToDeliver;
-
-    return {
-      ...item,
-      returned: item.returned || false,
-      deliveredQuantity: deliveredQuantity + quantityToDeliver,
-    };
-  });
-
-  if (movedUnits <= 0) {
-    throw new Error('Seleccione al menos una unidad pendiente para entregar.');
-  }
-
-  const allDelivered = updatedItems.every(item => (item.deliveredQuantity || 0) >= item.quantity);
-  const nextStatus: Purchase['status'] = allDelivered ? 'delivered' : 'partially-delivered';
-  const deliveryCode = purchase.deliveryCode || generateDeliveryCode();
-  const updatedPurchase = ensureReturnedFlags({
-    ...purchase,
-    items: updatedItems,
-    status: nextStatus,
-    deliveryCode,
-    qrPayload: purchase.qrPayload || buildDeliveryQrPayload(purchase.id, deliveryCode),
-  });
-
-  await updateById<Purchase>('purchases', safePurchaseId, {
-    items: updatedPurchase.items,
-    status: nextStatus,
-    deliveryCode: updatedPurchase.deliveryCode,
-    qrPayload: updatedPurchase.qrPayload,
-  });
-
-  await addAuditLog({
-    userId: currentUser.id,
-    userName: currentUser.name,
-    action: 'TICKET_REDEEM',
-    details: `Se entregaron ${movedUnits} unidad(es) de la compra ${safePurchaseId}. Estado: ${nextStatus}.`,
-  });
-
-  return updatedPurchase;
+  return deliverPurchaseItemsForLookup(safePurchaseId, deliveryQuantities, currentUser, signedToken);
 }

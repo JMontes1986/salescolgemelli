@@ -371,7 +371,10 @@ export async function POST(request: Request) {
   const groqResult = await requestGroqCompletion(apiKey, mode, context, prompt);
 
   if ("error" in groqResult) {
-    if (RETRYABLE_GROQ_STATUSES.has(groqResult.status ?? 0)) {
+    if (
+      mode === "active-route-guard" ||
+      RETRYABLE_GROQ_STATUSES.has(groqResult.status ?? 0)
+    ) {
       return NextResponse.json({
         answer: getActiveGuardFallbackAnswer(context),
         model: `${SECURITY_AUDITOR_MODEL} (modo local temporal)`,

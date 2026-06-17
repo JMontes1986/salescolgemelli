@@ -1495,6 +1495,8 @@ set search_path = public
 as $$
 declare
   purchase_record public.purchases%rowtype;
+  stock_item_record record;
+  product_record public.products%rowtype;
   updated_items jsonb := '[]'::jsonb;
   item_record jsonb;
   requested_quantity integer;
@@ -1504,6 +1506,8 @@ declare
   moved_units integer := 0;
   all_delivered boolean := true;
   next_status text;
+  reserved_quantity integer := 0;
+  generated_delivery_code text;
   lookup_token text := nullif(btrim(coalesce(p_token, '')), '');
   token_payload jsonb;
 begin
@@ -1545,12 +1549,81 @@ begin
     raise exception 'El QR firmado no corresponde a esta compra.';
   end if;
 
-  if purchase_record.status = 'pending' then
-    raise exception 'No se ha realizado el pago de los productos. Dirijase a caja o pague a la llave Bre-B 3206766574.';
+  if purchase_record.status not in ('pending', 'paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered') then
+    raise exception 'Solo se pueden entregar compras pagadas o preventas confirmadas.';
   end if;
 
-  if purchase_record.status not in ('paid', 'pre-sale-confirmed', 'partially-delivered', 'delivered') then
-    raise exception 'Solo se pueden entregar compras pagadas o preventas confirmadas.';
+  if purchase_record.status = 'pending' then
+    for stock_item_record in
+      select
+        trim(item->>'id') as id,
+        sum(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else null end) as quantity,
+        bool_and((item->>'quantity') ~ '^[0-9]+$') as quantities_valid
+      from jsonb_array_elements(purchase_record.items) as input(item)
+      group by trim(item->>'id')
+    loop
+      if stock_item_record.id is null or stock_item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+        raise exception 'La compra contiene un producto inválido.';
+      end if;
+
+      if stock_item_record.quantities_valid is not true
+        or stock_item_record.quantity is null
+        or stock_item_record.quantity < 1
+        or stock_item_record.quantity > 99 then
+        raise exception 'La compra contiene una cantidad inválida.';
+      end if;
+
+      select * into product_record
+      from public.products
+      where id::text = stock_item_record.id
+      for update;
+
+      if not found then
+        raise exception 'Producto con ID % no encontrado.', stock_item_record.id;
+      end if;
+
+      select coalesce(sum(
+        greatest(
+          coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
+            - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
+          0
+        )
+      ), 0)::integer into reserved_quantity
+      from public.purchases reserved_purchase
+      cross join jsonb_array_elements(reserved_purchase.items) as input(item)
+      where reserved_purchase.id <> purchase_record.id
+        and reserved_purchase."sellerId" is null
+        and (
+          reserved_purchase.status = 'partially-delivered'
+          or (
+            reserved_purchase.status = 'pending'
+            and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '2 hours') > now()
+          )
+        )
+        and trim(item->>'id') = stock_item_record.id;
+
+      if product_record.stock - reserved_quantity < stock_item_record.quantity then
+        raise exception 'Stock insuficiente para %.', product_record.name;
+      end if;
+
+      update public.products
+      set stock = stock - stock_item_record.quantity
+      where id::text = stock_item_record.id;
+    end loop;
+
+    insert into public."auditLogs" (
+      timestamp,
+      "userId",
+      "userName",
+      action,
+      details
+    ) values (
+      now()::text,
+      coalesce(nullif(trim(p_user_id), ''), 'system'),
+      coalesce(nullif(trim(p_user_name), ''), 'Sistema'),
+      'PAYMENT_CONFIRM',
+      'Compra de autogestión ' || purchase_record.id || ' confirmada desde entrega. Stock descontado al registrar la entrega.'
+    );
   end if;
 
   for item_record in
@@ -1587,11 +1660,17 @@ begin
   end if;
 
   next_status := case when all_delivered then 'delivered' else 'partially-delivered' end;
+  generated_delivery_code := coalesce(
+    purchase_record."deliveryCode",
+    upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))
+  );
 
   update public.purchases
   set
     items = updated_items,
-    status = next_status
+    status = next_status,
+    "deliveryCode" = generated_delivery_code,
+    "reservationExpiresAt" = null
   where id = purchase_record.id
   returning * into purchase_record;
 
