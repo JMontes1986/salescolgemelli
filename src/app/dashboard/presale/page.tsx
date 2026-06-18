@@ -302,14 +302,14 @@ export default function PreSalePage() {
   );
 
   const renderPreSaleActions = (ps: Purchase, className?: string) => (
-    <div className={cn("flex flex-col gap-2 2xl:flex-row 2xl:justify-end", className)}>
+    <div className={cn("flex flex-col gap-2 sm:flex-row sm:justify-end", className)}>
       {ps.status === 'pre-sale' && (
-        <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)} className="w-full 2xl:w-auto">
+        <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)} className="w-full sm:w-auto">
           <Pencil className="mr-2 h-3 w-3" />
           Modificar
         </Button>
       )}
-      <Button asChild size="sm" variant="outline" className="w-full 2xl:w-auto">
+      <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
         <Link href={`/dashboard/redeem?code=${ps.id}`}>
           Ver / Gestionar <ExternalLink className="ml-2 h-3 w-3" />
         </Link>
@@ -323,7 +323,7 @@ export default function PreSalePage() {
         title="Registro de Preventa"
         description="Registre preventas hasta el día anterior al evento. Cada unidad vendida aumenta el stock planificado del producto."
       />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(280px,0.85fr)_minmax(320px,0.9fr)_minmax(360px,1fr)] xl:items-start 2xl:gap-6">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:items-start 2xl:gap-6">
         
         <div>
             <Card className="overflow-hidden">
@@ -331,7 +331,7 @@ export default function PreSalePage() {
                     <CardTitle className="text-xl sm:text-2xl">Todos los Productos</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                    <ScrollArea className="h-[min(58dvh,620px)] min-h-[320px] xl:h-[calc(100dvh-14rem)]">
+                    <ScrollArea className="h-[min(58dvh,620px)] min-h-[320px] xl:h-[calc(100dvh-16rem)]">
                         {isLoading ? (
                             <p className="text-muted-foreground p-3">Cargando productos...</p>
                         ) : (
@@ -510,7 +510,7 @@ export default function PreSalePage() {
             </div>
         </div>
         
-        <div>
+        <div className="xl:col-span-2">
             <Card className="overflow-hidden">
                 <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="text-xl sm:text-2xl">Consultar Preventas</CardTitle>
