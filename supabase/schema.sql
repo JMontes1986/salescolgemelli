@@ -1446,14 +1446,8 @@ begin
         raise exception 'Producto con ID % no encontrado.', item_record.id;
       end if;
 
-      if product_record.stock < item_record.quantity then
-        raise exception 'Stock insuficiente para %.', product_record.name;
-      end if;
-
       update public.products
-      set
-        stock = stock - item_record.quantity,
-        "preSaleSold" = greatest("preSaleSold" - item_record.quantity, 0)
+      set "preSaleSold" = greatest("preSaleSold" - item_record.quantity, 0)
       where id::text = item_record.id;
     end loop;
   elsif p_target_status = 'delivered' then

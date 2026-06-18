@@ -187,7 +187,7 @@ export default function PreSalePage() {
         const addedPurchase = await addPreSalePurchase(newPreSaleData);
         setLastPurchase(addedPurchase);
         setIsConfirmationOpen(true);
-        toast({ title: "Preventa Exitosa", description: "La preventa ha sido registrada correctamente." });
+        toast({ title: "Preventa Exitosa", description: "La preventa fue registrada y el stock planificado aumentó correctamente." });
         
         clearCart();
         loadData(); // Refresh recent presales
@@ -300,7 +300,7 @@ export default function PreSalePage() {
     <div>
       <PageHeader
         title="Registro de Preventa"
-        description="Registre ventas que no dependen del stock inicial para planificar el inventario."
+        description="Registre preventas hasta el día anterior al evento. Cada unidad vendida aumenta el stock planificado del producto."
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -333,7 +333,7 @@ export default function PreSalePage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Badge variant="outline">Stock Actual: {product.stock}</Badge>
+                                            <Badge variant="outline">Stock planificado: {product.stock}</Badge>
                                             <Button onClick={() => addToCart(product)}>
                                                 Agregar
                                             </Button>

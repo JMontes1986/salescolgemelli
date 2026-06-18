@@ -486,7 +486,10 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
   if (!isSelfService) {
     await Promise.all(verifiedCart.items.map(item => {
       const product = verifiedCart.productMap.get(item.id)!;
-      return patchProduct(item.id, { preSaleSold: (product.preSaleSold ?? 0) + item.quantity });
+      return patchProduct(item.id, {
+        stock: product.stock + item.quantity,
+        preSaleSold: (product.preSaleSold ?? 0) + item.quantity,
+      });
     }));
   }
 
@@ -546,7 +549,10 @@ export async function cancelPurchaseAndUpdateStock(purchaseId: string): Promise<
 
     if (purchase.status === 'pre-sale') {
       if (purchase.sellerId) {
-        return patchProduct(item.id, { preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0) });
+        return patchProduct(item.id, {
+          stock: Math.max(product.stock - item.quantity, 0),
+          preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0),
+        });
       }
 
       return Promise.resolve();
@@ -643,7 +649,10 @@ export async function updatePendingPurchase(
     if (!product) throw new Error(`Producto ${productId} no encontrado.`);
 
     if (isPreSale) {
-      return patchProduct(productId, { preSaleSold: (product.preSaleSold ?? 0) + diff });
+      return patchProduct(productId, {
+        stock: product.stock + diff,
+        preSaleSold: Math.max((product.preSaleSold ?? 0) + diff, 0),
+      });
     }
 
     if (isSelfService) {
@@ -697,7 +706,7 @@ export async function confirmPreSaleAndUpdateStock(purchaseId: string, currentUs
     userId: currentUser.id,
     userName: currentUser.name,
     action: 'PAYMENT_CONFIRM',
-    details: `Preventa ${safePurchaseId} confirmada. Stock descontado.`,
+    details: `Preventa ${safePurchaseId} confirmada. El stock ya fue aumentado al registrar la preventa y no se descuenta al confirmar el pago.`,
   });
 }
 
