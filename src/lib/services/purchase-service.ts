@@ -540,22 +540,27 @@ async function updatePurchaseStatusWithStock(purchaseId: string, targetStatus: P
 export async function cancelPurchaseAndUpdateStock(purchaseId: string): Promise<void> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
   const purchase = await getPurchaseById(safePurchaseId);
-  if (!purchase) throw new Error("Purchase not found");
+  if (!purchase) throw new Error("Compra no encontrada.");
+  if (purchase.status === 'cancelled') throw new Error('Esta compra ya fue cancelada.');
+
+  const isSellerPreSale = Boolean(purchase.sellerId)
+    && purchase.id.startsWith('PV')
+    && (purchase.status === 'pre-sale' || purchase.status === 'pre-sale-confirmed');
+
+  if (isSellerPreSale && purchase.items.some(item => normalizeDeliveredQuantity(item) > 0)) {
+    throw new Error('No se puede eliminar una preventa con unidades entregadas.');
+  }
 
   const productMap = await getProductsByIds(purchase.items.map(item => item.id));
   await Promise.all(purchase.items.map(item => {
     const product = productMap.get(item.id);
     if (!product) throw new Error(`Producto ${item.id} no encontrado.`);
 
-    if (purchase.status === 'pre-sale') {
-      if (purchase.sellerId) {
-        return patchProduct(item.id, {
-          stock: Math.max(product.stock - item.quantity, 0),
-          preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0),
-        });
-      }
-
-      return Promise.resolve();
+    if (isSellerPreSale) {
+      return patchProduct(item.id, {
+        stock: Math.max(product.stock - item.quantity, 0),
+        preSaleSold: Math.max((product.preSaleSold ?? 0) - item.quantity, 0),
+      });
     }
 
     if (purchase.status === 'pending' && !purchase.sellerId) {

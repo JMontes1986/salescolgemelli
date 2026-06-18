@@ -26,12 +26,23 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Search, Printer, Download, Pencil, PackagePlus, CheckCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase, confirmPreSaleAndUpdateStock } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase, confirmPreSaleAndUpdateStock, cancelPurchaseAndUpdateStock } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -81,6 +92,7 @@ export default function PreSalePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [confirmingPurchaseId, setConfirmingPurchaseId] = useState<string | null>(null);
+  const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null);
 
   // For confirmation dialog
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
@@ -277,6 +289,43 @@ export default function PreSalePage() {
     }
   }
 
+  const handleDeletePreSale = async (purchase: Purchase) => {
+    if (purchase.status !== 'pre-sale' && purchase.status !== 'pre-sale-confirmed') {
+        toast({ variant: "destructive", title: "Preventa no disponible", description: "Solo se pueden eliminar preventas pendientes o confirmadas." });
+        return;
+    }
+
+    setDeletingPurchaseId(purchase.id);
+
+    try {
+        await cancelPurchaseAndUpdateStock(purchase.id);
+
+        setRecentPreSales(prev => prev.filter(item => item.id !== purchase.id));
+        setAllPreSales(prev => prev.filter(item => item.id !== purchase.id));
+        setSearchResults(prev => prev.filter(item => item.id !== purchase.id));
+
+        if (editingPurchase?.id === purchase.id) {
+            clearCart();
+        }
+
+        await loadData();
+
+        toast({
+            title: "Preventa eliminada",
+            description: "La preventa fue cancelada y las unidades regresaron al producto de preventa."
+        });
+    } catch (error) {
+        console.error("Error deleting pre-sale:", error);
+        toast({
+            variant: "destructive",
+            title: "Error al eliminar",
+            description: (error as Error).message || "No se pudo eliminar la preventa."
+        });
+    } finally {
+        setDeletingPurchaseId(null);
+    }
+  }
+
   const handleSearchHistory = async () => {
     if (!searchCedula) {
         toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese una cédula o código para buscar." });
@@ -346,14 +395,20 @@ export default function PreSalePage() {
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:justify-end", className)}>
       {ps.status === 'pre-sale' && (
         <>
-          <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)} className="w-full sm:w-auto">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handleEditPurchase(ps)}
+            disabled={deletingPurchaseId === ps.id}
+            className="w-full sm:w-auto"
+          >
             <Pencil className="mr-2 h-3 w-3" />
             Modificar
           </Button>
           <Button
             size="sm"
             onClick={() => handleConfirmPreSale(ps)}
-            disabled={confirmingPurchaseId === ps.id}
+            disabled={confirmingPurchaseId === ps.id || deletingPurchaseId === ps.id}
             className="w-full bg-purple-600 hover:bg-purple-700 sm:w-auto"
           >
             <PackagePlus className="mr-2 h-3 w-3" />
@@ -366,6 +421,38 @@ export default function PreSalePage() {
           <CheckCircle className="mr-2 h-3 w-3" />
           Preventa lista
         </div>
+      )}
+      {(ps.status === 'pre-sale' || ps.status === 'pre-sale-confirmed') && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={deletingPurchaseId === ps.id || confirmingPurchaseId === ps.id}
+              className="w-full sm:w-auto"
+            >
+              <Trash2 className="mr-2 h-3 w-3" />
+              {deletingPurchaseId === ps.id ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar preventa {ps.id}</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción cancelará la preventa y devolverá sus unidades al producto de preventa. La fila saldrá de los listados activos, pero quedará como cancelada para conservar el historial.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cerrar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleDeletePreSale(ps)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Eliminar preventa
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
