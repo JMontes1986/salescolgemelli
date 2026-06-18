@@ -295,29 +295,50 @@ export default function PreSalePage() {
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const displayHistory = searchResults.length > 0 ? searchResults : recentPreSales;
+  const renderStatusBadge = (status: Purchase['status']) => (
+    <Badge variant="outline" className={cn("w-fit capitalize", statusColors[status])}>
+      {statusTranslations[status]}
+    </Badge>
+  );
+
+  const renderPreSaleActions = (ps: Purchase, className?: string) => (
+    <div className={cn("flex flex-col gap-2 2xl:flex-row 2xl:justify-end", className)}>
+      {ps.status === 'pre-sale' && (
+        <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)} className="w-full 2xl:w-auto">
+          <Pencil className="mr-2 h-3 w-3" />
+          Modificar
+        </Button>
+      )}
+      <Button asChild size="sm" variant="outline" className="w-full 2xl:w-auto">
+        <Link href={`/dashboard/redeem?code=${ps.id}`}>
+          Ver / Gestionar <ExternalLink className="ml-2 h-3 w-3" />
+        </Link>
+      </Button>
+    </div>
+  );
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-[1500px] space-y-6 overflow-x-hidden">
       <PageHeader
         title="Registro de Preventa"
         description="Registre preventas hasta el día anterior al evento. Cada unidad vendida aumenta el stock planificado del producto."
       />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(280px,0.85fr)_minmax(320px,0.9fr)_minmax(360px,1fr)] xl:items-start 2xl:gap-6">
         
-        <div className="lg:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Todos los Productos</CardTitle>
+        <div>
+            <Card className="overflow-hidden">
+                <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-xl sm:text-2xl">Todos los Productos</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[70vh]">
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    <ScrollArea className="h-[min(58dvh,620px)] min-h-[320px] xl:h-[calc(100dvh-14rem)]">
                         {isLoading ? (
                             <p className="text-muted-foreground p-3">Cargando productos...</p>
                         ) : (
                             <div className="flex flex-col gap-2">
                                 {products.map((product) => (
-                                    <div key={product.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                        <div className="flex items-center gap-3">
+                                    <div key={product.id} className="grid grid-cols-[auto,minmax(0,1fr)] gap-3 rounded-lg bg-muted/50 p-3 sm:flex sm:items-center sm:justify-between">
+                                        <div className="flex min-w-0 items-center gap-3">
                                             <div className="h-10 w-10 bg-secondary rounded-md flex-shrink-0 relative">
                                                 <Image 
                                                     src={product.imageUrl}
@@ -327,14 +348,14 @@ export default function PreSalePage() {
                                                     className="object-cover rounded-md"
                                                 />
                                             </div>
-                                            <div>
-                                                <p className="font-semibold">{product.name}</p>
+                                            <div className="min-w-0">
+                                                <p className="truncate font-semibold">{product.name}</p>
                                                 <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="outline">Stock planificado: {product.stock}</Badge>
-                                            <Button onClick={() => addToCart(product)}>
+                                        <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
+                                            <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">Stock planificado: {product.stock}</Badge>
+                                            <Button onClick={() => addToCart(product)} className="w-full sm:w-auto">
                                                 Agregar
                                             </Button>
                                         </div>
@@ -347,57 +368,95 @@ export default function PreSalePage() {
             </Card>
         </div>
 
-        <div className="lg:col-span-1">
-            <div className="lg:sticky top-20 z-10">
-                <Card className="bg-blue-950 text-white">
-                    <CardHeader>
-                        <CardTitle>{editingPurchase ? 'Modificando Preventa' : 'Carrito de Preventa'}</CardTitle>
+        <div>
+            <div className="xl:sticky xl:top-20">
+                <Card className="overflow-hidden bg-slate-950 text-white">
+                    <CardHeader className="p-4 sm:p-6">
+                        <CardTitle className="text-xl sm:text-2xl">{editingPurchase ? 'Modificando Preventa' : 'Carrito de Preventa'}</CardTitle>
                         {editingPurchase && <CardDescription className="text-blue-300">Código: {editingPurchase.id}</CardDescription>}
                     </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-64 mb-4">
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                        <ScrollArea className={cn("mb-4", cart.length === 0 ? "h-auto" : "max-h-[38dvh] min-h-28 sm:max-h-64")}>
                             {cart.length === 0 ? (
-                                <p className="text-center text-blue-300">El carrito está vacío</p>
+                                <p className="rounded-lg border border-white/10 bg-white/5 p-4 text-center text-blue-200">El carrito está vacío</p>
                             ) : (
-                                <Table>
-                                    <TableBody>
+                                <>
+                                    <div className="space-y-2 md:hidden">
                                         {cart.map(item => (
-                                            <TableRow key={item.id} className="border-blue-800 hover:bg-blue-900">
-                                                <TableCell className="text-white font-medium">{item.name}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
-                                                            <Minus className="h-4 w-4" />
-                                                        </Button>
-                                                        <Input
-                                                            type="number"
-                                                            value={item.quantity}
-                                                            onChange={(e) => {
-                                                                const newQuantity = parseInt(e.target.value, 10);
-                                                                if (!isNaN(newQuantity)) {
-                                                                updateQuantity(item.id, newQuantity);
-                                                                }
-                                                            }}
-                                                            className="w-12 h-6 text-center bg-blue-900 border-blue-700"
-                                                        />
-                                                        <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
-                                                            <Plus className="h-4 w-4" />
-                                                        </Button>
+                                            <div key={item.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate font-medium text-white">{item.name}</p>
+                                                        <p className="text-sm font-semibold text-emerald-300">{formatCurrency(item.price * item.quantity)}</p>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell className="text-right text-green-400 font-semibold">{formatCurrency(item.price * item.quantity)}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button size="icon" variant="ghost" className="text-red-500 hover:bg-red-500/20 hover:text-red-400" onClick={() => removeFromCart(item.id)}>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-red-300 hover:bg-red-500/20 hover:text-red-200" onClick={() => removeFromCart(item.id)}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
-                                                </TableCell>
-                                            </TableRow>
+                                                </div>
+                                                <div className="mt-3 flex items-center gap-2">
+                                                    <Button size="icon" variant="outline" className="h-9 w-9 bg-blue-900 border-blue-700 hover:bg-blue-800" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                                                        <Minus className="h-4 w-4" />
+                                                    </Button>
+                                                    <Input
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const newQuantity = parseInt(e.target.value, 10);
+                                                            if (!isNaN(newQuantity)) {
+                                                            updateQuantity(item.id, newQuantity);
+                                                            }
+                                                        }}
+                                                        className="h-9 flex-1 text-center bg-blue-900 border-blue-700 text-white"
+                                                    />
+                                                    <Button size="icon" variant="outline" className="h-9 w-9 bg-blue-900 border-blue-700 hover:bg-blue-800" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                                                        <Plus className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </TableBody>
-                                </Table>
+                                    </div>
+                                    <div className="hidden md:block">
+                                        <Table>
+                                            <TableBody>
+                                                {cart.map(item => (
+                                                    <TableRow key={item.id} className="border-blue-800 hover:bg-blue-900">
+                                                        <TableCell className="text-white font-medium">{item.name}</TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                                                                    <Minus className="h-4 w-4" />
+                                                                </Button>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => {
+                                                                        const newQuantity = parseInt(e.target.value, 10);
+                                                                        if (!isNaN(newQuantity)) {
+                                                                        updateQuantity(item.id, newQuantity);
+                                                                        }
+                                                                    }}
+                                                                    className="w-12 h-6 text-center bg-blue-900 border-blue-700"
+                                                                />
+                                                                <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                                                                    <Plus className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-green-400 font-semibold">{formatCurrency(item.price * item.quantity)}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button size="icon" variant="ghost" className="text-red-500 hover:bg-red-500/20 hover:text-red-400" onClick={() => removeFromCart(item.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </>
                             )}
                         </ScrollArea>
-                        <div className="space-y-4 text-lg">
+                        <div className="space-y-4 text-base sm:text-lg">
                             <div className="space-y-2">
                                 <Label htmlFor="customer-id" className="text-white">Cédula o Código de Estudiante</Label>
                                 <Input 
@@ -435,7 +494,7 @@ export default function PreSalePage() {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex gap-2">
+                    <CardFooter className="flex flex-col gap-2 p-4 pt-0 sm:flex-row sm:p-6 sm:pt-0">
                         <Button 
                             className="w-full text-lg h-12 bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
                             onClick={handlePreSale}
@@ -451,14 +510,14 @@ export default function PreSalePage() {
             </div>
         </div>
         
-        <div className="lg:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Consultar Preventas</CardTitle>
+        <div>
+            <Card className="overflow-hidden">
+                <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-xl sm:text-2xl">Consultar Preventas</CardTitle>
                     <CardDescription>Busque por cédula o vea las preventas registradas por vendedores.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex items-center gap-2 mb-4">
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                         <Input 
                             placeholder="Buscar por cédula..."
                             value={searchCedula}
@@ -469,7 +528,28 @@ export default function PreSalePage() {
                             {isHistoryLoading ? 'Buscando...' : 'Buscar'}
                         </Button>
                     </div>
-                    <ScrollArea className="h-[60vh]">
+                    <ScrollArea className="max-h-[560px] min-h-[220px]">
+                        {isLoading || isHistoryLoading ? (
+                            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground md:hidden">Cargando...</div>
+                        ) : displayHistory.length === 0 ? (
+                            <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground md:hidden">No se encontraron preventas de vendedores.</div>
+                        ) : (
+                            <div className="space-y-3 md:hidden">
+                                {displayHistory.map(ps => (
+                                    <div key={ps.id} className="rounded-lg border bg-background p-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="font-mono text-sm font-semibold">{ps.id}</p>
+                                                <p className="text-sm text-muted-foreground">{formatCurrency(ps.total)}</p>
+                                            </div>
+                                            {renderStatusBadge(ps.status)}
+                                        </div>
+                                        {renderPreSaleActions(ps, "mt-3")}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -492,46 +572,66 @@ export default function PreSalePage() {
                                                 <Badge variant="outline" className={cn("capitalize", statusColors[ps.status])}>{statusTranslations[ps.status]}</Badge>
                                             </TableCell>
                                             <TableCell>{formatCurrency(ps.total)}</TableCell>
-                                            <TableCell className="text-right space-x-1">
-                                                {ps.status === 'pre-sale' && (
-                                                    <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)}>
-                                                        <Pencil className="mr-2 h-3 w-3" />
-                                                        Modificar
-                                                    </Button>
-                                                )}
-                                                <Button asChild size="sm" variant="outline">
-                                                    <Link href={`/dashboard/redeem?code=${ps.id}`}>
-                                                        Ver / Gestionar <ExternalLink className="ml-2 h-3 w-3" />
-                                                    </Link>
-                                                </Button>
-                                            </TableCell>
+                                            <TableCell>{renderPreSaleActions(ps)}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
                             </TableBody>
                         </Table>
+                        </div>
                     </ScrollArea>
                 </CardContent>
             </Card>
         </div>
       </div>
       
-      <div className="mt-8">
-        <Card>
-            <CardHeader className="flex items-center justify-between flex-row">
-                <div>
-                    <CardTitle>Historial de Todas las Preventas</CardTitle>
+      <div>
+        <Card className="overflow-hidden">
+            <CardHeader className="flex flex-col gap-4 p-4 sm:p-6 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                    <CardTitle className="text-xl sm:text-2xl">Historial de Todas las Preventas</CardTitle>
                     <CardDescription>
                     Un registro completo de todas las preventas registradas en el sistema.
                     </CardDescription>
                 </div>
-                <Button variant="outline" onClick={handleExportCSV} disabled={isLoading}>
+                <Button variant="outline" onClick={handleExportCSV} disabled={isLoading} className="w-full md:w-auto">
                     <Download className="mr-2 h-4 w-4" />
                     Exportar a CSV
                 </Button>
             </CardHeader>
-            <CardContent>
-                 <ScrollArea className="h-[60vh]">
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                 <ScrollArea className="max-h-[640px] min-h-[240px]">
+                    {isLoading ? (
+                        <div className="flex h-24 items-center justify-center text-sm text-muted-foreground md:hidden">Cargando historial...</div>
+                    ) : allPreSales.length === 0 ? (
+                        <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground md:hidden">No hay preventas registradas.</div>
+                    ) : (
+                        <div className="space-y-3 md:hidden">
+                            {allPreSales.map(ps => (
+                                <div key={ps.id} className="rounded-lg border bg-background p-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium">{ps.date}</p>
+                                            <p className="font-mono text-xs text-muted-foreground">{ps.cedula} - {ps.celular}</p>
+                                        </div>
+                                        <p className="shrink-0 font-semibold">{formatCurrency(ps.total)}</p>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                                        {renderStatusBadge(ps.status)}
+                                    </div>
+                                    <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+                                        {ps.items.map(item => (
+                                            <li key={item.id} className="flex justify-between gap-3">
+                                                <span className="min-w-0 truncate">{item.name}</span>
+                                                <span className="shrink-0">x{item.quantity}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                        <div className="hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -570,6 +670,7 @@ export default function PreSalePage() {
                                 )}
                             </TableBody>
                         </Table>
+                        </div>
                     </ScrollArea>
             </CardContent>
         </Card>
