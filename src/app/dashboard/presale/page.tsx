@@ -376,7 +376,7 @@ export default function PreSalePage() {
                         {editingPurchase && <CardDescription className="text-blue-300">Código: {editingPurchase.id}</CardDescription>}
                     </CardHeader>
                     <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-                        <ScrollArea className={cn("mb-4", cart.length === 0 ? "h-auto" : "max-h-[38dvh] min-h-28 sm:max-h-64")}>
+                        <ScrollArea className={cn("mb-4 pr-3", cart.length === 0 ? "h-auto pr-0" : "h-44 min-h-0 sm:h-56 xl:h-[38dvh] xl:max-h-64")}>
                             {cart.length === 0 ? (
                                 <p className="rounded-lg border border-white/10 bg-white/5 p-4 text-center text-blue-200">El carrito está vacío</p>
                             ) : (
