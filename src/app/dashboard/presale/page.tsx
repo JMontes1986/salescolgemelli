@@ -597,6 +597,17 @@ export default function PreSalePage() {
                                             </div>
                                             {renderStatusBadge(ps.status)}
                                         </div>
+                                        <div className="mt-3 rounded-md bg-muted/50 p-2 text-sm">
+                                            <p className="font-semibold text-foreground">Se adquirió</p>
+                                            <ul className="mt-1 space-y-1 text-muted-foreground">
+                                                {ps.items.map(item => (
+                                                    <li key={item.id} className="flex justify-between gap-3">
+                                                        <span className="min-w-0 truncate">{item.name}</span>
+                                                        <span className="shrink-0">x{item.quantity}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
                                         {renderPreSaleActions(ps, "mt-3")}
                                     </div>
                                 ))}
@@ -607,6 +618,7 @@ export default function PreSalePage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Código</TableHead>
+                                    <TableHead>Se adquirió</TableHead>
                                     <TableHead>Estado</TableHead>
                                     <TableHead>Total</TableHead>
                                     <TableHead className="text-right">Acción</TableHead>
@@ -614,13 +626,23 @@ export default function PreSalePage() {
                             </TableHeader>
                             <TableBody>
                                 {isLoading || isHistoryLoading ? (
-                                <TableRow><TableCell colSpan={4} className="h-24 text-center">Cargando...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Cargando...</TableCell></TableRow>
                                 ) : displayHistory.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">No se encontraron preventas de vendedores.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} className="h-24 text-center">No se encontraron preventas de vendedores.</TableCell></TableRow>
                                 ) : (
                                     displayHistory.map(ps => (
                                         <TableRow key={ps.id}>
                                             <TableCell className="font-mono">{ps.id}</TableCell>
+                                            <TableCell>
+                                                <ul className="space-y-1 text-xs">
+                                                    {ps.items.map(item => (
+                                                        <li key={item.id} className="flex justify-between gap-3">
+                                                            <span className="min-w-0 truncate">{item.name}</span>
+                                                            <span className="shrink-0 font-semibold">x{item.quantity}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className={cn("capitalize", statusColors[ps.status])}>{statusTranslations[ps.status]}</Badge>
                                             </TableCell>
