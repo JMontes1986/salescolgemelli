@@ -1446,9 +1446,10 @@ begin
         raise exception 'Producto con ID % no encontrado.', item_record.id;
       end if;
 
-      update public.products
-      set "preSaleSold" = greatest("preSaleSold" - item_record.quantity, 0)
-      where id::text = item_record.id;
+      -- La confirmación de una preventa solo cambia el estado de la compra.
+      -- El stock planificado y el contador de unidades preventidas ya se aumentaron
+      -- al registrar la preventa, y deben conservarse para saber cuántas unidades
+      -- llevar/vender el día del evento.
     end loop;
   elsif p_target_status = 'delivered' then
     if purchase_record.status not in ('paid', 'pre-sale-confirmed') then
