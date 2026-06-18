@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Plus, Minus, Search, ExternalLink, Printer, Download, Pencil } from "lucide-react";
+import { Trash2, Plus, Minus, Search, Printer, Download, Pencil, PackagePlus, CheckCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, type NewPurchase, getPreSalesByCedula, getDashboardPreSales, updatePendingPurchase, confirmPreSaleAndUpdateStock } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import Link from 'next/link';
 import { Logo } from '@/components/icons';
 
 type CartItem = {
@@ -81,6 +80,7 @@ export default function PreSalePage() {
   const { currentUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [confirmingPurchaseId, setConfirmingPurchaseId] = useState<string | null>(null);
 
   // For confirmation dialog
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
@@ -236,6 +236,47 @@ export default function PreSalePage() {
     toast({ title: "Modo Edición", description: "La preventa ha sido cargada en el carrito." });
   }
 
+  const handleConfirmPreSale = async (purchase: Purchase) => {
+    if (!currentUser) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo identificar al usuario actual." });
+        return;
+    }
+
+    if (purchase.status !== 'pre-sale') {
+        toast({ variant: "destructive", title: "Preventa no disponible", description: "Esta preventa ya fue confirmada o procesada." });
+        return;
+    }
+
+    setConfirmingPurchaseId(purchase.id);
+
+    try {
+        await confirmPreSaleAndUpdateStock(purchase.id, currentUser);
+        const confirmedPurchase: Purchase = { ...purchase, status: 'pre-sale-confirmed' };
+
+        setRecentPreSales(prev => prev.map(item => item.id === purchase.id ? confirmedPurchase : item));
+        setAllPreSales(prev => prev.map(item => item.id === purchase.id ? confirmedPurchase : item));
+        setSearchResults(prev => prev.map(item => item.id === purchase.id ? confirmedPurchase : item));
+
+        if (editingPurchase?.id === purchase.id) {
+            clearCart();
+        }
+
+        toast({
+            title: "Preventa lista",
+            description: "La preventa fue confirmada en este módulo y queda lista para entrega."
+        });
+    } catch (error) {
+        console.error("Error confirming pre-sale:", error);
+        toast({
+            variant: "destructive",
+            title: "Error al confirmar",
+            description: (error as Error).message || "No se pudo confirmar la preventa."
+        });
+    } finally {
+        setConfirmingPurchaseId(null);
+    }
+  }
+
   const handleSearchHistory = async () => {
     if (!searchCedula) {
         toast({ variant: "destructive", title: "Error", description: "Por favor, ingrese una cédula o código para buscar." });
@@ -304,16 +345,28 @@ export default function PreSalePage() {
   const renderPreSaleActions = (ps: Purchase, className?: string) => (
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:justify-end", className)}>
       {ps.status === 'pre-sale' && (
-        <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)} className="w-full sm:w-auto">
-          <Pencil className="mr-2 h-3 w-3" />
-          Modificar
-        </Button>
+        <>
+          <Button size="sm" variant="secondary" onClick={() => handleEditPurchase(ps)} className="w-full sm:w-auto">
+            <Pencil className="mr-2 h-3 w-3" />
+            Modificar
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handleConfirmPreSale(ps)}
+            disabled={confirmingPurchaseId === ps.id}
+            className="w-full bg-purple-600 hover:bg-purple-700 sm:w-auto"
+          >
+            <PackagePlus className="mr-2 h-3 w-3" />
+            {confirmingPurchaseId === ps.id ? 'Confirmando...' : 'Confirmar y dejar lista'}
+          </Button>
+        </>
       )}
-      <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
-        <Link href={`/dashboard/redeem?code=${ps.id}`}>
-          Ver / Gestionar <ExternalLink className="ml-2 h-3 w-3" />
-        </Link>
-      </Button>
+      {ps.status === 'pre-sale-confirmed' && (
+        <div className="inline-flex w-full items-center justify-center rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-700 sm:w-auto">
+          <CheckCircle className="mr-2 h-3 w-3" />
+          Preventa lista
+        </div>
+      )}
     </div>
   );
 
@@ -619,6 +672,7 @@ export default function PreSalePage() {
                                     <div className="mt-3 flex flex-wrap items-center gap-2">
                                         {renderStatusBadge(ps.status)}
                                     </div>
+                                    {renderPreSaleActions(ps, "mt-3")}
                                     <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
                                         {ps.items.map(item => (
                                             <li key={item.id} className="flex justify-between gap-3">
@@ -641,13 +695,14 @@ export default function PreSalePage() {
                                     <TableHead>Productos</TableHead>
                                     <TableHead>Estado</TableHead>
                                     <TableHead className="text-right">Total</TableHead>
+                                    <TableHead className="text-right">Acción</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
-                                    <TableRow><TableCell colSpan={6} className="h-24 text-center">Cargando historial...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7} className="h-24 text-center">Cargando historial...</TableCell></TableRow>
                                 ) : allPreSales.length === 0 ? (
-                                    <TableRow><TableCell colSpan={6} className="h-24 text-center">No hay preventas registradas.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7} className="h-24 text-center">No hay preventas registradas.</TableCell></TableRow>
                                 ) : (
                                     allPreSales.map(ps => (
                                         <TableRow key={ps.id}>
@@ -665,6 +720,7 @@ export default function PreSalePage() {
                                                 <Badge variant="outline" className={cn("capitalize", statusColors[ps.status])}>{statusTranslations[ps.status]}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right font-medium">{formatCurrency(ps.total)}</TableCell>
+                                            <TableCell>{renderPreSaleActions(ps)}</TableCell>
                                         </TableRow>
                                     ))
                                 )}

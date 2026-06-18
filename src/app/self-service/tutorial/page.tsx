@@ -234,7 +234,7 @@ export default function SelfServiceTutorialPage() {
                   0
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black leading-tight">Bienvenido, papá o mamá</h2>
+                  <h2 className="text-2xl font-black leading-tight">Bienvenid@</h2>
                   <p className="mt-1 text-sm font-bold text-[#777]">Esta guía le muestra cómo comprar desde su celular.</p>
                 </div>
               </div>

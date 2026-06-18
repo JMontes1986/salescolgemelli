@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Info, CheckCircle, AlertTriangle, PackagePlus, RefreshCw, ClipboardList, PackageCheck, Minus, Plus, Camera, VideoOff } from "lucide-react";
-import { getPurchasesByCedula, getPurchasesByCelular, updatePurchase, confirmPreSaleAndUpdateStock, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, getPurchaseForDeliveryLookup } from '@/lib/services/purchase-service';
-import type { Purchase, User } from '@/lib/types';
+import { Search, Info, CheckCircle, AlertTriangle, RefreshCw, ClipboardList, PackageCheck, Minus, Plus, Camera, VideoOff } from "lucide-react";
+import { getPurchasesByCedula, getPurchasesByCelular, updatePurchase, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, getPurchaseForDeliveryLookup } from '@/lib/services/purchase-service';
+import type { Purchase } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -451,9 +451,7 @@ function RedeemPageComponent() {
                 throw new Error("No se encontró la compra para registrar en auditoría.");
             }
 
-            if (newStatus === 'pre-sale-confirmed') {
-                await confirmPreSaleAndUpdateStock(purchaseId, currentUser);
-            } else if (newStatus === 'paid' && purchaseToLog.status === 'pending') {
+            if (newStatus === 'paid' && purchaseToLog.status === 'pending') {
                 await confirmPendingPurchaseAndUpdateStock(purchaseId, currentUser);
             } else {
                  await updatePurchase(purchaseId, { status: newStatus });
@@ -637,14 +635,9 @@ function RedeemPageComponent() {
         switch (purchase.status) {
             case 'pre-sale':
                 return (
-                    <Button
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                        onClick={() => handleUpdateStatus(purchase.id, 'pre-sale-confirmed')}
-                        disabled={isUpdating}
-                    >
-                        <PackagePlus className="mr-2 h-4 w-4" />
-                        {isUpdating ? 'Confirmando...' : 'Confirmar Preventa y Pagar'}
-                    </Button>
+                    <div className="w-full rounded-md border border-purple-200 bg-purple-50 p-3 text-center text-sm font-semibold text-purple-900">
+                        Esta preventa se modifica y confirma desde el módulo Preventa. Cuando quede lista, aquí podrá registrar la entrega.
+                    </div>
                 );
             case 'pre-sale-confirmed':
                 return renderDeliveryButton(purchase);
