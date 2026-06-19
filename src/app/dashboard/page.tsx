@@ -75,14 +75,6 @@ type ProductSales = {
     }
 }
 
-type SellerSales = {
-    [sellerId: string]: {
-        name: string;
-        totalRevenue: number;
-        transactionCount: number;
-    }
-}
-
 type MollyReportScope = 'dashboard' | 'requests' | 'tasks' | 'inventory';
 
 type ReportChartData = {
@@ -161,7 +153,7 @@ export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [returns, setReturns] = useState<Return[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'overview' | 'sales' | 'team'>('overview');
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'sales' | 'presales' | 'selfService'>('dashboard');
   const [mollyReportScope, setMollyReportScope] = useState<MollyReportScope>('dashboard');
   const [mollyReportText, setMollyReportText] = useState('');
   const router = useRouter();
@@ -244,33 +236,23 @@ export default function Dashboard() {
   const maxProductRevenue = sortedProductSales[0]?.[1].netRevenue || 1;
   const netRevenue = Object.values(productSales).reduce((sum, product) => sum + product.netRevenue, 0);
 
-  const sellerSales = paidPurchases
-    .filter(p => p.sellerId)
-    .reduce((acc, p) => {
-        if (p.sellerId) {
-            if (!acc[p.sellerId]) {
-                acc[p.sellerId] = {
-                    name: p.sellerName || 'Desconocido',
-                    totalRevenue: 0,
-                    transactionCount: 0
-                };
-            }
-            acc[p.sellerId].totalRevenue += p.total;
-            acc[p.sellerId].transactionCount += 1;
-        }
-        return acc;
-    }, {} as SellerSales);
+  const presalePurchases = purchases.filter((purchase) => purchase.status === 'pre-sale' || purchase.status === 'pre-sale-confirmed');
+  const allSelfServicePurchases = purchases.filter((purchase) => !purchase.sellerId);
 
-  const sortedSellerSales = Object.entries(sellerSales).sort(([,a],[,b]) => b.totalRevenue - a.totalRevenue);
   const recentPurchases = [...purchases]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 6);
+  const recentSelfServicePurchases = [...allSelfServicePurchases]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8);
+  const presaleRevenue = presalePurchases.reduce((sum, purchase) => sum + purchase.total, 0);
+  const selfServicePending = allSelfServicePurchases.filter((purchase) => purchase.status === 'pending').length;
 
   const dashboardProgress = totalRevenue > 0 ? Math.round((selfServiceRevenue / totalRevenue) * 100) : 0;
   const progressCircumference = 2 * Math.PI * 24;
   const progressStrokeOffset = progressCircumference - (progressCircumference * dashboardProgress) / 100;
   const pendingRequests = purchases.filter((purchase) => purchase.status === 'pending');
-  const presaleRequests = purchases.filter((purchase) => purchase.status === 'pre-sale' || purchase.status === 'pre-sale-confirmed');
+  const presaleRequests = presalePurchases;
   const deliveryTasks = purchases.filter((purchase) => purchase.status === 'paid' || purchase.status === 'partially-delivered');
   const lowStockProducts = products.filter((product) => product.stock <= 5);
   const outOfStockProducts = products.filter((product) => product.stock <= 0);
@@ -402,9 +384,10 @@ Recomendación Molly IA: programar reposición de productos críticos, validar d
 
         <div className="flex flex-wrap items-center gap-2 rounded-full border bg-background/80 px-1 py-1 text-sm shadow-sm">
           {[
-            { id: "overview", label: "Resumen" },
+            { id: "dashboard", label: "Dashboard" },
             { id: "sales", label: "Ventas" },
-            { id: "team", label: "Equipo" },
+            { id: "presales", label: "Preventas" },
+            { id: "selfService", label: "Autogestión" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -497,7 +480,7 @@ Recomendación Molly IA: programar reposición de productos críticos, validar d
           </CardContent>
         </Card>
 
-        {activeSection === "overview" && (
+        {activeSection === "dashboard" && (
           <>
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <KpiCard
@@ -754,13 +737,13 @@ Recomendación Molly IA: programar reposición de productos críticos, validar d
           </div>
         )}
 
-        {activeSection === "team" && (
+        {activeSection === "presales" && (
           <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
             <Card className="border-slate-200 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Ventas por vendedor</CardTitle>
+                <CardTitle className="text-lg font-semibold">Filtro de preventas</CardTitle>
                 <CardDescription>
-                  Rendimiento del equipo en caja.
+                  Solicitudes de preventa pendientes y confirmadas.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -770,24 +753,24 @@ Recomendación Molly IA: programar reposición de productos críticos, validar d
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Vendedor</TableHead>
-                        <TableHead>Ventas</TableHead>
+                        <TableHead>ID de compra</TableHead>
+                        <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Ingresos (COP)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedSellerSales.length === 0 ? (
+                      {presalePurchases.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={3} className="h-24 text-center">
-                            No hay ventas registradas por vendedores.
+                            No hay preventas registradas.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        sortedSellerSales.map(([sellerId, data]) => (
-                          <TableRow key={sellerId} className="transition-colors duration-200 hover:bg-muted/60">
-                            <TableCell className="font-medium">{data.name}</TableCell>
-                            <TableCell>{data.transactionCount}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(data.totalRevenue)}</TableCell>
+                        presalePurchases.map((purchase) => (
+                          <TableRow key={purchase.id} className="transition-colors duration-200 hover:bg-muted/60">
+                            <TableCell className="font-medium font-mono">{purchase.id}</TableCell>
+                            <TableCell>{statusTranslations[purchase.status]}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(purchase.total)}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -798,34 +781,93 @@ Recomendación Molly IA: programar reposición de productos críticos, validar d
             </Card>
             <Card className="border-slate-200 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Top productos</CardTitle>
+                <CardTitle className="text-lg font-semibold">Resumen de preventas</CardTitle>
                 <CardDescription>
-                  Los productos con mayor ingreso neto.
+                  Totales filtrados para seguimiento comercial.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {topProducts.length === 0 ? (
-                  <div className="h-24 flex items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-                    No hay productos destacados aún.
-                  </div>
-                ) : (
-                  topProducts.map(([, data]) => (
-                    <div key={data.name} className="rounded-2xl border bg-card p-4 transition duration-200 hover:-translate-y-1 hover:shadow-sm">
-                      <p className="font-medium">{data.name}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Ingresos netos {formatCurrency(data.netRevenue)}</p>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${Math.max(8, Math.min(100, (data.netRevenue / maxProductRevenue) * 100))}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
+                <div className="rounded-2xl border bg-card p-4"><p className="text-sm text-muted-foreground">Preventas</p><p className="mt-1 text-2xl font-semibold">{presalePurchases.length.toLocaleString("es-CO")}</p></div>
+                <div className="rounded-2xl border bg-card p-4"><p className="text-sm text-muted-foreground">Valor estimado</p><p className="mt-1 text-2xl font-semibold">{formatCurrency(presaleRevenue)}</p></div>
+                <div className="rounded-2xl border bg-card p-4"><p className="text-sm text-muted-foreground">Confirmadas</p><p className="mt-1 text-2xl font-semibold">{presalePurchases.filter((purchase) => purchase.status === 'pre-sale-confirmed').length.toLocaleString("es-CO")}</p></div>
               </CardContent>
             </Card>
           </div>
         )}
+
+        {activeSection === "selfService" && (
+          <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+            <Card className="border-slate-200 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Filtro de autogestión</CardTitle>
+                <CardDescription>
+                  Compras realizadas desde el portal público sin vendedor asignado.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="h-24 text-center flex items-center justify-center">Cargando autogestión...</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID de compra</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentSelfServicePurchases.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                              No hay compras de autogestión registradas.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          recentSelfServicePurchases.map((purchase) => (
+                            <TableRow key={purchase.id} className="transition-colors duration-200 hover:bg-muted/60">
+                              <TableCell className="font-medium font-mono">{purchase.id}</TableCell>
+                              <TableCell className="whitespace-nowrap text-muted-foreground">
+                                {formatDashboardDate(purchase.date)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={`whitespace-nowrap ${statusColors[purchase.status]}`}
+                                >
+                                  {statusTranslations[purchase.status]}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{purchase.cedula}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(purchase.total)}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Resumen de autogestión</CardTitle>
+                <CardDescription>
+                  Indicadores filtrados del canal público.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-2xl border bg-card p-4"><p className="text-sm text-muted-foreground">Compras del portal</p><p className="mt-1 text-2xl font-semibold">{allSelfServicePurchases.length.toLocaleString("es-CO")}</p></div>
+                <div className="rounded-2xl border bg-card p-4"><p className="text-sm text-muted-foreground">Ingresos confirmados</p><p className="mt-1 text-2xl font-semibold">{formatCurrency(selfServiceRevenue)}</p></div>
+                <div className="rounded-2xl border bg-card p-4"><p className="text-sm text-muted-foreground">Pendientes por gestionar</p><p className="mt-1 text-2xl font-semibold">{selfServicePending.toLocaleString("es-CO")}</p></div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
       </div>
     </div>
   );
