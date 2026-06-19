@@ -23,8 +23,11 @@ import {
   ArrowDown,
   ArrowUp,
   Download,
+  FileText,
+  PackageCheck,
   RefreshCw,
   ShoppingCart,
+  Sparkles,
   Store,
   Undo2,
   UserCog,
@@ -38,6 +41,7 @@ import { getProducts } from "@/lib/services/product-service";
 import { getReturns } from "@/lib/services/return-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 const statusTranslations: Record<Purchase['status'], string> = {
     pending: 'Pendiente',
@@ -79,6 +83,21 @@ type SellerSales = {
     }
 }
 
+type MollyReportScope = 'dashboard' | 'requests' | 'tasks' | 'inventory';
+
+type ReportChartData = {
+  label: string;
+  value: number;
+  displayValue: string;
+};
+
+const mollyReportOptions: { id: MollyReportScope; label: string; description: string }[] = [
+  { id: 'dashboard', label: 'Dashboard general', description: 'Ventas, autogestión, devoluciones y equipo.' },
+  { id: 'requests', label: 'Solicitudes', description: 'Solicitudes por estado y origen.' },
+  { id: 'tasks', label: 'Tareas pendientes', description: 'Cobros, entregas y preventas por resolver.' },
+  { id: 'inventory', label: 'Inventario', description: 'Stock, reposición y disponibilidad de productos.' },
+];
+
 function KpiCard({
   title,
   value,
@@ -115,6 +134,13 @@ function KpiCard({
   );
 }
 
+function formatReportDate(date = new Date()) {
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(date);
+}
+
 function formatDashboardDate(date: string) {
   const parsedDate = new Date(date);
 
@@ -136,6 +162,8 @@ export default function Dashboard() {
   const [returns, setReturns] = useState<Return[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<'overview' | 'sales' | 'team'>('overview');
+  const [mollyReportScope, setMollyReportScope] = useState<MollyReportScope>('dashboard');
+  const [mollyReportText, setMollyReportText] = useState('');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -241,6 +269,85 @@ export default function Dashboard() {
   const dashboardProgress = totalRevenue > 0 ? Math.round((selfServiceRevenue / totalRevenue) * 100) : 0;
   const progressCircumference = 2 * Math.PI * 24;
   const progressStrokeOffset = progressCircumference - (progressCircumference * dashboardProgress) / 100;
+  const pendingRequests = purchases.filter((purchase) => purchase.status === 'pending');
+  const presaleRequests = purchases.filter((purchase) => purchase.status === 'pre-sale' || purchase.status === 'pre-sale-confirmed');
+  const deliveryTasks = purchases.filter((purchase) => purchase.status === 'paid' || purchase.status === 'partially-delivered');
+  const lowStockProducts = products.filter((product) => product.stock <= 5);
+  const outOfStockProducts = products.filter((product) => product.stock <= 0);
+  const totalStockUnits = products.reduce((sum, product) => sum + Math.max(product.stock, 0), 0);
+  const totalInventoryValue = products.reduce((sum, product) => sum + Math.max(product.stock, 0) * product.price, 0);
+  const reportGeneratedAt = formatReportDate();
+  const selectedReportOption = mollyReportOptions.find((option) => option.id === mollyReportScope) ?? mollyReportOptions[0];
+
+  const reportChartData: ReportChartData[] = (() => {
+    if (mollyReportScope === 'requests') {
+      return [
+        { label: 'Pendientes', value: pendingRequests.length, displayValue: pendingRequests.length.toLocaleString('es-CO') },
+        { label: 'Preventa', value: presaleRequests.length, displayValue: presaleRequests.length.toLocaleString('es-CO') },
+        { label: 'Resueltas', value: purchases.filter((purchase) => purchase.status === 'delivered').length, displayValue: purchases.filter((purchase) => purchase.status === 'delivered').length.toLocaleString('es-CO') },
+      ];
+    }
+
+    if (mollyReportScope === 'tasks') {
+      return [
+        { label: 'Cobros', value: pendingRequests.length, displayValue: pendingRequests.length.toLocaleString('es-CO') },
+        { label: 'Entregas', value: deliveryTasks.length, displayValue: deliveryTasks.length.toLocaleString('es-CO') },
+        { label: 'Preventas', value: presaleRequests.length, displayValue: presaleRequests.length.toLocaleString('es-CO') },
+      ];
+    }
+
+    if (mollyReportScope === 'inventory') {
+      return [
+        { label: 'Stock total', value: totalStockUnits, displayValue: totalStockUnits.toLocaleString('es-CO') },
+        { label: 'Stock bajo', value: lowStockProducts.length, displayValue: lowStockProducts.length.toLocaleString('es-CO') },
+        { label: 'Agotados', value: outOfStockProducts.length, displayValue: outOfStockProducts.length.toLocaleString('es-CO') },
+      ];
+    }
+
+    return [
+      { label: 'Ingresos netos', value: sortedProductSales.length > 0 ? netRevenue : totalRevenue, displayValue: formatCurrency(sortedProductSales.length > 0 ? netRevenue : totalRevenue) },
+      { label: 'Autogestión', value: selfServiceRevenue, displayValue: formatCurrency(selfServiceRevenue) },
+      { label: 'Artículos', value: soldItemCount, displayValue: soldItemCount.toLocaleString('es-CO') },
+    ];
+  })();
+  const maxReportChartValue = Math.max(...reportChartData.map((item) => item.value), 1);
+
+  const buildMollyReport = () => {
+    const bestProduct = topProducts[0]?.[1];
+    const reportByScope: Record<MollyReportScope, string> = {
+      dashboard: `Informe ejecutivo del dashboard — generado por Molly IA el ${reportGeneratedAt}.
+
+Durante el periodo analizado, la operación registra ${paidPurchases.length.toLocaleString('es-CO')} ventas confirmadas, ingresos netos por ${formatCurrency(sortedProductSales.length > 0 ? netRevenue : totalRevenue)} y un ticket promedio de ${formatCurrency(averageTicket)}. La autogestión aporta ${formatCurrency(selfServiceRevenue)}, equivalente al ${dashboardProgress}% de los ingresos confirmados, con ${selfServiceUsers.toLocaleString('es-CO')} clientes únicos.
+
+La lectura operativa muestra ${soldItemCount.toLocaleString('es-CO')} artículos vendidos y ${totalReturnedItems.toLocaleString('es-CO')} devoluciones al inventario. ${bestProduct ? `El producto con mayor aporte neto es ${bestProduct.name}, con ${formatCurrency(bestProduct.netRevenue)}.` : 'Aún no existe un producto líder porque no hay ventas consolidadas.'}
+
+Recomendación Molly IA: mantener seguimiento diario a productos de mayor rotación, revisar devoluciones antes de reposición y reforzar el canal de autogestión para sostener el crecimiento sin cargar al equipo de caja.`,
+      requests: `Informe de solicitudes — redactado por Molly IA el ${reportGeneratedAt}.
+
+El sistema registra ${purchases.length.toLocaleString('es-CO')} solicitudes o compras en total. De ellas, ${pendingRequests.length.toLocaleString('es-CO')} permanecen pendientes, ${presaleRequests.length.toLocaleString('es-CO')} corresponden a preventas y ${purchases.filter((purchase) => purchase.status === 'delivered').length.toLocaleString('es-CO')} ya fueron entregadas.
+
+La secuencia lógica de atención debe iniciar por solicitudes pendientes de pago, continuar con preventas confirmadas y cerrar con verificación de entregas para evitar acumulación operativa.
+
+Recomendación Molly IA: priorizar contactos con clientes pendientes, validar comprobantes y actualizar estados en tiempo real para que el dashboard refleje solicitudes resueltas sin duplicidad.`,
+      tasks: `Informe de tareas pendientes — elaborado por Molly IA el ${reportGeneratedAt}.
+
+La cola operativa identifica ${pendingRequests.length.toLocaleString('es-CO')} cobros pendientes, ${deliveryTasks.length.toLocaleString('es-CO')} entregas por gestionar y ${presaleRequests.length.toLocaleString('es-CO')} preventas que requieren seguimiento. Estas tareas impactan directamente caja, satisfacción del cliente y exactitud del inventario.
+
+Orden sugerido: primero confirmar pagos pendientes, luego entregar compras pagadas o parcialmente entregadas y finalmente revisar preventas para anticipar reposición.
+
+Recomendación Molly IA: asignar responsables por bloque de tarea, revisar la cola al inicio y cierre de jornada, y dejar evidencia de cada actualización para reducir reprocesos.`,
+      inventory: `Informe de inventario — generado por Molly IA el ${reportGeneratedAt}.
+
+El inventario contiene ${products.length.toLocaleString('es-CO')} productos, ${totalStockUnits.toLocaleString('es-CO')} unidades disponibles y un valor estimado de ${formatCurrency(totalInventoryValue)}. Se detectan ${lowStockProducts.length.toLocaleString('es-CO')} productos con stock bajo y ${outOfStockProducts.length.toLocaleString('es-CO')} agotados.
+
+La prioridad de abastecimiento debe concentrarse en productos de alta rotación y bajo stock para evitar ventas perdidas, especialmente si también aparecen entre los más vendidos.
+
+Recomendación Molly IA: programar reposición de productos críticos, validar disponibilidad por canal y revisar devoluciones antes de hacer nuevas compras para mantener un inventario confiable.`,
+    };
+
+    setMollyReportText(reportByScope[mollyReportScope]);
+  };
+
   const topProducts = sortedProductSales.slice(0, 3);
   const handleProductClick = useCallback((productId: string) => {
    router.push(`/dashboard/products/${encodeURIComponent(productId)}`);
@@ -314,6 +421,81 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
+
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Informe redactado por Molly IA
+              </CardTitle>
+              <CardDescription>
+                Escoge el enfoque del informe y Molly IA lo redacta con secuencia ejecutiva, recomendaciones y gráficos.
+              </CardDescription>
+            </div>
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+              <select
+                value={mollyReportScope}
+                onChange={(event) => setMollyReportScope(event.target.value as MollyReportScope)}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                aria-label="Seleccionar tipo de informe"
+              >
+                {mollyReportOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+              <Button onClick={buildMollyReport} disabled={isLoading}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Redactar con Molly IA
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-5 p-5 pt-0 xl:grid-cols-[1fr_0.7fr]">
+            <div className="space-y-3">
+              <div className="rounded-2xl border bg-secondary/50 p-4">
+                <div className="flex items-start gap-3">
+                  <FileText className="mt-0.5 h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">{selectedReportOption.label}</p>
+                    <p className="text-sm text-muted-foreground">{selectedReportOption.description}</p>
+                  </div>
+                </div>
+              </div>
+              <Textarea
+                value={mollyReportText}
+                onChange={(event) => setMollyReportText(event.target.value)}
+                placeholder="Aquí aparecerá el informe redactado por Molly IA. También puedes ajustarlo antes de visualizar o exportar."
+                className="min-h-[220px] resize-y bg-background leading-7"
+              />
+              <p className="text-xs text-muted-foreground">El PDF incluirá la nota: Redactado por Molly IA.</p>
+            </div>
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <PackageCheck className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-semibold">Gráfico del informe</p>
+                  <p className="text-xs text-muted-foreground">Indicadores principales según el enfoque seleccionado.</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {reportChartData.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="font-medium">{item.label}</span>
+                      <span className="text-muted-foreground">{item.displayValue}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-sky-400"
+                        style={{ width: `${Math.max(8, Math.min(100, (item.value / maxReportChartValue) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {activeSection === "overview" && (
           <>
