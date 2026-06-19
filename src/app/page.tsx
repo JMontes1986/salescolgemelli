@@ -37,6 +37,30 @@ type AdminMfaSetup = {
 };
 
 const MFA_SETUP_ACK_PREFIX = "salescolgemelli:mfa-setup-ack:";
+const FREEOTP_ANDROID_URL =
+  "https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp";
+const FREEOTP_IOS_URL =
+  "https://apps.apple.com/us/app/freeotp-authenticator/id872559395";
+const FREEOTP_QR_SIZE = 180;
+
+function getQrCodeUrl(value: string) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${FREEOTP_QR_SIZE}x${FREEOTP_QR_SIZE}&data=${encodeURIComponent(
+    value,
+  )}`;
+}
+
+const FREEOTP_DOWNLOAD_OPTIONS = [
+  {
+    platform: "Android",
+    href: FREEOTP_ANDROID_URL,
+    qrUrl: getQrCodeUrl(FREEOTP_ANDROID_URL),
+  },
+  {
+    platform: "iOS",
+    href: FREEOTP_IOS_URL,
+    qrUrl: getQrCodeUrl(FREEOTP_IOS_URL),
+  },
+];
 
 function getMfaSetupAckKey(username: string) {
   return `${MFA_SETUP_ACK_PREFIX}${username.trim().toLowerCase()}`;
@@ -350,11 +374,32 @@ export default function LoginPage() {
                   </div>
                 )}
                 {!mfaSetup && !mfaSetupEnabled && (
-                  <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Este administrador todavia no puede configurarse aqui.
-                    Activa temporalmente ADMIN_FREEOTP_SETUP_ENABLED=true en el
-                    entorno del servidor y reinicia la app para ver el QR.
-                  </p>
+                  <div className="space-y-3 rounded-md border border-border bg-background px-3 py-3">
+                    <p className="text-sm font-medium text-foreground">
+                      Descarga FreeOTP escaneando el QR de tu dispositivo:
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {FREEOTP_DOWNLOAD_OPTIONS.map((option) => (
+                        <a
+                          key={option.platform}
+                          href={option.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-md border border-border bg-white p-3 text-center transition hover:border-primary/60 hover:shadow-sm"
+                          aria-label={`Descargar FreeOTP para ${option.platform}`}
+                        >
+                          <img
+                            src={option.qrUrl}
+                            alt={`QR para descargar FreeOTP en ${option.platform}`}
+                            className="mx-auto h-28 w-28"
+                          />
+                          <span className="mt-2 block text-sm font-semibold text-foreground">
+                            {option.platform}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="totp-code">Código FreeOTP</Label>
