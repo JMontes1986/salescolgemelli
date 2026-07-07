@@ -362,6 +362,18 @@ function isUsersRlsError(error: unknown): boolean {
   );
 }
 
+function isMissingUsersTableError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("pgrst205") ||
+    message.includes("could not find the table 'public.users'")
+  );
+}
+
 async function getProfileForAuthUser(
   authUser: SupabaseAuthUser,
   fallback?: Partial<NewUser>,
@@ -427,10 +439,20 @@ export async function authenticateUser(
     const authenticationError = getAuthenticationError(error);
 
     if (authenticationError) {
-      const localUser = await authenticateLocalUser(
-        username,
-        password_provided,
-      );
+      let localUser: AuthenticatedUser | null = null;
+
+      try {
+        localUser = await authenticateLocalUser(username, password_provided);
+      } catch (localAuthError) {
+        if (!isMissingUsersTableError(localAuthError)) {
+          throw localAuthError;
+        }
+
+        console.warn(
+          "No se pudo intentar autenticacion local porque falta public.users en Supabase.",
+          localAuthError,
+        );
+      }
 
       if (localUser) {
         return localUser;
