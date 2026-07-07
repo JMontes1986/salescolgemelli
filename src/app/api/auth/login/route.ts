@@ -173,7 +173,10 @@ export async function POST(request: NextRequest) {
     if (error instanceof AuthenticationError) {
       return NextResponse.json(
         { message: error.message },
-        { status: 401, headers: { "Cache-Control": "no-store" } },
+        {
+          status: error.code === "auth_error" ? 503 : 401,
+          headers: { "Cache-Control": "no-store" },
+        },
       );
     }
 

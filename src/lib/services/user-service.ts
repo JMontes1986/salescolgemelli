@@ -336,6 +336,17 @@ function getAuthenticationError(error: unknown): AuthenticationError | null {
     );
   }
 
+  if (
+    message.includes("supabase auth request failed (5") ||
+    message.includes("web server is down") ||
+    message.includes("cloudflare")
+  ) {
+    return new AuthenticationError(
+      "auth_error",
+      "No se pudo conectar con Supabase Auth. Revisa que NEXT_PUBLIC_SUPABASE_URL apunte al proyecto activo de Supabase y que el proyecto no este pausado.",
+    );
+  }
+
   return null;
 }
 
