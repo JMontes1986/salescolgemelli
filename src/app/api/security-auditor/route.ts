@@ -25,6 +25,21 @@ const RETRYABLE_GROQ_STATUSES = new Set([
   408, 409, 425, 429, 500, 502, 503, 504,
 ]);
 
+const SELF_SERVICE_SECURITY_EVIDENCE = [
+  "Estado real de /self-service en este checkout:",
+  "- /self-service es un portal público por diseño; permitir que anon ejecute create_self_service_purchase no es una brecha por sí solo.",
+  "- La creación pública de compras no inserta directo en purchases: usa RPC create_self_service_purchase con security definer, validación de cédula/celular, límite de 30 productos, cantidades 1-99 y bloqueo de filas de productos.",
+  "- El cliente envía solo id y quantity del carrito; Supabase vuelve a leer productos, disponibilidad, precio y stock antes de guardar, por lo que no confía en precios ni totales enviados por el navegador.",
+  "- purchases revocó INSERT para anon; anon solo puede crear reservas mediante create_self_service_purchase y no tiene lectura directa de purchases.",
+  "- No existe endpoint público de historial por cédula/celular en la UI; la pantalla pública solo muestra compras generadas durante la sesión actual.",
+  "- La función get_self_service_purchases_by_customer existe solo como compatibilidad SQL, pero el execute fue revocado para anon/authenticated.",
+  "- get_purchase_for_delivery_lookup puede ejecutarse desde anon/authenticated, pero cuando recibe QR valida token HMAC con expiración; si recibe código manual, devuelve una compra solo para el flujo de entrega y no debe usarse como historial público.",
+  "- Las entregas anónimas requieren QR firmado vigente en deliver_purchase_items_for_lookup; usuarios autenticados requieren permiso redeem y sesión reciente.",
+  "- Las reservas de autogestión usan reservationExpiresAt con timeout de 2 horas; el cálculo de disponibilidad y las RPC de compra descuentan solo reservas pendientes no vencidas (reservationExpiresAt > now()).",
+  "- Riesgo residual real: como todo formulario público, autogestión puede recibir abuso automatizado o reservas falsas; la mitigación ideal es rate limiting/CAPTCHA o validación de pago fuera de Supabase RLS.",
+  "- No hay tablas orders, order_items ni payment_logs en este esquema; el flujo actual usa purchases con items jsonb.",
+].join("\n");
+
 const DASHBOARD_SECURITY_EVIDENCE = [
   "Estado real de /dashboard en este checkout:",
   "- El esquema financiero no usa tablas orders/payments; el flujo actual usa purchases, products, returns, cashboxSessions y auditLogs.",
@@ -44,7 +59,7 @@ const SECURITY_AUDITOR_SYSTEM_PROMPT = `You are a senior security auditor embedd
 
 When reviewing a screen or flow: define scope, identify vulnerabilities, classify risk as Critical, High, Medium, Low, or Observation, and provide concise actionable remediation. For administrator dashboard contexts, every active or residual issue must include the ideal cybersecurity solution plus the first practical implementation step, not only a problem description.
 
-Use the supplied application context as the source of truth. If the context states that a control is already implemented, omit that item from the final answer entirely. Never include a Mitigated/Mitigado section, row, or status for resolved controls. Only list concrete active or residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context. For /dashboard, never recommend orders/payments tables unless the context explicitly says they exist.
+Use the supplied application context as the source of truth. If the context states that a control is already implemented, omit that item from the final answer entirely. Never include a Mitigated/Mitigado section, row, or status for resolved controls. Only list concrete active or residual risk that is still true. Do not invent schema tables, endpoints, or resources that are not mentioned in the context. For /dashboard, never recommend orders/payments tables unless the context explicitly says they exist. For /self-service, do not report the intentionally public create_self_service_purchase RPC as unauthorized access unless you can point to a concrete missing validation that is not contradicted by the supplied context.
 
 Keep responses practical for operators and developers. Never ask users to paste secrets. Never expose API keys, tokens, private customer data, or payment credentials. If the request involves customer records, recommend minimum necessary data and server-side validation.`;
 
@@ -365,7 +380,9 @@ export async function POST(request: Request) {
   const shouldHideMitigatedContent = isSelfServiceContext(payload.context);
   const context = isDashboardContext(payload.context)
     ? [baseContext, DASHBOARD_SECURITY_EVIDENCE].join("\n\n")
-    : baseContext;
+    : isSelfServiceContext(payload.context)
+      ? [baseContext, SELF_SERVICE_SECURITY_EVIDENCE].join("\n\n")
+      : baseContext;
   const mode = getPromptValue(payload.mode) || "interactive";
 
   const groqResult = await requestGroqCompletion(apiKey, mode, context, prompt);
