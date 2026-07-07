@@ -56,7 +56,7 @@ export async function GET() {
       );
     }
   } catch {
-    // Fall through to a signed-session check or a clean 401.
+    // Fall through to a signed-session check or an empty session response.
     if (signedSession) {
       return NextResponse.json(
         { user: signedSession.user },
@@ -66,8 +66,8 @@ export async function GET() {
   }
 
   const response = NextResponse.json(
-    { message: "Sesión no autenticada." },
-    { status: 401, headers: { "Cache-Control": "no-store" } },
+    { user: null },
+    { headers: { "Cache-Control": "no-store" } },
   );
   clearAuthCookies(response);
   return response;
