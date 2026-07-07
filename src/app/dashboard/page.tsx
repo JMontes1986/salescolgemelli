@@ -25,10 +25,12 @@ import {
   Download,
   FileText,
   PackageCheck,
+  ReceiptText,
   RefreshCw,
   ShoppingCart,
   Sparkles,
   Store,
+  Trophy,
   Undo2,
   UserCog,
   Users,
@@ -239,6 +241,62 @@ export default function Dashboard() {
     .slice(0, 8);
   const presaleRevenue = presalePurchases.reduce((sum, purchase) => sum + purchase.total, 0);
   const selfServicePending = allSelfServicePurchases.filter((purchase) => purchase.status === 'pending').length;
+  const confirmedSelfServicePurchases = allSelfServicePurchases.filter((purchase) => purchase.status === "paid" || purchase.status === "delivered");
+  const selfServiceItemCount = confirmedSelfServicePurchases
+    .flatMap((purchase) => purchase.items)
+    .reduce((sum, item) => sum + item.quantity, 0);
+  const selfServiceReturns = returns.filter((returnedItem) => returnedItem.source === "Autogestión");
+  const selfServiceReturnedItems = selfServiceReturns.reduce((sum, returnedItem) => sum + returnedItem.quantity, 0);
+  const netIncomeDashboardValue = sortedProductSales.length > 0 ? netRevenue : totalRevenue;
+  const grossRevenueFromProducts = sortedProductSales.reduce((sum, [, data]) => sum + data.grossRevenue, 0);
+  const returnedRevenueFromProducts = sortedProductSales.reduce((sum, [, data]) => sum + data.returnedRevenue, 0);
+  const selfServiceAverageTicket = confirmedSelfServicePurchases.length > 0 ? selfServiceRevenue / confirmedSelfServicePurchases.length : 0;
+  const topSelfServiceCustomers = Object.values(confirmedSelfServicePurchases.reduce((acc, purchase) => {
+    const key = purchase.cedula || "Cliente sin cédula";
+
+    if (!acc[key]) {
+      acc[key] = { cedula: key, purchases: 0, revenue: 0, items: 0 };
+    }
+
+    acc[key].purchases += 1;
+    acc[key].revenue += purchase.total;
+    acc[key].items += purchase.items.reduce((sum, item) => sum + item.quantity, 0);
+
+    return acc;
+  }, {} as Record<string, { cedula: string; purchases: number; revenue: number; items: number }>))
+    .sort((a, b) => b.revenue - a.revenue);
+  const selfServiceProductSales = Object.values(confirmedSelfServicePurchases
+    .flatMap((purchase) => purchase.items)
+    .reduce((acc, item) => {
+      if (!acc[item.id]) {
+        const product = products.find((productItem) => productItem.id === item.id);
+        acc[item.id] = {
+          id: item.id,
+          name: product?.name || item.name,
+          quantity: 0,
+          revenue: 0,
+          returns: 0,
+          returnedRevenue: 0,
+        };
+      }
+
+      acc[item.id].quantity += item.quantity;
+      acc[item.id].revenue += item.price * item.quantity;
+
+      return acc;
+    }, {} as Record<string, { id: string; name: string; quantity: number; revenue: number; returns: number; returnedRevenue: number }>));
+
+  selfServiceReturns.forEach((returnedItem) => {
+    const product = selfServiceProductSales.find((item) => item.id === returnedItem.productId);
+    const catalogProduct = products.find((productItem) => productItem.id === returnedItem.productId);
+
+    if (product) {
+      product.returns += returnedItem.quantity;
+      product.returnedRevenue += returnedItem.quantity * (catalogProduct?.price || 0);
+    }
+  });
+
+  const sortedSelfServiceProductSales = [...selfServiceProductSales].sort((a, b) => (b.revenue - b.returnedRevenue) - (a.revenue - a.returnedRevenue));
 
   const dashboardProgress = totalRevenue > 0 ? Math.round((selfServiceRevenue / totalRevenue) * 100) : 0;
   const progressCircumference = 2 * Math.PI * 24;
@@ -246,7 +304,7 @@ export default function Dashboard() {
   const reportGeneratedAt = formatReportDate();
 
   const reportChartData: ReportChartData[] = [
-    { label: 'Ingresos netos', value: sortedProductSales.length > 0 ? netRevenue : totalRevenue, displayValue: formatCurrency(sortedProductSales.length > 0 ? netRevenue : totalRevenue) },
+    { label: 'Ingresos netos', value: netIncomeDashboardValue, displayValue: formatCurrency(netIncomeDashboardValue) },
     { label: 'Autogestión', value: selfServiceRevenue, displayValue: formatCurrency(selfServiceRevenue) },
     { label: 'Artículos', value: soldItemCount, displayValue: soldItemCount.toLocaleString('es-CO') },
   ];
@@ -256,7 +314,7 @@ export default function Dashboard() {
     const bestProduct = topProducts[0]?.[1];
     const reportText = `Informe ejecutivo de ventas — generado por Molly IA el ${reportGeneratedAt}.
 
-Durante el periodo analizado, la operación registra ${paidPurchases.length.toLocaleString('es-CO')} ventas confirmadas, ingresos netos por ${formatCurrency(sortedProductSales.length > 0 ? netRevenue : totalRevenue)} y un ticket promedio de ${formatCurrency(averageTicket)}. La autogestión aporta ${formatCurrency(selfServiceRevenue)}, equivalente al ${dashboardProgress}% de los ingresos confirmados, con ${selfServiceUsers.toLocaleString('es-CO')} clientes únicos.
+Durante el periodo analizado, la operación registra ${paidPurchases.length.toLocaleString('es-CO')} ventas confirmadas, ingresos netos por ${formatCurrency(netIncomeDashboardValue)} y un ticket promedio de ${formatCurrency(averageTicket)}. La autogestión aporta ${formatCurrency(selfServiceRevenue)}, equivalente al ${dashboardProgress}% de los ingresos confirmados, con ${selfServiceUsers.toLocaleString('es-CO')} clientes únicos.
 
 La lectura operativa muestra ${soldItemCount.toLocaleString('es-CO')} artículos vendidos y ${totalReturnedItems.toLocaleString('es-CO')} devoluciones registradas. ${bestProduct ? `El producto con mayor aporte neto es ${bestProduct.name}, con ${formatCurrency(bestProduct.netRevenue)}.` : 'Aún no existe un producto líder porque no hay ventas consolidadas.'}
 
@@ -410,7 +468,7 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <KpiCard
                 title="Ingresos netos"
-                value={formatCurrency(sortedProductSales.length > 0 ? netRevenue : totalRevenue)}
+                value={formatCurrency(netIncomeDashboardValue)}
                 caption={`${paidPurchases.length} ventas pagadas, ticket promedio ${formatCurrency(averageTicket)}`}
                 icon={Store}
                 tone="bg-emerald-50 text-emerald-700"
@@ -437,6 +495,138 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
                 tone="bg-violet-50 text-violet-700"
               />
             </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-3xl border bg-gradient-to-br from-emerald-500 to-sky-500 p-5 text-white shadow-sm md:col-span-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-white/80">
+                  <ReceiptText className="h-4 w-4" />
+                  Dashboard Power BI · Ingresos del evento
+                </div>
+                <p className="mt-4 text-4xl font-bold tracking-tight">{formatCurrency(netIncomeDashboardValue)}</p>
+                <p className="mt-2 text-sm text-white/80">
+                  Ingreso neto después de descontar {formatCurrency(returnedRevenueFromProducts)} en devoluciones sobre {formatCurrency(grossRevenueFromProducts || totalRevenue)} brutos.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+                    <p className="text-xs text-white/70">Ventas confirmadas</p>
+                    <p className="text-xl font-semibold">{paidPurchases.length.toLocaleString("es-CO")}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+                    <p className="text-xs text-white/70">Ticket promedio</p>
+                    <p className="text-xl font-semibold">{formatCurrency(averageTicket)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+                    <p className="text-xs text-white/70">Productos vendidos</p>
+                    <p className="text-xl font-semibold">{soldItemCount.toLocaleString("es-CO")}</p>
+                  </div>
+                </div>
+              </div>
+              <Card className="border-slate-200 shadow-sm md:col-span-2">
+                <CardHeader className="p-5 pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                    <Trophy className="h-5 w-5 text-amber-500" />
+                    Ranking de padres por autogestión
+                  </CardTitle>
+                  <CardDescription>Padres o acudientes que más han comprado en el portal público.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 p-5 pt-0">
+                  {topSelfServiceCustomers.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground">No hay compras confirmadas de autogestión.</div>
+                  ) : (
+                    topSelfServiceCustomers.slice(0, 5).map((customer, index) => (
+                      <div key={customer.cedula} className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 text-sm font-bold text-amber-700">#{index + 1}</div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">Padre / acudiente {customer.cedula}</p>
+                            <p className="text-xs text-muted-foreground">{customer.purchases} compras · {customer.items} artículos</p>
+                          </div>
+                        </div>
+                        <p className="shrink-0 font-semibold">{formatCurrency(customer.revenue)}</p>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-4">
+              <KpiCard title="Autogestión neta" value={formatCurrency(selfServiceRevenue)} caption={`${confirmedSelfServicePurchases.length} compras confirmadas, ticket ${formatCurrency(selfServiceAverageTicket)}`} icon={UserCog} tone="bg-sky-50 text-sky-700" />
+              <KpiCard title="Artículos autogestión" value={selfServiceItemCount.toLocaleString("es-CO")} caption={`${selfServiceReturnedItems} devoluciones en el canal`} icon={ShoppingCart} tone="bg-orange-50 text-orange-700" />
+              <KpiCard title="Clientes únicos" value={selfServiceUsers.toLocaleString("es-CO")} caption="Compradores distintos en el portal" icon={Users} tone="bg-violet-50 text-violet-700" />
+              <KpiCard title="Pendientes" value={selfServicePending.toLocaleString("es-CO")} caption="Compras por gestionar o confirmar" icon={Undo2} tone="bg-rose-50 text-rose-700" />
+            </section>
+
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader className="p-5">
+                <CardTitle className="text-lg font-semibold">Todos los artículos vendidos</CardTitle>
+                <CardDescription>Cards completas por producto: vendido, recaudado, ingreso neto y devoluciones.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                {sortedProductSales.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">No hay artículos vendidos todavía.</div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {sortedProductSales.map(([productId, data]) => (
+                      <button
+                        key={productId}
+                        type="button"
+                        onClick={() => handleProductClick(productId)}
+                        className="rounded-3xl border bg-card p-4 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-semibold">{data.name}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Recaudo bruto {formatCurrency(data.grossRevenue)}</p>
+                          </div>
+                          <Badge variant="outline" className={data.returnedQuantity > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}>
+                            {data.returnedQuantity} dev.
+                          </Badge>
+                        </div>
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                          <div className="rounded-2xl bg-secondary p-3"><p className="text-xs text-muted-foreground">Vendidos</p><p className="font-semibold">{data.grossQuantity}</p></div>
+                          <div className="rounded-2xl bg-secondary p-3"><p className="text-xs text-muted-foreground">Netos</p><p className="font-semibold">{data.netQuantity}</p></div>
+                          <div className="rounded-2xl bg-secondary p-3"><p className="text-xs text-muted-foreground">Dev.</p><p className="font-semibold">{data.returnedQuantity}</p></div>
+                        </div>
+                        <div className="mt-4 flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Recaudo neto</p>
+                            <p className="text-xl font-bold">{formatCurrency(data.netRevenue)}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Devuelto {formatCurrency(data.returnedRevenue)}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader className="p-5">
+                <CardTitle className="text-lg font-semibold">Detalle de artículos en autogestión</CardTitle>
+                <CardDescription>Qué se vendió en el portal, cuánto recaudó cada producto y devoluciones asociadas.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                {sortedSelfServiceProductSales.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Aún no hay productos vendidos por autogestión.</div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {sortedSelfServiceProductSales.map((product) => (
+                      <div key={product.id} className="rounded-3xl border bg-gradient-to-br from-card to-secondary/70 p-4 shadow-sm">
+                        <p className="truncate font-semibold">{product.name}</p>
+                        <p className="mt-3 text-2xl font-bold">{formatCurrency(product.revenue - product.returnedRevenue)}</p>
+                        <p className="text-xs text-muted-foreground">Recaudo neto en autogestión</p>
+                        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                          <div className="rounded-2xl bg-background p-3"><p className="text-muted-foreground">Vendidos</p><p className="font-semibold">{product.quantity}</p></div>
+                          <div className="rounded-2xl bg-background p-3"><p className="text-muted-foreground">Devueltos</p><p className="font-semibold">{product.returns}</p></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
               <Card className="border-slate-200 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
