@@ -303,6 +303,9 @@ function redactSecurityAlertDetails(value: string) {
     .trim();
 }
 
+const SELF_SERVICE_ALERT_FALSE_POSITIVE_PATTERN =
+  /\b(sobre[-\s]?reservaci[oó]n|over[-\s]?reservation|falta de rls|rls espec[ií]fica|residual|observaci[oó]n parcial)\b/i;
+
 function shouldNotifySelfServiceSecurityAlert(answer: string, mode: string) {
   if (mode !== "active-route-guard") {
     return false;
@@ -318,9 +321,18 @@ function shouldNotifySelfServiceSecurityAlert(answer: string, mode: string) {
     return false;
   }
 
-  return /\b(brecha|ataque|atacante|explotaci[oó]n|vulnerabilidad|inyecci[oó]n|xss|csrf|phishing|fuga|filtraci[oó]n|exposici[oó]n|cr[ií]tic[oa]|critical|alto|high)\b/i.test(
-    answer,
-  );
+  if (SELF_SERVICE_ALERT_FALSE_POSITIVE_PATTERN.test(answer)) {
+    return false;
+  }
+
+  const hasActiveSecurityFinding =
+    /\b(brecha|ataque|atacante|explotaci[oó]n|vulnerabilidad|inyecci[oó]n|xss|csrf|phishing|fuga|filtraci[oó]n|exposici[oó]n)\b/i.test(
+      answer,
+    );
+  const hasHighSeverity =
+    /\b(cr[ií]tic[oa]|critical|alto|high)\b/i.test(answer);
+
+  return hasActiveSecurityFinding && hasHighSeverity;
 }
 
 async function notifySelfServiceSecurityAlert(answer: string) {
