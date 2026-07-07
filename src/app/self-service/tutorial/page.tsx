@@ -303,7 +303,7 @@ export default function SelfServiceTutorialPage() {
                   El colegio necesita asociar la compra al acudiente. Use siempre la cédula registrada como padre de familia.
                 </TutorialTip>
 
-                <BrowserMockup label="salescolgemelli.netlify.app/self-service">
+                <BrowserMockup label="salescolgemelli.vercel.app/self-service">
                   <p className="text-base font-black">COMPRA RÁPIDA 80&apos;s / 90&apos;s</p>
                   <p className="mb-3 text-xs font-bold text-[#777]">Ingrese su cédula para activar su perfil de compra.</p>
                   <label className="mb-1 block text-xs font-black text-[#777]" htmlFor="tutorial-cedula">

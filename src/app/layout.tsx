@@ -7,7 +7,7 @@ import { FloatingThemeToggle } from "@/components/theme-toggle";
 import { SecurityAiAssistant } from "@/components/security-ai-assistant";
 
 const MOLLY_FAVICON_URL = "https://jzygqzrfkvoktbjzlmsr.supabase.co/storage/v1/object/sign/Imagenes/Ventas.ico?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82ZTdkMDFlZS00NGY4LTRhN2MtOGMxMi03OTY4ZDhkN2E1ZTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJJbWFnZW5lcy9WZW50YXMuaWNvIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4MTExMTg2NSwiZXhwIjoxODEyNjQ3ODY1fQ.zdTzDbe0Cm5veD--ap0d4u6nMxXwRvjts5o9O4d35UU";
-const SITE_URL = "https://salescolgemelli.netlify.app";
+const SITE_URL = "https://salescolgemelli.vercel.app";
 const OG_IMAGE_URL = `${SITE_URL}/og-image.png`;
 const SITE_TITLE = "Ventas ColGemelli";
 const SITE_DESCRIPTION =

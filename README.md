@@ -14,7 +14,7 @@ Sistema web de administración comercial para el **Colegio Franciscano Agustín 
 - [Modelo de dominio](#modelo-de-dominio)
 - [Navegación y control de acceso](#navegación-y-control-de-acceso)
 - [Primeros pasos](#primeros-pasos)
-- [Despliegue en Netlify](#despliegue-en-netlify)
+- [Despliegue en Vercel](#despliegue-en-vercel)
 - [Solución de problemas](#solución-de-problemas)
 - [Auditoría de seguridad](#auditoría-de-seguridad)
 - [Documentación adicional](#documentación-adicional)
@@ -57,7 +57,7 @@ El sistema está diseñado para cubrir tres canales de operación:
 | Estado | React Hooks + LocalStorage | Sesión, estado local y persistencia en cliente. |
 | Visualización | Recharts | Gráficas y métricas del dashboard. |
 | Ordenamiento UI | `@dnd-kit` | Reordenamiento visual de productos. |
-| Despliegue | Netlify | Build, hosting y plugin oficial para Next.js. |
+| Despliegue | Vercel | Build y hosting nativo para Next.js. |
 
 ---
 
@@ -219,7 +219,7 @@ Abre `http://localhost:3000`.
 
 ### Variables de entorno
 
-Crea `.env.local` para desarrollo y configura las mismas variables en **Netlify → Site configuration → Environment variables**:
+Crea `.env.local` para desarrollo y configura las mismas variables en **Vercel → Project Settings → Environment Variables**:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
@@ -265,25 +265,16 @@ No guardes `GROQ_API_KEY` en el repositorio. Mantén ese valor en tu gestor de s
 
 ---
 
-## Despliegue en Netlify
+## Despliegue en Vercel
 
-El repositorio incluye `netlify.toml` con build de Next.js:
-
-```toml
-[build]
-  command = "npm run build"
-  publish = ".next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-```
+El despliegue de producción apunta a `https://salescolgemelli.vercel.app/`. Vercel detecta Next.js automáticamente y usa `npm run build` como comando de compilación; el repositorio conserva `vercel.json` solo para declarar explícitamente el framework y el build command.
 
 Pasos sugeridos:
 
-1. Conecta el repositorio en Netlify.
-2. Usa `npm run build` como build command.
-3. Deja `.next` como publish directory.
-4. Agrega las variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y las variables de pago/auditoría que apliquen.
+1. Conecta el repositorio en Vercel.
+2. Verifica que el framework sea **Next.js** y que el build command sea `npm run build`.
+3. No configures un publish directory manual: Vercel genera y sirve la salida de Next.js automáticamente.
+4. Agrega en **Project Settings → Environment Variables** las variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y las variables de pago/auditoría que apliquen.
 5. Despliega y valida login, POS, autogestión y caja en un ambiente controlado.
 
 ---

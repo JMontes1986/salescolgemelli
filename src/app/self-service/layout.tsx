@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
-const SELF_SERVICE_URL = 'https://salescolgemelli.netlify.app/self-service';
-const OG_IMAGE_URL = 'https://salescolgemelli.netlify.app/og-image.png';
+const SELF_SERVICE_URL = 'https://salescolgemelli.vercel.app/self-service';
+const OG_IMAGE_URL = 'https://salescolgemelli.vercel.app/og-image.png';
 const TITLE = 'Autogestión de pedidos - Ventas ColGemelli';
 const DESCRIPTION = 'Compre productos del Colegio Gemelli, consulte sus pedidos por cédula y reciba códigos QR para pago y entrega segura.';
 

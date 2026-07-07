@@ -12,7 +12,7 @@ export function getSupabaseEnv() {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
-      "Supabase no está configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Netlify o en .env.local.",
+      "Supabase no está configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel o en .env.local.",
     );
   }
 

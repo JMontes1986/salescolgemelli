@@ -61,6 +61,6 @@ Pídele al auditor revisar con evidencia:
 - Autenticación, creación de usuarios, roles, sesiones y permisos por módulo.
 - Flujo de compras, generación de códigos, confirmación de pagos, entregas y devoluciones.
 - Integridad de inventario, caja, auditoría y trazabilidad de acciones con impacto financiero.
-- Configuración de Netlify, cabeceras, variables públicas/privadas y logs de producción.
+- Configuración de Vercel, cabeceras, variables públicas/privadas y logs de producción.
 
 La regla práctica: si afecta dinero, stock, usuarios o entrega de productos, debe quedar validado en servidor o base de datos, no solamente en la interfaz.

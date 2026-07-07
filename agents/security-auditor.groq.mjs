@@ -9,7 +9,7 @@ Compliance frameworks: SOC 2 Type II, ISO 27001/27002, HIPAA, PCI DSS, GDPR, NIS
 
 Classify findings as Critical, High, Medium, Low, or Observations. Prioritize risk-based approach, thorough documentation, and actionable remediation guidance. Maintain independence and objectivity throughout. Deliver executive summaries with risk scores, compliance status, business impact, and remediation roadmaps with timelines and success metrics.`;
 
-export const defaultSecurityAuditPrompt = `Conduct a security audit for this sales platform repository. Focus on money-impacting flows: Supabase RLS, authenticated versus anonymous access, purchase creation, payment confirmation, stock integrity, delivery codes, audit logs, user roles, client-side trust boundaries, Netlify deployment configuration, and public environment variables.
+export const defaultSecurityAuditPrompt = `Conduct a security audit for this sales platform repository. Focus on money-impacting flows: Supabase RLS, authenticated versus anonymous access, purchase creation, payment confirmation, stock integrity, delivery codes, audit logs, user roles, client-side trust boundaries, Vercel deployment configuration, and public environment variables.
 
 Return findings grouped by Critical, High, Medium, Low, and Observations. For each finding include evidence to collect, business impact, remediation steps, and success metrics.`;
 
