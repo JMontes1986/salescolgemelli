@@ -116,7 +116,7 @@ begin
           reserved_purchase.status = 'partially-delivered'
           or (
             reserved_purchase.status = 'pending'
-            and coalesce(nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz, now() + interval '2 hours') > now()
+            and nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz > now()
           )
         )
         and trim(item->>'id') = stock_item_record.id;
