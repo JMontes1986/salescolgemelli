@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KeyRound, LogIn } from "lucide-react";
+import { BookOpenCheck, KeyRound, LogIn, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addUser } from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
@@ -446,6 +447,25 @@ export default function LoginPage() {
                 : "Ingresar"}
           </Button>
           <CreateUserForm onUserCreated={handleUserCreation} />
+          <div className="mt-4 w-full border-t pt-4">
+            <p className="mb-3 text-center text-xs font-medium text-muted-foreground">
+              Tutoriales antes de ingresar
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button asChild variant="outline" className="justify-start">
+                <Link href="/tutorial-cajas">
+                  <BookOpenCheck className="mr-2 h-4 w-4" />
+                  Tutorial cajas
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link href="/self-service/tutorial">
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Tutorial padres
+                </Link>
+              </Button>
+            </div>
+          </div>
         </CardFooter>
       </Card>
     </main>
