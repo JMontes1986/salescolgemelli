@@ -7,6 +7,7 @@ import { addAuditLog } from "@/lib/services/audit-service";
 import { setAuthCookies } from "@/lib/auth/response-cookies";
 import { getDefaultDashboardPath } from "@/lib/auth/route-access";
 import {
+  AdminTotpConfigurationError,
   getAdminTotpSetup,
   isAdminTotpRequired,
   isAdminTotpSetupEnabled,
@@ -176,7 +177,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("Login failed in auth route.");
+    if (error instanceof AdminTotpConfigurationError) {
+      console.error("Admin FreeOTP configuration is missing or invalid.", error);
+
+      return NextResponse.json(
+        { message: error.message },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    console.error("Login failed in auth route.", error);
     return NextResponse.json(
       { message: "No se pudo completar el inicio de sesión." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
