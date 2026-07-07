@@ -338,25 +338,38 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
         return;
     }
 
-    const headers = ["Producto", "Cantidad Vendida (Neta)", "Ingresos (COP)"];
-    const rows = sortedProductSales.map(([, data]) => [
-        `"${data.name.replace(/"/g, '""')}"`,
+    const csvHeaders = [
+        "Producto",
+        "Vendidos",
+        "Recaudo bruto (COP)",
+        "Netos",
+        "Recaudo neto (COP)",
+        "Devoluciones",
+        "Devuelto (COP)",
+    ];
+    const escapeCSVValue = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const csvRows = sortedProductSales.map(([, data]) => [
+        data.name,
+        data.grossQuantity,
+        data.grossRevenue,
         data.netQuantity,
-        data.netRevenue
+        data.netRevenue,
+        data.returnedQuantity,
+        data.returnedRevenue,
     ]);
-
-    let csvContent = "data:text/csv;charset=utf-8," 
-        + headers.join(",") + "\n" 
-        + rows.map(e => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [csvHeaders, ...csvRows]
+        .map((row) => row.map(escapeCSVValue).join(","))
+        .join("\n");
+    const csvBlob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+    const csvUrl = URL.createObjectURL(csvBlob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "ventas_por_producto.csv");
+    link.setAttribute("href", csvUrl);
+    link.setAttribute("download", "todos_los_articulos_vendidos.csv");
     document.body.appendChild(link);
 
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(csvUrl);
 };
 
 
@@ -558,9 +571,15 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
             </section>
 
             <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="p-5">
-                <CardTitle className="text-lg font-semibold">Todos los artículos vendidos</CardTitle>
-                <CardDescription>Cards completas por producto: vendido, recaudado, ingreso neto y devoluciones.</CardDescription>
+              <CardHeader className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold">Todos los artículos vendidos</CardTitle>
+                  <CardDescription>Cards completas por producto: vendido, recaudado, ingreso neto y devoluciones.</CardDescription>
+                </div>
+                <Button variant="outline" onClick={handleExportCSV} disabled={sortedProductSales.length === 0}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar CSV
+                </Button>
               </CardHeader>
               <CardContent className="p-5 pt-0">
                 {sortedProductSales.length === 0 ? (
