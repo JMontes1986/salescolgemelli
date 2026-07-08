@@ -1,5 +1,5 @@
-import { CashierTutorial } from "@/components/tutorials/cashier-tutorial";
+import { redirect } from "next/navigation";
 
 export default function CashierTutorialPage() {
-  return <CashierTutorial />;
+  redirect("/tutorial-cajas");
 }

@@ -23,7 +23,6 @@ import {
   UserCog,
   Undo2,
   ClipboardCheck,
-  BookOpenCheck,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -40,7 +39,6 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Panel", permission: 'dashboard' },
-  { href: "/dashboard/tutorial", icon: BookOpenCheck, label: "Tutorial cajas", permission: 'dashboard' },
   { href: "/dashboard/sales", icon: ShoppingCart, label: "Ventas", permission: 'sales' },
   { href: "/self-service", icon: UserCog, label: "Autogestión", permission: 'self-service', external: true },
   { href: "/dashboard/products", icon: Package, label: "Productos", permission: 'products' },
