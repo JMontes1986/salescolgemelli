@@ -21,6 +21,7 @@ const SECURITY_AUDITOR_FALLBACK_MODELS = (
 const MAX_PROMPT_LENGTH = 4000;
 const MAX_CONTEXT_LENGTH = 2000;
 const GROQ_REQUEST_TIMEOUT_MS = 20_000;
+const GROQ_ACTIVE_GUARD_TIMEOUT_MS = 6_000;
 const RETRYABLE_GROQ_STATUSES = new Set([
   408, 409, 425, 429, 500, 502, 503, 504,
 ]);
@@ -160,9 +161,10 @@ async function requestSingleGroqCompletion(
   mode: string,
   context: string,
   prompt: string,
+  timeoutMs = GROQ_REQUEST_TIMEOUT_MS,
 ) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GROQ_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     return await fetch(GROQ_CHAT_COMPLETIONS_URL, {
@@ -185,6 +187,7 @@ async function requestGroqCompletion(
   mode: string,
   context: string,
   prompt: string,
+  timeoutMs = GROQ_REQUEST_TIMEOUT_MS,
 ) {
   const modelCandidates = getGroqModelCandidates();
   let lastErrorText = "";
@@ -200,6 +203,7 @@ async function requestGroqCompletion(
         mode,
         context,
         prompt,
+        timeoutMs,
       );
     } catch (error) {
       lastStatus = 503;
@@ -397,7 +401,15 @@ export async function POST(request: Request) {
       : baseContext;
   const mode = getPromptValue(payload.mode) || "interactive";
 
-  const groqResult = await requestGroqCompletion(apiKey, mode, context, prompt);
+  const groqResult = await requestGroqCompletion(
+    apiKey,
+    mode,
+    context,
+    prompt,
+    mode === "active-route-guard"
+      ? GROQ_ACTIVE_GUARD_TIMEOUT_MS
+      : GROQ_REQUEST_TIMEOUT_MS,
+  );
 
   if ("error" in groqResult) {
     if (

@@ -537,15 +537,26 @@ export default function ProductsPage() {
     if (showLoading) {
       setIsLoading(true);
     }
+
     try {
-      const [fetchedProducts, pendingQuantities] = await Promise.all([
-        getProducts(),
-        getSelfServiceReservedQuantityMap(),
-      ]);
+      const fetchedProducts = await getProducts();
       setProducts(fetchedProducts);
-      setSelfServicePendingQuantities(pendingQuantities);
+
       if (fetchedProducts.length > 0) {
           setHasSeeded(true);
+      }
+
+      try {
+        const pendingQuantities = await getSelfServiceReservedQuantityMap();
+        setSelfServicePendingQuantities(pendingQuantities);
+      } catch (reservationError) {
+        console.warn("Error fetching self-service reservations:", reservationError);
+        setSelfServicePendingQuantities({});
+        toast({
+          variant: "destructive",
+          title: "Reservas no disponibles",
+          description: "Los productos cargaron, pero no se pudo calcular las reservas de autogestión.",
+        });
       }
     } catch (error) {
       console.error("Error fetching products:", error);

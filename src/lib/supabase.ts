@@ -1,3 +1,5 @@
+const SUPABASE_REQUEST_TIMEOUT_MS = 20_000;
+
 type SupabaseRequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   query?: Record<string, string | number | boolean | undefined>;
@@ -102,7 +104,26 @@ export async function supabaseRequest<T>(
     credentials: shouldUseInternalProxy ? "include" : "same-origin",
   };
 
-  const response = await fetch(requestUrl, requestInit);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SUPABASE_REQUEST_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(requestUrl, {
+      ...requestInit,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `Supabase request timed out after ${SUPABASE_REQUEST_TIMEOUT_MS / 1000}s: ${path}`,
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const { message } = await parseSupabaseError(response);
