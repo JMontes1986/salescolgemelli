@@ -375,7 +375,7 @@ export default function AuditPage() {
         </CardHeader>
         <CardContent>
           {aiStatus === "ready" ? (
-            <div className="space-y-2 rounded-md border bg-muted/40 p-4 text-sm leading-6">
+            <div className="max-h-[32rem] space-y-2 overflow-y-auto rounded-md border bg-muted/40 p-4 text-sm leading-6">
               <p className="whitespace-pre-wrap">{aiAnswer}</p>
               {aiModel && <p className="text-xs text-muted-foreground">Modelo: {aiModel}</p>}
             </div>
