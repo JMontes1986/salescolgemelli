@@ -1,4 +1,5 @@
 import {
+  deleteById,
   insertRow,
   selectRows,
   selectSingle,
@@ -769,6 +770,47 @@ export async function updateUser(
   });
 
   return sanitizeUser(updatedUser);
+}
+
+export async function deleteUser(userId: string): Promise<User> {
+  const existingUser = await selectSingle<StoredUser>("users", {
+    id: `eq.${userId}`,
+  });
+
+  if (!existingUser) {
+    throw new Error("No se encontró el usuario que quieres eliminar.");
+  }
+
+  if (existingUser.role !== "cashier" && existingUser.role !== "seller") {
+    throw new Error("Solo se pueden eliminar usuarios con rol cajero o vendedor.");
+  }
+
+  let deletedUser: StoredUser | null;
+
+  try {
+    deletedUser = await deleteById<StoredUser>("users", userId);
+  } catch (error) {
+    if (isUsersRlsError(error)) {
+      throw new Error(
+        "Supabase esta bloqueando la eliminacion del usuario por RLS. Aplica nuevamente el SQL de supabase/schema.sql para crear las politicas de public.users.",
+      );
+    }
+
+    throw error;
+  }
+
+  if (!deletedUser) {
+    throw new Error("No se pudo eliminar el usuario.");
+  }
+
+  await addAuditLog({
+    userId: "system",
+    userName: "Sistema",
+    action: "USER_ROLE_CHANGE",
+    details: `Usuario ${existingUser.username} eliminado: rol ${existingUser.role}.`,
+  });
+
+  return sanitizeUser(deletedUser);
 }
 
 export async function addSeedUsers(): Promise<void> {

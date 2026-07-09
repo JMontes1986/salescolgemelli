@@ -20,10 +20,15 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User, NewUser, UserRole } from "@/lib/types";
-import { getUsers, addUser, updateUser } from "@/lib/services/user-service";
+import {
+  getUsers,
+  addUser,
+  updateUser,
+  deleteUser,
+} from "@/lib/services/user-service";
 import { useToast } from "@/hooks/use-toast";
 import { PermissionGate } from "@/components/permission-gate";
-import { Pencil, PlusCircle } from "lucide-react";
+import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +49,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const roleNames: Record<UserRole, string> = {
   admin: "Administrador",
@@ -259,6 +275,82 @@ function UserForm({
   );
 }
 
+function DeleteUserButton({
+  user,
+  onUserDeleted,
+}: {
+  user: User;
+  onUserDeleted: (userId: string) => void;
+}) {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const canDelete = user.role === "cashier" || user.role === "seller";
+
+  if (!canDelete) {
+    return null;
+  }
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+
+    try {
+      await deleteUser(user.id);
+      onUserDeleted(user.id);
+      setIsOpen(false);
+      toast({
+        title: "Usuario eliminado",
+        description: `${user.name} fue eliminado correctamente.`,
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        variant: "destructive",
+        title: "Error al eliminar",
+        description:
+          error instanceof Error
+            ? error.message
+            : "No se pudo eliminar el usuario.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label={`Eliminar ${user.name}`}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción eliminará a {user.name} ({roleNames[user.role]}) del
+            sistema. No se pueden eliminar administradores ni auditores desde
+            esta pantalla.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={isDeleting}
+            onClick={(event) => {
+              event.preventDefault();
+              void handleDelete();
+            }}
+          >
+            {isDeleting ? "Eliminando..." : "Eliminar usuario"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -295,6 +387,10 @@ export default function UsersPage() {
     );
   };
 
+  const handleUserDeleted = (userId: string) => {
+    setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+  };
+
   return (
     <div>
       <PageHeader
@@ -321,7 +417,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Rol</TableHead>
-                  <TableHead className="w-16 text-right">Editar</TableHead>
+                  <TableHead className="w-28 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -348,11 +444,17 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <PermissionGate requiredPermission="users">
-                        <UserForm
-                          mode="edit"
-                          initialData={user}
-                          onUserSaved={handleUserUpdated}
-                        />
+                        <div className="flex justify-end gap-1">
+                          <UserForm
+                            mode="edit"
+                            initialData={user}
+                            onUserSaved={handleUserUpdated}
+                          />
+                          <DeleteUserButton
+                            user={user}
+                            onUserDeleted={handleUserDeleted}
+                          />
+                        </div>
                       </PermissionGate>
                     </TableCell>
                   </TableRow>

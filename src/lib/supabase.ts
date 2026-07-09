@@ -277,3 +277,29 @@ export async function updateById<T>(
   );
   return rows[0] ?? null;
 }
+
+export async function deleteRows<T>(
+  table: string,
+  query: SupabaseRequestOptions["query"],
+  accessToken?: string,
+): Promise<T[]> {
+  return supabaseRequest<T[]>(table, {
+    method: "DELETE",
+    query: { select: "*", ...query },
+    prefer: "return=representation",
+    accessToken,
+  });
+}
+
+export async function deleteById<T>(
+  table: string,
+  id: string,
+  accessToken?: string,
+): Promise<T | null> {
+  const rows = await deleteRows<T>(
+    table,
+    { id: `eq.${id}` },
+    accessToken,
+  );
+  return rows[0] ?? null;
+}
