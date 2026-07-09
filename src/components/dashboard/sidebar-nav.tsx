@@ -34,6 +34,7 @@ export type NavItem = {
   icon: React.ElementType;
   label: string;
   permission: ModulePermission;
+  alternatePermissions?: ModulePermission[];
   external?: boolean;
 }
 
@@ -43,7 +44,7 @@ export const navItems: NavItem[] = [
   { href: "/self-service", icon: UserCog, label: "Autogestión", permission: 'self-service', external: true },
   { href: "/dashboard/products", icon: Package, label: "Productos", permission: 'products' },
   { href: "/dashboard/redeem", icon: QrCode, label: "Gestión entrega", permission: 'redeem' },
-  { href: "/dashboard/presale", icon: ClipboardCheck, label: "Preventa", permission: 'presale' },
+  { href: "/dashboard/presale", icon: ClipboardCheck, label: "Preventa", permission: 'presale', alternatePermissions: ['cashbox'] },
   { href: "/dashboard/cashbox", icon: Archive, label: "Caja", permission: 'cashbox' },
   { href: "/dashboard/returns", icon: Undo2, label: "Devoluciones", permission: 'returns' },
 ];

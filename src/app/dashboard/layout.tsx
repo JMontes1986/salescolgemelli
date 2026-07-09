@@ -45,8 +45,10 @@ export default function DashboardLayout({
     if (!currentUser?.permissions) {
       return [];
     }
-    return allNavItems.filter(item => 
-      currentUser.permissions.includes(item.permission)
+    return allNavItems.filter(item =>
+      [item.permission, ...(item.alternatePermissions ?? [])].some(permission =>
+        currentUser.permissions.includes(permission)
+      )
     );
   }, [currentUser]);
 

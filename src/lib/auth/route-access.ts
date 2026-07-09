@@ -1,10 +1,16 @@
 import type { ModulePermission, User } from "@/lib/types";
 
+type DashboardRoutePermission = {
+  prefix: string;
+  permission: ModulePermission;
+  alternatePermissions?: ModulePermission[];
+};
+
 const dashboardRoutePermissions = [
   { prefix: "/dashboard/self-service-pos", permission: "self-service" },
   { prefix: "/dashboard/self-service", permission: "self-service" },
   { prefix: "/dashboard/products", permission: "products" },
-  { prefix: "/dashboard/presale", permission: "presale" },
+  { prefix: "/dashboard/presale", permission: "presale", alternatePermissions: ["cashbox"] },
   { prefix: "/dashboard/returns", permission: "returns" },
   { prefix: "/dashboard/cashbox", permission: "cashbox" },
   { prefix: "/dashboard/redeem", permission: "redeem" },
@@ -12,7 +18,7 @@ const dashboardRoutePermissions = [
   { prefix: "/dashboard/audit", permission: "audit" },
   { prefix: "/dashboard/sales", permission: "sales" },
   { prefix: "/dashboard", permission: "dashboard" },
-] satisfies Array<{ prefix: string; permission: ModulePermission }>;
+] satisfies DashboardRoutePermission[];
 
 function matchesDashboardPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -31,7 +37,17 @@ export function canAccessDashboardPath(user: User, pathname: string) {
     return false;
   }
 
-  return user.permissions.includes(routePermission);
+  const route = dashboardRoutePermissions.find((route) =>
+    matchesDashboardPrefix(pathname, route.prefix),
+  );
+
+  if (!route) {
+    return false;
+  }
+
+  return [route.permission, ...(route.alternatePermissions ?? [])].some((permission) =>
+    user.permissions.includes(permission),
+  );
 }
 
 export function getDefaultDashboardPath(user: User) {

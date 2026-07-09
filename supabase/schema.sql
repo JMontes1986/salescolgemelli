@@ -2091,6 +2091,7 @@ create policy "dashboard_purchases_select"
     or public.current_user_has_permission('sales')
     or public.current_user_has_permission('presale')
     or public.current_user_has_permission('redeem')
+    or public.current_user_has_permission('cashbox')
     or public.current_user_has_permission('audit')
   );
 

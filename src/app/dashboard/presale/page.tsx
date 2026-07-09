@@ -105,6 +105,7 @@ export default function PreSalePage() {
   const [searchCedula, setSearchCedula] = useState('');
   const [searchResults, setSearchResults] = useState<Purchase[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const canManagePreSales = currentUser?.permissions.includes('presale') ?? false;
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -396,7 +397,16 @@ export default function PreSalePage() {
     </Badge>
   );
 
-  const renderPreSaleActions = (ps: Purchase, className?: string) => (
+  const renderPreSaleActions = (ps: Purchase, className?: string) => {
+    if (!canManagePreSales) {
+      return (
+        <div className={cn("text-right text-sm text-muted-foreground", className)}>
+          Solo consulta
+        </div>
+      );
+    }
+
+    return (
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:justify-end", className)}>
       {ps.status === 'pre-sale' && (
         <>
@@ -460,16 +470,22 @@ export default function PreSalePage() {
         </AlertDialog>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-6 overflow-x-hidden">
       <PageHeader
-        title="Registro de Preventa"
-        description="Registre preventas hasta el día anterior al evento. Cada unidad vendida aumenta el stock planificado del producto."
+        title={canManagePreSales ? "Registro de Preventa" : "Consulta de Preventas"}
+        description={canManagePreSales
+          ? "Registre preventas hasta el día anterior al evento. Cada unidad vendida aumenta el stock planificado del producto."
+          : "Consulte las preventas registradas en el sistema desde caja."
+        }
       />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:items-start 2xl:gap-6">
         
+        {canManagePreSales && (
+        <>
         <div>
             <Card className="overflow-hidden">
                 <CardHeader className="p-4 sm:p-6">
@@ -654,12 +670,14 @@ export default function PreSalePage() {
                 </Card>
             </div>
         </div>
+        </>
+        )}
         
         <div className="xl:col-span-2">
             <Card className="overflow-hidden">
                 <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="text-xl sm:text-2xl">Consultar Preventas</CardTitle>
-                    <CardDescription>Busque por cédula o vea las preventas registradas por vendedores.</CardDescription>
+                    <CardDescription>Busque por cédula o vea las preventas registradas en el sistema.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -677,7 +695,7 @@ export default function PreSalePage() {
                         {isLoading || isHistoryLoading ? (
                             <div className="flex h-24 items-center justify-center text-sm text-muted-foreground md:hidden">Cargando...</div>
                         ) : displayHistory.length === 0 ? (
-                            <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground md:hidden">No se encontraron preventas de vendedores.</div>
+                            <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground md:hidden">No se encontraron preventas registradas.</div>
                         ) : (
                             <div className="space-y-3 md:hidden">
                                 {displayHistory.map(ps => (
@@ -720,7 +738,7 @@ export default function PreSalePage() {
                                 {isLoading || isHistoryLoading ? (
                                 <TableRow><TableCell colSpan={5} className="h-24 text-center">Cargando...</TableCell></TableRow>
                                 ) : displayHistory.length === 0 ? (
-                                    <TableRow><TableCell colSpan={5} className="h-24 text-center">No se encontraron preventas de vendedores.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} className="h-24 text-center">No se encontraron preventas registradas.</TableCell></TableRow>
                                 ) : (
                                     displayHistory.map(ps => (
                                         <TableRow key={ps.id}>
