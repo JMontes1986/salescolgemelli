@@ -82,6 +82,7 @@ export type AuthenticatedUser = {
 export type AuthenticationErrorCode =
   | "invalid_credentials"
   | "email_not_confirmed"
+  | "local_password_missing"
   | "auth_error";
 
 export class AuthenticationError extends Error {
@@ -333,7 +334,7 @@ function getAuthenticationError(error: unknown): AuthenticationError | null {
   ) {
     return new AuthenticationError(
       "invalid_credentials",
-      "El usuario o la contraseña no coinciden con Supabase Authentication.",
+      "El usuario o la contraseña son incorrectos.",
     );
   }
 
@@ -425,6 +426,19 @@ export async function authenticateUser(
   username: string,
   password_provided: string,
 ): Promise<AuthenticatedUser | null> {
+  const normalizedUsername = username.trim();
+
+  if (!normalizedUsername.includes("@")) {
+    const localUser = await authenticateLocalUser(
+      normalizedUsername,
+      password_provided,
+    );
+
+    if (localUser) {
+      return localUser;
+    }
+  }
+
   let response: SupabaseAuthResponse;
 
   try {
@@ -432,7 +446,7 @@ export async function authenticateUser(
       method: "POST",
       query: { grant_type: "password" },
       body: {
-        email: authEmailForUsername(username.trim()),
+        email: authEmailForUsername(normalizedUsername),
         password: password_provided,
       },
     });
@@ -440,23 +454,28 @@ export async function authenticateUser(
     const authenticationError = getAuthenticationError(error);
 
     if (authenticationError) {
-      let localUser: AuthenticatedUser | null = null;
+      if (normalizedUsername.includes("@")) {
+        let localUser: AuthenticatedUser | null = null;
 
-      try {
-        localUser = await authenticateLocalUser(username, password_provided);
-      } catch (localAuthError) {
-        if (!isMissingUsersTableError(localAuthError)) {
-          throw localAuthError;
+        try {
+          localUser = await authenticateLocalUser(
+            normalizedUsername,
+            password_provided,
+          );
+        } catch (localAuthError) {
+          if (!isMissingUsersTableError(localAuthError)) {
+            throw localAuthError;
+          }
+
+          console.warn(
+            "No se pudo intentar autenticacion local porque falta public.users en Supabase.",
+            localAuthError,
+          );
         }
 
-        console.warn(
-          "No se pudo intentar autenticacion local porque falta public.users en Supabase.",
-          localAuthError,
-        );
-      }
-
-      if (localUser) {
-        return localUser;
+        if (localUser) {
+          return localUser;
+        }
       }
 
       throw authenticationError;
@@ -576,11 +595,18 @@ async function authenticateLocalUser(
   });
 
   if (
-    !storedUser?.passwordHash ||
+    !storedUser ||
     storedUser.role === "admin" ||
     storedUser.role === "auditor"
   ) {
     return null;
+  }
+
+  if (!storedUser.passwordHash) {
+    throw new AuthenticationError(
+      "local_password_missing",
+      "El usuario existe en Gestion de Usuarios, pero no tiene una contrasena local guardada. Edita el usuario y asigna una contrasena nueva.",
+    );
   }
 
   const providedPasswordHash = await hashPassword(password);
