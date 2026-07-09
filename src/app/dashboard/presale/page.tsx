@@ -174,6 +174,11 @@ export default function PreSalePage() {
         return;
     }
 
+    if (!currentUser) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo identificar al usuario actual. Vuelva a iniciar sesiÃ³n." });
+        return;
+    }
+
     if (!customerIdentifier) {
         toast({ variant: "destructive", title: "Error", description: "Debe ingresar la cédula o código del estudiante." });
         return;

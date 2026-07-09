@@ -240,6 +240,35 @@ async function getSelfServiceReservations(excludePurchaseId?: string) {
   return getSelfServiceReservedQuantityMap(excludePurchaseId);
 }
 
+async function createDashboardPreSalePurchase(payload: {
+  items: PurchaseCartInput[];
+  cedula: string;
+  celular: string;
+}): Promise<Purchase> {
+  const response = await fetch('/api/dashboard/presales', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  });
+
+  const responseBody = await response.json().catch(() => null) as {
+    purchase?: Purchase;
+    message?: string;
+  } | null;
+
+  if (!response.ok) {
+    throw new Error(responseBody?.message || 'No se pudo registrar la preventa.');
+  }
+
+  if (!responseBody?.purchase) {
+    throw new Error('No se recibio la preventa registrada desde el servidor.');
+  }
+
+  return responseBody.purchase;
+}
+
 export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: string): Promise<Record<string, number>> {
   const safeExcludePurchaseId = excludePurchaseId
     ? sanitizeRecordId(excludePurchaseId, 'La compra')
@@ -481,13 +510,10 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
   let savedPurchase: Purchase;
 
   try {
-    savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_dashboard_presale_purchase', {
-      p_items: normalizeCartInput(purchase.items),
-      p_cedula: cedula,
-      p_celular: celular,
-      p_seller_id: sellerId,
-      p_seller_name: sellerName,
-      p_date: getCurrentDateLabel(),
+    savedPurchase = ensureReturnedFlags(await createDashboardPreSalePurchase({
+      items: normalizeCartInput(purchase.items),
+      cedula,
+      celular,
     }));
   } catch (error) {
     if (error instanceof Error && error.message.includes('create_dashboard_presale_purchase')) {

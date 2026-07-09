@@ -25,6 +25,18 @@ export function getSupabaseEnv() {
   return { supabaseUrl, supabaseAnonKey };
 }
 
+export function getSupabaseServiceRoleKey() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceRoleKey) {
+    throw new Error(
+      "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel para ejecutar operaciones seguras del dashboard con usuarios locales.",
+    );
+  }
+
+  return serviceRoleKey;
+}
+
 function buildUrl(path: string, query?: SupabaseRequestOptions["query"]) {
   const { supabaseUrl } = getSupabaseEnv();
   const url = new URL(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/${path}`);

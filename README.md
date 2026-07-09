@@ -224,6 +224,7 @@ Crea `.env.local` para desarrollo y configura las mismas variables en **Vercel �
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_solo_servidor
 NEXT_PUBLIC_DAVIPLATA_BREB_KEY=3206766574
 NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL=daviplata://pagar?llave={key}&valor={amount}&referencia={code}
 ```
@@ -274,7 +275,7 @@ Pasos sugeridos:
 1. Conecta el repositorio en Vercel.
 2. Verifica que el framework sea **Next.js** y que el build command sea `npm run build`.
 3. No configures un publish directory manual: Vercel genera y sirve la salida de Next.js automáticamente.
-4. Agrega en **Project Settings → Environment Variables** las variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y las variables de pago/auditoría que apliquen.
+4. Agrega en **Project Settings → Environment Variables** las variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` y las variables de pago/auditoría que apliquen.
 5. Despliega y valida login, POS, autogestión y caja en un ambiente controlado.
 
 ---
