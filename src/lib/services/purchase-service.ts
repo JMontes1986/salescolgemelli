@@ -269,6 +269,31 @@ async function createDashboardPreSalePurchase(payload: {
   return responseBody.purchase;
 }
 
+async function fetchDashboardPreSales(cedula?: string): Promise<Purchase[]> {
+  const url = new URL('/api/dashboard/presales', window.location.origin);
+
+  if (cedula) {
+    url.searchParams.set('cedula', cedula);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  const responseBody = await response.json().catch(() => null) as {
+    purchases?: Purchase[];
+    message?: string;
+  } | null;
+
+  if (!response.ok) {
+    throw new Error(responseBody?.message || 'No se pudieron consultar las preventas.');
+  }
+
+  return responseBody?.purchases ?? [];
+}
+
 export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: string): Promise<Record<string, number>> {
   const safeExcludePurchaseId = excludePurchaseId
     ? sanitizeRecordId(excludePurchaseId, 'La compra')
@@ -386,18 +411,12 @@ export async function getPurchasesByCedula(cedula: string): Promise<Purchase[]> 
 }
 
 export async function getPreSalesByCedula(cedula: string): Promise<Purchase[]> {
-  const purchases = await selectRows<Purchase>('purchases', { cedula: `eq.${sanitizeCustomerIdentifier(cedula, 'La cédula')}`, id: 'like.PV%' });
+  const purchases = await fetchDashboardPreSales(sanitizeCustomerIdentifier(cedula, 'La cédula'));
   return sortByNewest(purchases.map(ensureReturnedFlags)).filter(isDashboardPreSale);
 }
 
 export async function getDashboardPreSales(): Promise<Purchase[]> {
-  const purchases = await selectRows<Purchase>('purchases', {
-    select: purchaseSelectColumns,
-    id: 'like.PV%',
-    status: 'in.(pre-sale,pre-sale-confirmed)',
-    '"sellerId"': 'not.is.null',
-    order: 'date.desc',
-  });
+  const purchases = await fetchDashboardPreSales();
 
   return sortByNewest(purchases.map(ensureReturnedFlags)).filter(isDashboardPreSale);
 }

@@ -1,49 +1,80 @@
-import { callRpc, selectRows, selectSingle } from "@/lib/supabase";
 import type { CashboxSession, User } from "@/lib/types";
-import { addAuditLog } from "./audit-service";
 
-export async function getActiveSessionForUser(userId: string): Promise<CashboxSession | null> {
-  return selectSingle<CashboxSession>('cashboxSessions', {
-    userId: `eq.${userId}`,
-    status: 'eq.open',
+type CashboxPayload = {
+  activeSession?: CashboxSession | null;
+  history?: CashboxSession[];
+  session?: CashboxSession;
+  message?: string;
+};
+
+async function requestDashboardCashbox(
+  method: "GET" | "POST" | "PATCH",
+  body?: unknown,
+): Promise<CashboxPayload> {
+  const response = await fetch("/api/dashboard/cashbox", {
+    method,
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    cache: "no-store",
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+  const responseBody = (await response.json().catch(() => null)) as CashboxPayload | null;
+
+  if (!response.ok) {
+    throw new Error(
+      responseBody?.message ||
+        "No se pudieron guardar los datos de caja en Supabase.",
+    );
+  }
+
+  return responseBody ?? {};
+}
+
+async function getCashboxSnapshot() {
+  return requestDashboardCashbox("GET");
+}
+
+export async function getActiveSessionForUser(
+  _userId: string,
+): Promise<CashboxSession | null> {
+  const snapshot = await getCashboxSnapshot();
+  return snapshot.activeSession ?? null;
 }
 
 export async function getCashboxHistory(): Promise<CashboxSession[]> {
-  return selectRows<CashboxSession>('cashboxSessions', { order: 'openedAt.desc' });
+  const snapshot = await getCashboxSnapshot();
+  return snapshot.history ?? [];
 }
 
-export async function openCashboxSession(openingBalance: number, user: User): Promise<CashboxSession> {
+export async function openCashboxSession(
+  openingBalance: number,
+  user: User,
+): Promise<CashboxSession> {
   const activeSession = await getActiveSessionForUser(user.id);
   if (activeSession) {
-    throw new Error("Ya existe una sesión de caja abierta para este usuario.");
+    throw new Error("Ya existe una sesion de caja abierta para este usuario.");
   }
 
-  const session = await callRpc<CashboxSession>('open_cashbox_session', {
-    p_opening_balance: openingBalance,
-    p_user_name: user.name,
+  const response = await requestDashboardCashbox("POST", {
+    openingBalance,
   });
 
-  await addAuditLog({
-    userId: user.id,
-    userName: user.name,
-    action: 'CASHBOX_OPEN',
-    details: `Caja abierta con un saldo inicial de ${openingBalance}.`,
-  });
+  if (!response.session) {
+    throw new Error("Supabase no devolvio la sesion de caja abierta.");
+  }
 
-  return session;
+  return response.session;
 }
 
-export async function closeCashboxSession(sessionId: string, closingBalance: number, user: User): Promise<void> {
-  await callRpc<CashboxSession>('close_cashbox_session', {
-    p_session_id: sessionId,
-    p_closing_balance: closingBalance,
-  });
-
-  await addAuditLog({
+export async function closeCashboxSession(
+  sessionId: string,
+  closingBalance: number,
+  user: User,
+): Promise<void> {
+  await requestDashboardCashbox("PATCH", {
+    sessionId,
+    closingBalance,
     userId: user.id,
-    userName: user.name,
-    action: 'CASHBOX_CLOSE',
-    details: `Caja cerrada con un saldo final de ${closingBalance}.`,
   });
 }
