@@ -48,11 +48,19 @@ export default function CashboxPage() {
     const [cashboxHistory, setCashboxHistory] = useState<CashboxSession[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
-    const { currentUser } = useAuth();
+    const { currentUser, isMounted } = useAuth();
     const { toast } = useToast();
 
     const loadCashboxData = useCallback(async () => {
-        if (!currentUser) return;
+        if (!isMounted) return;
+
+        if (!currentUser) {
+            setCurrentSession(null);
+            setCashboxHistory([]);
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         try {
             const [activeSession, history] = await Promise.all([
@@ -67,7 +75,7 @@ export default function CashboxPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [currentUser, toast]);
+    }, [currentUser, isMounted, toast]);
 
     useEffect(() => {
         loadCashboxData();

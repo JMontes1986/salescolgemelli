@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseEnv } from "@/lib/supabase";
+import { getSupabaseEnv, isJwtLikeToken } from "@/lib/supabase";
 import { refreshAuthenticatedSession } from "@/lib/services/user-service";
 import { setAuthCookies } from "@/lib/auth/response-cookies";
 import {
@@ -108,7 +108,9 @@ async function forwardSupabaseRequest(
     method: request.method,
     headers: {
       apikey: supabaseAnonKey,
-      Authorization: `Bearer ${accessToken ?? supabaseAnonKey}`,
+      ...(isJwtLikeToken(accessToken ?? supabaseAnonKey)
+        ? { Authorization: `Bearer ${accessToken ?? supabaseAnonKey}` }
+        : {}),
       "Content-Type": request.headers.get("content-type") ?? "application/json",
       ...(request.headers.get("prefer")
         ? { Prefer: request.headers.get("prefer") as string }

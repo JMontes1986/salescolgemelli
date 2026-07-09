@@ -1,5 +1,9 @@
 const SUPABASE_REQUEST_TIMEOUT_MS = 20_000;
 
+export function isJwtLikeToken(token?: string | null) {
+  return typeof token === "string" && token.split(".").length === 3;
+}
+
 type SupabaseRequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   query?: Record<string, string | number | boolean | undefined>;
@@ -86,6 +90,7 @@ export async function supabaseRequest<T>(
   const requestUrl = shouldUseInternalProxy
     ? buildInternalRestUrl(path, options.query)
     : buildUrl(path, options.query);
+  const authorizationToken = options.accessToken ?? supabaseAnonKey;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.prefer ? { Prefer: options.prefer } : {}),
@@ -93,7 +98,9 @@ export async function supabaseRequest<T>(
       ? {}
       : {
           apikey: supabaseAnonKey,
-          Authorization: `Bearer ${options.accessToken ?? supabaseAnonKey}`,
+          ...(isJwtLikeToken(authorizationToken)
+            ? { Authorization: `Bearer ${authorizationToken}` }
+            : {}),
         }),
   };
   const requestInit: RequestInit = {
@@ -153,7 +160,9 @@ export async function supabaseAuthRequest<T>(
     method: options.method ?? "GET",
     headers: {
       apikey: supabaseAnonKey,
-      Authorization: `Bearer ${options.accessToken ?? supabaseAnonKey}`,
+      ...(isJwtLikeToken(options.accessToken ?? supabaseAnonKey)
+        ? { Authorization: `Bearer ${options.accessToken ?? supabaseAnonKey}` }
+        : {}),
       "Content-Type": "application/json",
       ...(options.prefer ? { Prefer: options.prefer } : {}),
     },
