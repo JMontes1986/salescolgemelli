@@ -469,44 +469,33 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
     }
   }
 
-  const verifiedCart = await buildVerifiedCartItems(
-    purchase.items,
-    'presale'
-  );
-
   const cedula = sanitizeCustomerIdentifier(purchase.cedula, 'La cédula');
   const celular = sanitizeCustomerPhone(purchase.celular);
-  const firstItemInitial = verifiedCart.items.length > 0
-    ? verifiedCart.items[0].name.charAt(0).toUpperCase().replace(/[^A-Z]/g, 'X')
-    : 'X';
+  const sellerId = sanitizeRecordId(purchase.sellerId ?? '', 'El vendedor');
+  const sellerName = String(purchase.sellerName ?? '').trim();
 
-  const next = await getNextCounter('preSaleCounter');
-  const generatedId = `PV${firstItemInitial}${String(next).padStart(4, '0')}`;
-
-  if (!isSelfService) {
-    await Promise.all(verifiedCart.items.map(item => {
-      const product = verifiedCart.productMap.get(item.id)!;
-      return patchProduct(item.id, {
-        stock: product.stock + item.quantity,
-        preSaleSold: (product.preSaleSold ?? 0) + item.quantity,
-      });
-    }));
+  if (!sellerName || sellerName.length > 120) {
+    throw new Error('El nombre del vendedor no tiene un formato válido.');
   }
 
-  const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false, deliveredQuantity: 0 }));
-  const savedPurchase: Purchase = withDeliveryAccess({
-    ...purchase,
-    id: generatedId,
-    date: getCurrentDateLabel(),
-    total: verifiedCart.total,
-    items: itemsToSave,
-    cedula,
-    celular,
-    sellerId: purchase.sellerId,
-    sellerName: purchase.sellerName,
-    status: 'pre-sale',
-  });
-  await insertRowMinimal('purchases', savedPurchase);
+  let savedPurchase: Purchase;
+
+  try {
+    savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_dashboard_presale_purchase', {
+      p_items: normalizeCartInput(purchase.items),
+      p_cedula: cedula,
+      p_celular: celular,
+      p_seller_id: sellerId,
+      p_seller_name: sellerName,
+      p_date: getCurrentDateLabel(),
+    }));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('create_dashboard_presale_purchase')) {
+      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para registrar preventas y aumentar el stock planificado de forma segura.');
+    }
+
+    throw error;
+  }
 
   await addAuditLog({
     userId: savedPurchase.sellerId ?? 'system',
