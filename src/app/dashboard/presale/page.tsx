@@ -580,7 +580,7 @@ export default function PreSalePage() {
                                                                         updateQuantity(item.id, newQuantity);
                                                                         }
                                                                     }}
-                                                                    className="w-12 h-6 text-center bg-blue-900 border-blue-700"
+                                                                    className="w-16 h-6 text-center bg-blue-900 border-blue-700"
                                                                 />
                                                                 <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
                                                                     <Plus className="h-4 w-4" />
