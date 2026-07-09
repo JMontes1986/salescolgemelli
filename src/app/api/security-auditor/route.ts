@@ -400,20 +400,39 @@ export async function POST(request: Request) {
       ? [baseContext, SELF_SERVICE_SECURITY_EVIDENCE].join("\n\n")
       : baseContext;
   const mode = getPromptValue(payload.mode) || "interactive";
+  const isActiveGuardMode = mode === "active-route-guard";
 
-  const groqResult = await requestGroqCompletion(
-    apiKey,
-    mode,
-    context,
-    prompt,
-    mode === "active-route-guard"
-      ? GROQ_ACTIVE_GUARD_TIMEOUT_MS
-      : GROQ_REQUEST_TIMEOUT_MS,
-  );
+  let groqResult: Awaited<ReturnType<typeof requestGroqCompletion>>;
+
+  try {
+    groqResult = await requestGroqCompletion(
+      apiKey,
+      mode,
+      context,
+      prompt,
+      isActiveGuardMode
+        ? GROQ_ACTIVE_GUARD_TIMEOUT_MS
+        : GROQ_REQUEST_TIMEOUT_MS,
+    );
+  } catch (error) {
+    console.warn("La IA de seguridad fallo antes de completar la auditoria.", error);
+
+    if (isActiveGuardMode) {
+      return NextResponse.json({
+        answer: getActiveGuardFallbackAnswer(context),
+        model: `${SECURITY_AUDITOR_MODEL} (modo local temporal)`,
+      });
+    }
+
+    return NextResponse.json(
+      { error: "La IA de seguridad no pudo completar la auditoria." },
+      { status: 502 },
+    );
+  }
 
   if ("error" in groqResult) {
     if (
-      mode === "active-route-guard" ||
+      isActiveGuardMode ||
       RETRYABLE_GROQ_STATUSES.has(groqResult.status ?? 0)
     ) {
       return NextResponse.json({
@@ -440,6 +459,13 @@ export async function POST(request: Request) {
     : "";
 
   if (!answer) {
+    if (isActiveGuardMode) {
+      return NextResponse.json({
+        answer: getActiveGuardFallbackAnswer(context),
+        model: `${groqResult.model} (modo local temporal)`,
+      });
+    }
+
     return NextResponse.json(
       { error: "Groq no devolvió contenido para la auditoría." },
       { status: 502 },
