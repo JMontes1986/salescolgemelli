@@ -71,6 +71,7 @@ type StoredUser = User & {
 export type UpdateUserInput = {
   name: string;
   role: UserRole;
+  permissions: ModulePermission[];
   password?: string;
 };
 
@@ -119,12 +120,9 @@ function sanitizeUser<T extends User>(user: T): User {
   void passwordHash;
   return {
     ...safeUser,
-    permissions:
-      safeUser.role === "seller"
-        ? getPermissionsForRole("seller")
-        : safeUser.permissions?.length
-          ? safeUser.permissions
-          : getPermissionsForRole(safeUser.role),
+    permissions: safeUser.permissions?.length
+      ? safeUser.permissions
+      : getPermissionsForRole(safeUser.role),
   };
 }
 
@@ -266,7 +264,9 @@ function buildPersistedAuthProfile(
     name: (existingProfile?.name ?? generatedProfile.name).trim(),
     username: (existingProfile?.username ?? generatedProfile.username).trim(),
     role,
-    permissions: getPermissionsForRole(role),
+    permissions: existingProfile?.permissions?.length
+      ? existingProfile.permissions
+      : getPermissionsForRole(role),
     avatarUrl: existingProfile?.avatarUrl || generatedProfile.avatarUrl,
   };
 }
@@ -766,7 +766,9 @@ export async function addUser(user: NewUser): Promise<User> {
             id: persistedProfile.id,
             name: persistedProfile.name,
             role: persistedProfile.role,
-            permissions: persistedProfile.permissions,
+            permissions: user.permissions?.length
+              ? user.permissions
+              : persistedProfile.permissions,
             avatarUrl: persistedProfile.avatarUrl,
           },
           session?.access_token,
@@ -777,7 +779,12 @@ export async function addUser(user: NewUser): Promise<User> {
 
       const storedProfile = await upsertRow<StoredUser>(
         "users",
-        persistedProfile,
+        {
+          ...persistedProfile,
+          permissions: user.permissions?.length
+            ? user.permissions
+            : persistedProfile.permissions,
+        },
         "id",
         session?.access_token,
       );
@@ -802,7 +809,9 @@ export async function addUser(user: NewUser): Promise<User> {
       name: user.name.trim(),
       username,
       role: user.role,
-      permissions: getPermissionsForRole(user.role),
+      permissions: user.permissions?.length
+        ? user.permissions
+        : getPermissionsForRole(user.role),
       avatarUrl: user.avatarUrl,
       passwordHash: await hashPassword(user.password),
     });
@@ -840,7 +849,9 @@ export async function updateUser(
   const patch: Partial<StoredUser> = {
     name,
     role: updates.role,
-    permissions: getPermissionsForRole(updates.role),
+    permissions: updates.permissions.length
+      ? updates.permissions
+      : getPermissionsForRole(updates.role),
   };
 
   const password = updates.password?.trim();

@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { User, NewUser, UserRole } from "@/lib/types";
+import type { User, NewUser, UserRole, ModulePermission } from "@/lib/types";
 import {
   getUsers,
   addUser,
@@ -28,7 +28,7 @@ import {
 } from "@/lib/services/user-service";
 import { useToast } from "@/hooks/use-toast";
 import { PermissionGate } from "@/components/permission-gate";
-import { Pencil, PlusCircle, Trash2 } from "lucide-react";
+import { Pencil, PlusCircle, ShieldCheck, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +69,37 @@ const roleNames: Record<UserRole, string> = {
   auditor: "Auditor",
 };
 
+const defaultPermissionsByRole: Record<UserRole, ModulePermission[]> = {
+  admin: [
+    "dashboard",
+    "sales",
+    "presale",
+    "self-service",
+    "products",
+    "redeem",
+    "cashbox",
+    "returns",
+    "users",
+    "audit",
+  ],
+  cashier: ["dashboard", "sales", "presale", "redeem", "cashbox", "returns"],
+  seller: ["redeem"],
+  auditor: ["dashboard", "audit"],
+};
+
+const moduleOptions: Array<{ value: ModulePermission; label: string }> = [
+  { value: "dashboard", label: "Panel" },
+  { value: "sales", label: "Ventas" },
+  { value: "presale", label: "Preventa" },
+  { value: "self-service", label: "Autogestión" },
+  { value: "products", label: "Productos" },
+  { value: "redeem", label: "Gestión entrega" },
+  { value: "cashbox", label: "Caja" },
+  { value: "returns", label: "Devoluciones" },
+  { value: "users", label: "Usuarios" },
+  { value: "audit", label: "Auditoría" },
+];
+
 function UserForm({
   mode,
   initialData,
@@ -82,6 +114,11 @@ function UserForm({
   const [username, setUsername] = useState(initialData?.username || "");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>(initialData?.role || "seller");
+  const [permissions, setPermissions] = useState<ModulePermission[]>(
+    initialData?.permissions?.length
+      ? initialData.permissions
+      : defaultPermissionsByRole[initialData?.role || "seller"],
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -98,6 +135,11 @@ function UserForm({
       setUsername(initialData?.username || "");
       setPassword("");
       setRole(initialData?.role || "seller");
+      setPermissions(
+        initialData?.permissions?.length
+          ? initialData.permissions
+          : defaultPermissionsByRole[initialData?.role || "seller"],
+      );
     }
   };
 
@@ -114,6 +156,7 @@ function UserForm({
         const updatedUser = await updateUser(initialData.id, {
           name,
           role,
+          permissions,
           password: password || undefined,
         });
 
@@ -128,6 +171,7 @@ function UserForm({
           username,
           password,
           role,
+          permissions,
           avatarUrl: `https://picsum.photos/seed/${encodeURIComponent(username)}/100/100`,
         };
 
@@ -236,6 +280,7 @@ function UserForm({
                 onValueChange={(value) => {
                   const nextRole = value as UserRole;
                   setRole(nextRole);
+                  setPermissions(defaultPermissionsByRole[nextRole]);
 
                   if (
                     isEditMode &&
@@ -257,6 +302,38 @@ function UserForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                <div>
+                  <Label>Autorizar módulos</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Seleccione los módulos que este usuario podrá ver y abrir.
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {moduleOptions.map((module) => (
+                  <label
+                    key={module.value}
+                    className="flex items-center gap-2 rounded-md border p-3 text-sm"
+                  >
+                    <Checkbox
+                      checked={permissions.includes(module.value)}
+                      disabled={isSubmitting}
+                      onCheckedChange={(checked) => {
+                        setPermissions((current) =>
+                          checked
+                            ? Array.from(new Set([...current, module.value]))
+                            : current.filter((item) => item !== module.value),
+                        );
+                      }}
+                    />
+                    {module.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </form>
@@ -417,6 +494,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Módulos autorizados</TableHead>
                   <TableHead className="w-28 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -441,6 +519,21 @@ export default function UsersPage() {
                       <Badge variant="secondary" className="capitalize">
                         {roleNames[user.role] || user.role}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex max-w-md flex-wrap gap-1">
+                        {user.permissions.map((permission) => {
+                          const module = moduleOptions.find(
+                            (item) => item.value === permission,
+                          );
+
+                          return (
+                            <Badge key={permission} variant="outline">
+                              {module?.label || permission}
+                            </Badge>
+                          );
+                        })}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <PermissionGate requiredPermission="users">

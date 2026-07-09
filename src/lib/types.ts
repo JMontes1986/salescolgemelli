@@ -25,7 +25,9 @@ export type User = {
   avatarUrl: string;
 };
 
-export type NewUser = Omit<User, 'id' | 'permissions'>;
+export type NewUser = Omit<User, 'id' | 'permissions'> & {
+  permissions?: ModulePermission[];
+};
 export type UpdatableUser = Partial<Omit<User, 'id' | 'username' | 'password'>>;
 
 
