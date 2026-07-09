@@ -64,6 +64,7 @@ type SupabaseAuthResponse = Partial<SupabaseAuthSession> & {
 };
 
 type StoredUser = User & {
+  password?: string;
   passwordHash?: string;
 };
 
@@ -376,6 +377,95 @@ function isMissingUsersTableError(error: unknown): boolean {
   );
 }
 
+function isMissingPasswordHashColumnError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("passwordhash") && message.includes("column");
+}
+
+function getStoredPasswordHash(storedUser: StoredUser): string | undefined {
+  return storedUser.passwordHash ?? storedUser.password;
+}
+
+async function getLocalUserForLogin(username: string): Promise<StoredUser | null> {
+  const loginIdentifier = username.trim();
+
+  if (!loginIdentifier) {
+    return null;
+  }
+
+  const exactUsername = await selectSingle<StoredUser>("users", {
+    username: `eq.${loginIdentifier}`,
+  });
+
+  if (exactUsername) {
+    return exactUsername;
+  }
+
+  if (loginIdentifier.includes("@")) {
+    return null;
+  }
+
+  const usernameMatch = await selectSingle<StoredUser>("users", {
+    username: `ilike.${loginIdentifier}`,
+  });
+
+  if (usernameMatch) {
+    return usernameMatch;
+  }
+
+  const nameMatch = await selectSingle<StoredUser>("users", {
+    name: `ilike.${loginIdentifier}`,
+  });
+
+  if (
+    nameMatch &&
+    (nameMatch.role === "cashier" || nameMatch.role === "seller")
+  ) {
+    return nameMatch;
+  }
+
+  return null;
+}
+
+async function insertLocalUser(row: StoredUser): Promise<StoredUser> {
+  try {
+    return await insertRow<StoredUser>("users", row);
+  } catch (error) {
+    if (!isMissingPasswordHashColumnError(error)) {
+      throw error;
+    }
+
+    const { passwordHash, ...legacyRow } = row;
+    return insertRow<StoredUser>("users", {
+      ...legacyRow,
+      password: passwordHash,
+    });
+  }
+}
+
+async function updateUserWithPasswordFallback(
+  userId: string,
+  patch: Partial<StoredUser>,
+): Promise<StoredUser | null> {
+  try {
+    return await updateById<StoredUser>("users", userId, patch);
+  } catch (error) {
+    if (!isMissingPasswordHashColumnError(error) || !patch.passwordHash) {
+      throw error;
+    }
+
+    const { passwordHash, ...legacyPatch } = patch;
+    return updateById<StoredUser>("users", userId, {
+      ...legacyPatch,
+      password: passwordHash,
+    });
+  }
+}
+
 async function getProfileForAuthUser(
   authUser: SupabaseAuthUser,
   fallback?: Partial<NewUser>,
@@ -590,9 +680,7 @@ async function authenticateLocalUser(
   username: string,
   password: string,
 ): Promise<AuthenticatedUser | null> {
-  const storedUser = await selectSingle<StoredUser>("users", {
-    username: `eq.${username.trim()}`,
-  });
+  const storedUser = await getLocalUserForLogin(username);
 
   if (
     !storedUser ||
@@ -602,7 +690,9 @@ async function authenticateLocalUser(
     return null;
   }
 
-  if (!storedUser.passwordHash) {
+  const storedPasswordHash = getStoredPasswordHash(storedUser);
+
+  if (!storedPasswordHash) {
     throw new AuthenticationError(
       "local_password_missing",
       "El usuario existe en Gestion de Usuarios, pero no tiene una contrasena local guardada. Edita el usuario y asigna una contrasena nueva.",
@@ -611,7 +701,7 @@ async function authenticateLocalUser(
 
   const providedPasswordHash = await hashPassword(password);
 
-  if (storedUser.passwordHash !== providedPasswordHash) {
+  if (storedPasswordHash !== providedPasswordHash) {
     return null;
   }
 
@@ -707,7 +797,7 @@ export async function addUser(user: NewUser): Promise<User> {
   let localUser: StoredUser;
 
   try {
-    localUser = await insertRow<StoredUser>("users", {
+    localUser = await insertLocalUser({
       id: crypto.randomUUID(),
       name: user.name.trim(),
       username,
@@ -773,7 +863,7 @@ export async function updateUser(
   let updatedUser: StoredUser | null;
 
   try {
-    updatedUser = await updateById<StoredUser>("users", userId, patch);
+    updatedUser = await updateUserWithPasswordFallback(userId, patch);
   } catch (error) {
     if (isUsersRlsError(error)) {
       throw new Error(
