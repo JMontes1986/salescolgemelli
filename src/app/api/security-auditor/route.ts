@@ -355,18 +355,6 @@ async function notifySelfServiceSecurityAlert(answer: string) {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.GROQ_API_KEY;
-
-  if (!apiKey) {
-    return NextResponse.json(
-      {
-        error:
-          "La IA de seguridad no está configurada. Define GROQ_API_KEY en las variables privadas del servidor.",
-      },
-      { status: 503 },
-    );
-  }
-
   let body: unknown;
 
   try {
@@ -384,6 +372,8 @@ export async function POST(request: Request) {
     mode?: unknown;
   };
   const prompt = getPromptValue(payload.prompt);
+  const mode = getPromptValue(payload.mode) || "interactive";
+  const isActiveGuardMode = mode === "active-route-guard";
 
   if (!prompt) {
     return NextResponse.json(
@@ -399,8 +389,24 @@ export async function POST(request: Request) {
     : isSelfServiceContext(payload.context)
       ? [baseContext, SELF_SERVICE_SECURITY_EVIDENCE].join("\n\n")
       : baseContext;
-  const mode = getPromptValue(payload.mode) || "interactive";
-  const isActiveGuardMode = mode === "active-route-guard";
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (!apiKey) {
+    if (isActiveGuardMode) {
+      return NextResponse.json({
+        answer: getActiveGuardFallbackAnswer(context),
+        model: `${SECURITY_AUDITOR_MODEL} (modo local temporal)`,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          "La IA de seguridad no está configurada. Define GROQ_API_KEY en las variables privadas del servidor.",
+      },
+      { status: 503 },
+    );
+  }
 
   let groqResult: Awaited<ReturnType<typeof requestGroqCompletion>>;
 
