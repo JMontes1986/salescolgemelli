@@ -84,7 +84,8 @@ const statusColors: Record<Purchase['status'], string> = {
 export default function PreSalePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [isPreSalesLoading, setIsPreSalesLoading] = useState(true);
   const [customerIdentifier, setCustomerIdentifier] = useState('');
   const [customerCelular, setCustomerCelular] = useState('');
   const { toast } = useToast();
@@ -107,22 +108,37 @@ export default function PreSalePage() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const canManagePreSales = currentUser?.permissions.includes('presale') ?? false;
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadProducts = useCallback(async () => {
+    setIsProductsLoading(true);
     try {
-        const [fetchedProducts, all] = await Promise.all([
-          getProductsByAvailability('presale'),
-          getDashboardPreSales()
-        ]);
+        const fetchedProducts = await getProductsByAvailability('presale');
         setProducts(fetchedProducts);
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar los productos de preventa." });
+    } finally {
+        setIsProductsLoading(false);
+    }
+  }, [toast]);
+
+  const loadPreSales = useCallback(async () => {
+    setIsPreSalesLoading(true);
+    try {
+        const all = await getDashboardPreSales();
         setRecentPreSales(all.slice(0, 5));
         setAllPreSales(all);
     } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching pre-sales:", error);
+        toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar las preventas." });
     } finally {
-        setIsLoading(false);
+        setIsPreSalesLoading(false);
     }
-  }, []);
+  }, [toast]);
+
+  const loadData = useCallback(() => {
+    void loadProducts();
+    void loadPreSales();
+  }, [loadProducts, loadPreSales]);
 
   useEffect(() => {
     loadData();
@@ -493,7 +509,7 @@ export default function PreSalePage() {
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                     <ScrollArea className="h-[min(58dvh,620px)] min-h-[320px] xl:h-[calc(100dvh-16rem)]">
-                        {isLoading ? (
+                        {isProductsLoading ? (
                             <p className="text-muted-foreground p-3">Cargando productos...</p>
                         ) : (
                             <div className="flex flex-col gap-2">
@@ -692,7 +708,7 @@ export default function PreSalePage() {
                         </Button>
                     </div>
                     <ScrollArea className="max-h-[560px] min-h-[220px]">
-                        {isLoading || isHistoryLoading ? (
+                        {isPreSalesLoading || isHistoryLoading ? (
                             <div className="flex h-24 items-center justify-center text-sm text-muted-foreground md:hidden">Cargando...</div>
                         ) : displayHistory.length === 0 ? (
                             <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground md:hidden">No se encontraron preventas registradas.</div>
@@ -735,7 +751,7 @@ export default function PreSalePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {isLoading || isHistoryLoading ? (
+                                {isPreSalesLoading || isHistoryLoading ? (
                                 <TableRow><TableCell colSpan={5} className="h-24 text-center">Cargando...</TableCell></TableRow>
                                 ) : displayHistory.length === 0 ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center">No se encontraron preventas registradas.</TableCell></TableRow>
@@ -779,14 +795,14 @@ export default function PreSalePage() {
                     Un registro completo de todas las preventas registradas en el sistema.
                     </CardDescription>
                 </div>
-                <Button variant="outline" onClick={handleExportCSV} disabled={isLoading} className="w-full md:w-auto">
+                <Button variant="outline" onClick={handleExportCSV} disabled={isPreSalesLoading} className="w-full md:w-auto">
                     <Download className="mr-2 h-4 w-4" />
                     Exportar a CSV
                 </Button>
             </CardHeader>
             <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                  <ScrollArea className="max-h-[640px] min-h-[240px]">
-                    {isLoading ? (
+                    {isPreSalesLoading ? (
                         <div className="flex h-24 items-center justify-center text-sm text-muted-foreground md:hidden">Cargando historial...</div>
                     ) : allPreSales.length === 0 ? (
                         <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground md:hidden">No hay preventas registradas.</div>
@@ -831,7 +847,7 @@ export default function PreSalePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {isLoading ? (
+                                {isPreSalesLoading ? (
                                     <TableRow><TableCell colSpan={7} className="h-24 text-center">Cargando historial...</TableCell></TableRow>
                                 ) : allPreSales.length === 0 ? (
                                     <TableRow><TableCell colSpan={7} className="h-24 text-center">No hay preventas registradas.</TableCell></TableRow>
