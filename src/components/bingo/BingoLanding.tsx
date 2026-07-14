@@ -1,106 +1,457 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { bingoEventDetails, bingoHighlights, bingoPrizes } from "@/lib/bingo-data";
+import type { ReactNode } from "react";
+import {
+  CheckCircle2,
+  ChevronRight,
+  MessageCircle,
+  Play,
+  Utensils,
+} from "lucide-react";
+import {
+  bingoEvent,
+  bingoStats,
+  essentialInfo,
+  eventSummary,
+  foodOptions,
+  participationSteps,
+  prizeCards,
+  reasonsToAttend,
+  scheduleItems,
+  sponsorPlans,
+} from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
-import { BingoInteractive } from "./Interactive";
+import { BingoRegistrationForm } from "./RegistrationForm";
+
+const whatsappMessage =
+  "Hola, quiero informacion para reservar tablas del Bingo Gemellista 2026.";
+const whatsappUrl = `https://wa.me/${siteConfig.bingoWhatsAppNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-xs font-bold uppercase tracking-[0.34em] text-[#d77200]">
+      {children}
+    </p>
+  );
+}
+
+function SectionTitle({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2 className={`mt-4 max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl ${className}`}>
+      {children}
+    </h2>
+  );
+}
 
 export function BingoLanding() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#fff8e7] text-slate-950">
-      <section className="relative px-4 py-8 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.35),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(251,191,36,.35),transparent_28%),radial-gradient(circle_at_50%_85%,rgba(236,72,153,.25),transparent_35%)]" />
-        <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/70 bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-950">
-            <ArrowLeft className="h-4 w-4" /> Sales Col Gemelli
-          </Link>
-          <a href={siteConfig.bingoUrl} className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600">
-            /bingo
-          </a>
-        </nav>
+    <main className="min-h-screen bg-white text-[#070a2c]">
+      <section className="relative min-h-[100dvh] overflow-hidden bg-[#11142d] text-white">
+        <Image
+          src="/images/bingo/bingo-card.svg"
+          alt="Ambiente del Bingo Gemellista"
+          fill
+          priority
+          className="object-cover opacity-35"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,45,0.97)_0%,rgba(17,20,45,0.88)_32%,rgba(17,20,45,0.48)_70%,rgba(17,20,45,0.40)_100%)]" />
+        <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-7 sm:px-8 lg:px-10">
+          <nav className="flex items-center justify-between">
+            <Link href="/" className="text-xs font-bold uppercase tracking-[0.32em] text-white/90">
+              Colegio Agustin Gemelli
+            </Link>
+            <a
+              href="#confirmacion"
+              className="rounded-md border border-white/25 px-4 py-3 text-sm font-bold text-white/95 transition hover:bg-white/10 active:translate-y-px"
+            >
+              Confirmar asistencia
+            </a>
+          </nav>
 
-        <div className="mx-auto grid max-w-6xl gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-24">
+          <div className="grid flex-1 gap-10 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:pb-16">
+            <div className="max-w-3xl self-end">
+              <span className="inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
+                Evento familiar
+              </span>
+              <h1 className="mt-8 max-w-4xl text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+                {bingoEvent.title}
+              </h1>
+              <p className="mt-7 max-w-2xl text-xl leading-8 text-white/92">
+                {bingoEvent.description}
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="#confirmacion"
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-[#ffc83d] px-6 text-sm font-bold text-[#070a2c] transition hover:bg-[#ffd35c] active:translate-y-px"
+                >
+                  Reservar tablas
+                </a>
+                <a
+                  href="#confirmacion"
+                  className="inline-flex h-12 items-center justify-center rounded-md border border-white/30 px-6 text-sm font-bold text-white transition hover:bg-white/10 active:translate-y-px"
+                >
+                  Confirmar asistencia
+                </a>
+                <a
+                  href="#premios"
+                  className="inline-flex h-12 items-center justify-center gap-2 px-2 text-sm font-bold text-white transition hover:text-[#ffc83d]"
+                >
+                  Conocer los premios <ChevronRight className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+
+            <aside className="self-end rounded-lg border border-white/15 bg-white/10 p-6 shadow-2xl shadow-black/25 backdrop-blur-md">
+              <div className="divide-y divide-white/15">
+                {eventSummary.map((item) => (
+                  <div key={item.label} className="grid grid-cols-[auto_1fr] gap-4 py-4 first:pt-0 last:pb-0">
+                    <item.icon className="mt-1 h-5 w-5 text-[#ffc83d]" />
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/55">
+                        {item.label}
+                      </p>
+                      <p className="mt-2 font-bold text-white">{item.value}</p>
+                      <p className="mt-1 text-sm text-white/60">Dato pendiente de confirmacion oficial.</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <a
+        href={whatsappUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="fixed bottom-5 right-5 z-30 inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#19a84f] px-5 text-sm font-bold text-white shadow-lg shadow-emerald-900/25 transition hover:bg-[#148d42] active:translate-y-px"
+      >
+        <MessageCircle className="h-5 w-5" />
+        WhatsApp
+      </a>
+
+      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-start">
           <div>
-            <div className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-cyan-700 shadow-sm">
-              Landing oficial integrada al deploy principal
-            </div>
-            <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
-              Bingo <span className="text-pink-600">Gemellista</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-              Una página de bienvenida para convocar a la comunidad del Colegio Gemelli, centralizada ahora en el mismo repositorio y dominio de Sales Col Gemelli.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" className="rounded-full bg-slate-950 hover:bg-slate-800">
-                <a href="#detalles">Ver detalles <ArrowRight className="ml-2 h-4 w-4" /></a>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full border-slate-300 bg-white/80">
-                <Link href="/">Volver al sistema</Link>
-              </Button>
+            <h2 className="max-w-xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl">
+              Una noche para compartir, disfrutar y ayudar
+            </h2>
+            <div className="mt-7 max-w-2xl space-y-5 text-lg leading-8 text-[#394461]">
+              <p>
+                El Bingo Gemellista reune a familias, estudiantes, egresados,
+                colaboradores, empresas aliadas y amigos del colegio alrededor de
+                una actividad alegre, organizada y solidaria.
+              </p>
+              <p>
+                Cada participacion aporta al fortalecimiento de los proyectos
+                institucionales y nos permite seguir creando mejores experiencias
+                para los estudiantes.
+              </p>
             </div>
           </div>
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-cyan-300 via-pink-300 to-amber-300 blur-2xl opacity-60" />
-            <Image
-              src="/images/bingo/bingo-card.svg"
-              alt="Tarjeta promocional del Bingo Gemellista"
-              width={1200}
-              height={800}
-              priority
-              className="relative rounded-[2rem] border-8 border-white shadow-2xl"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section id="detalles" className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
-          {bingoEventDetails.map((detail) => (
-            <article key={detail.label} className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200/70">
-              <detail.icon className="h-8 w-8 text-pink-600" />
-              <p className="mt-5 text-sm font-bold uppercase tracking-[0.25em] text-slate-500">{detail.label}</p>
-              <h2 className="mt-2 text-2xl font-black">{detail.value}</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{detail.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-700">Por qué participar</p>
-            <h2 className="mt-3 text-4xl font-black">Una jornada para encontrarnos y apoyar al colegio</h2>
-          </div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {bingoHighlights.map((item) => (
-              <article key={item.title} className="rounded-3xl border border-white bg-white/80 p-6 shadow-sm">
-                <item.icon className="h-8 w-8 text-cyan-600" />
-                <h3 className="mt-5 text-xl font-black">{item.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {bingoStats.map((stat) => (
+              <article key={stat.label} className="rounded-md border border-slate-200 bg-[#f7f8fb] p-6">
+                <p className="text-3xl font-semibold tracking-tight">{stat.value}</p>
+                <p className="mt-3 text-sm text-[#53617d]">{stat.label}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-3">
-          {bingoPrizes.map((prize) => (
-            <article key={prize.title} className="overflow-hidden rounded-3xl bg-white shadow-lg">
-              <div className={`h-3 bg-gradient-to-r ${prize.accent}`} />
-              <div className="p-6">
-                <CheckCircle2 className="h-7 w-7 text-green-600" />
-                <h3 className="mt-5 text-2xl font-black">{prize.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{prize.description}</p>
-              </div>
-            </article>
-          ))}
+      <section id="informacion" className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Informacion esencial</SectionLabel>
+          <SectionTitle>Todo lo importante en un solo lugar</SectionTitle>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#3f4d68]">
+            Los datos finales se actualizan desde un unico archivo para evitar
+            versiones cruzadas o informacion desactualizada.
+          </p>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {essentialInfo.map((item) => (
+              <article key={item.label} className="rounded-md border border-slate-200 bg-white p-6">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#486283]">{item.label}</p>
+                <h3 className="mt-5 text-xl font-semibold text-[#070a2c]">{item.value}</h3>
+                <p className="mt-4 text-sm text-[#53617d]">Pendiente de confirmacion.</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-6 rounded-md border border-[#ffd34f] bg-[#fff9e5] px-5 py-4 font-semibold">
+            Las tablas se adquieren con pago en efectivo en la Tesoreria del colegio.
+          </div>
         </div>
       </section>
 
-      <BingoInteractive />
+      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Por que asistir</SectionLabel>
+          <SectionTitle>Una actividad sencilla, familiar y con proposito</SectionTitle>
+          <div className="mt-12 grid gap-4 lg:grid-cols-[1.08fr_0.92fr_0.92fr]">
+            {reasonsToAttend.map((reason, index) => (
+              <article
+                key={reason.title}
+                className={`rounded-md border border-slate-200 bg-white p-8 ${
+                  index === 0 ? "lg:row-span-2" : ""
+                }`}
+              >
+                <reason.icon className="h-7 w-7 text-[#ff9c00]" />
+                <h3 className="mt-8 text-xl font-semibold">{reason.title}</h3>
+                <p className="mt-5 max-w-sm text-base leading-7 text-[#4a5874]">{reason.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="premios" className="bg-[#171931] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Premios</SectionLabel>
+          <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight sm:text-5xl">
+            Premios preparados para celebrar juntos
+          </h2>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82">
+            La informacion final de premios se carga desde un arreglo editable.
+            Los ejemplos actuales estan marcados para reemplazo.
+          </p>
+          <div className="mt-12 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+            {prizeCards.map((prize) => (
+              <article
+                key={prize.title}
+                className={`rounded-md border p-7 ${
+                  prize.featured
+                    ? "border-white bg-white text-[#070a2c] lg:row-span-2"
+                    : "border-white/35 bg-white/5"
+                }`}
+              >
+                <prize.icon className={`h-7 w-7 ${prize.featured ? "text-[#d77200]" : "text-[#ffc83d]"}`} />
+                <p className={`mt-4 text-xs font-bold uppercase tracking-[0.28em] ${prize.featured ? "text-[#d77200]" : "text-white/55"}`}>
+                  {prize.label}
+                </p>
+                <h3 className={`mt-4 font-semibold ${prize.featured ? "text-4xl" : "text-2xl"}`}>{prize.title}</h3>
+                <p className={`mt-6 leading-8 ${prize.featured ? "text-[#42506c]" : "text-white/82"}`}>{prize.description}</p>
+                {prize.featured ? (
+                  <div className="mt-8 rounded-md bg-[#fff8e3] p-4 text-sm text-[#a14f00]">
+                    Contenido de ejemplo. Reemplazar por el premio oficial.
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Como participar</SectionLabel>
+          <SectionTitle>Cuatro pasos claros para llegar tranquilo</SectionTitle>
+          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {participationSteps.map((step, index) => (
+              <article key={step} className="rounded-md border border-slate-200 bg-[#f7f8fb] p-6">
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-[#11142d] text-sm font-bold text-white">
+                  {index + 1}
+                </span>
+                <p className="mt-9 text-base leading-7 text-[#33415f]">{step}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Cronograma</SectionLabel>
+          <SectionTitle>Una noche organizada, con momentos para todos</SectionTitle>
+          <div className="mt-12 space-y-4">
+            {scheduleItems.map((item) => (
+              <article key={item.title} className="grid gap-5 rounded-md border border-slate-200 bg-white p-6 md:grid-cols-[160px_1fr]">
+                <p className="font-mono text-sm font-bold text-[#d77200]">{item.time}</p>
+                <div>
+                  <h3 className="text-xl font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-[#52617d]">{item.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <SectionLabel>Video promocional</SectionLabel>
+            <SectionTitle>Una invitacion para sentir la noche antes de llegar</SectionTitle>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-[#40506d]">
+              Este bloque esta preparado para YouTube, Vimeo o video institucional.
+              El reproductor solo carga cuando el usuario decide reproducirlo.
+            </p>
+          </div>
+          <div className="relative overflow-hidden rounded-lg bg-[#11142d] shadow-2xl shadow-slate-900/20">
+            <Image
+              src="/images/bingo/bingo-card.svg"
+              alt="Vista previa del video del Bingo Gemellista"
+              width={1200}
+              height={760}
+              className="aspect-video w-full object-cover opacity-75"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,45,0.92),transparent_65%)]" />
+            <button
+              type="button"
+              className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-[#11142d] shadow-xl transition hover:scale-105 active:scale-100"
+              aria-label="Reproducir video promocional"
+            >
+              <Play className="h-8 w-8 fill-current" />
+            </button>
+            <div className="absolute inset-x-4 bottom-4 rounded-md bg-white/95 px-4 py-3 text-sm text-[#293753]">
+              Video pendiente de configuracion.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Galeria</SectionLabel>
+          <SectionTitle>Recuerdos de una comunidad que se encuentra</SectionTitle>
+          <p className="mt-6 text-[#52617d]">Galeria responsive preparada para fotos reales de ediciones anteriores.</p>
+          <div className="mt-12 max-w-md overflow-hidden rounded-md shadow-2xl shadow-slate-900/12">
+            <Image
+              src="/images/bingo/bingo-card.svg"
+              alt="Galeria del Bingo Gemellista"
+              width={820}
+              height={520}
+              className="aspect-[4/3] w-full object-cover"
+            />
+            <p className="bg-[#11142d] px-4 py-3 text-sm font-semibold text-white">
+              Placeholder generado. Reemplazar por foto oficial.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Zona gastronomica</SectionLabel>
+          <SectionTitle>Algo rico para acompanar la noche</SectionTitle>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#40506d]">
+            La oferta final puede estar sujeta a disponibilidad y se confirmara
+            con la organizacion del evento.
+          </p>
+          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {foodOptions.map((option) => (
+              <article key={option} className="flex items-center gap-4 rounded-md border border-slate-200 bg-[#f7f8fb] p-5 text-lg font-medium">
+                <Utensils className="h-5 w-5 text-[#ff9c00]" />
+                {option}
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#fff9e9] px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h2 className="max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl">
+              Ayudanos a hacer esta noche aun mas especial
+            </h2>
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-[#40506d]">
+              Las familias, empresas y aliados que deseen donar un premio pueden
+              vincularse al Bingo Gemellista y aportar al exito de esta actividad.
+            </p>
+          </div>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-12 items-center justify-center rounded-md bg-[#11142d] px-6 text-sm font-bold text-white transition hover:bg-[#20254a] active:translate-y-px"
+          >
+            Quiero donar un premio
+          </a>
+        </div>
+      </section>
+
+      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <SectionLabel>Publicidad para empresas</SectionLabel>
+          <SectionTitle>Planes para marcas que quieren acompanar a la comunidad</SectionTitle>
+          <div className="mt-12 grid gap-4 lg:grid-cols-3">
+            {sponsorPlans.map((plan) => (
+              <article
+                key={plan.title}
+                className={`rounded-md border p-6 ${
+                  plan.recommended
+                    ? "border-[#ffb323] bg-[#fff9e9]"
+                    : "border-slate-200 bg-[#f7f8fb]"
+                }`}
+              >
+                {plan.recommended ? (
+                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d77200]">Recomendado</p>
+                ) : null}
+                <h3 className="mt-4 text-3xl font-semibold">{plan.title}</h3>
+                <p className="mt-5 text-lg font-semibold">{plan.price}</p>
+                <ul className="mt-8 space-y-4 text-sm text-[#52617d]">
+                  {plan.benefits.map((benefit) => (
+                    <li key={benefit} className="flex gap-3">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#ff9c00]" />
+                      {benefit}
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-8 inline-flex h-11 w-full items-center justify-center rounded-md bg-[#11142d] text-sm font-bold text-white transition hover:bg-[#20254a] active:translate-y-px"
+                >
+                  Contactar
+                </a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="confirmacion" className="bg-[#171931] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
+        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+          <div>
+            <SectionLabel>Confirmacion</SectionLabel>
+            <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-[0.98] tracking-tight sm:text-5xl">
+              Cuentanos como nos acompanas
+            </h2>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-white/75">
+              Cada confirmacion se envia de forma segura a la API del sitio y
+              queda guardada en Supabase para la organizacion.
+            </p>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-bold text-white transition hover:bg-white/10 active:translate-y-px"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Resolver por WhatsApp
+            </a>
+          </div>
+          <BingoRegistrationForm />
+        </div>
+      </section>
+
+      <footer className="bg-[#11142d] px-5 py-10 text-white sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
+          <p>Bingo Gemellista 2026 - Colegio Agustin Gemelli</p>
+          <Link href="/" className="font-semibold text-white hover:text-[#ffc83d]">
+            Volver a Sales Col Gemelli
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
