@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpenCheck, KeyRound, LogIn, UserCog } from "lucide-react";
+import { BookOpenCheck, KeyRound, LogIn, Ticket, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addUser } from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
@@ -452,6 +452,12 @@ export default function LoginPage() {
               Tutoriales antes de ingresar
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
+              <Button asChild variant="outline" className="justify-start sm:col-span-2">
+                <Link href="/bingo">
+                  <Ticket className="mr-2 h-4 w-4" />
+                  Bingo Gemellista
+                </Link>
+              </Button>
               <Button asChild variant="outline" className="justify-start">
                 <Link href="/tutorial-cajas">
                   <BookOpenCheck className="mr-2 h-4 w-4" />

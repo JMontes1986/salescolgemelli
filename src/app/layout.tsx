@@ -1,5 +1,4 @@
 import type {Metadata} from 'next';
-import { Inter, JetBrains_Mono, Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -12,26 +11,6 @@ const OG_IMAGE_URL = `${SITE_URL}/og-image.png`;
 const SITE_TITLE = "Ventas ColGemelli";
 const SITE_DESCRIPTION =
   "Sistema de gestión de ventas, preventas, inventario y tickets QR para el Colegio Gemelli de forma segura y centralizada.";
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
-  display: 'swap',
-  preload: false,
-});
-
-const sourceSerif = Source_Serif_4({
-  subsets: ['latin'],
-  variable: '--font-source-serif',
-  display: 'swap',
-  preload: false,
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -90,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.variable} ${jetBrainsMono.variable} ${sourceSerif.variable}`}
+      className=""
       suppressHydrationWarning
     >
       <head>
