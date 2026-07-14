@@ -23,6 +23,7 @@ import {
   UserCog,
   Undo2,
   ClipboardCheck,
+  FilePenLine,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -50,6 +51,7 @@ export const navItems: NavItem[] = [
 ];
 
 export const adminNavItems: NavItem[] = [
+    { href: "/dashboard/bingo", icon: FilePenLine, label: "Landing Bingo", permission: 'users' },
     { href: "/dashboard/users", icon: Users, label: "Usuarios", permission: 'users' },
     { href: "/dashboard/audit", icon: ClipboardList, label: "Auditoría", permission: 'audit' },
 ]

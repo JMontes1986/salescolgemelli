@@ -45,3 +45,25 @@ create policy "dashboard_bingo_registrations_select"
   );
 
 notify pgrst, 'reload schema';
+
+-- Editable content for the public Bingo landing page.
+create table if not exists public.bingo_landing_content (
+  id text primary key default 'default',
+  content jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.bingo_landing_content enable row level security;
+
+drop policy if exists "service_role_bingo_landing_content_all" on public.bingo_landing_content;
+
+create policy "service_role_bingo_landing_content_all"
+  on public.bingo_landing_content
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+grant select, insert, update on public.bingo_landing_content to service_role;
+
+notify pgrst, 'reload schema';

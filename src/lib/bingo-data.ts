@@ -9,201 +9,127 @@ import {
   Utensils,
   UsersRound,
 } from "lucide-react";
+import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase";
 
-export const bingoEvent = {
-  title: "Gran Bingo y Fiesta Familiar Gemellista 2026",
-  eyebrow: "Colegio Agustin Gemelli",
-  description:
-    "Una noche para compartir en familia, ganar grandes premios y seguir construyendo juntos el futuro de nuestros estudiantes.",
-  date: "01 de Agosto de 2026",
-  time: "Hora por confirmar",
-  place: "Instalaciones del colegio",
-  tablePrice: "Valor por confirmar",
-  entrance: "Valor por confirmar",
-  mainPrize: "Premio mayor por confirmar",
-  payment: "Pago en efectivo en Tesoreria",
-  games: "Cantidad por confirmar",
+export type BingoLandingContent = typeof defaultBingoContent;
+
+type DeepPartial<T> = T extends (infer U)[]
+  ? DeepPartial<U>[]
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T;
+
+export const defaultBingoContent = {
+  whatsappMessage: "Hola, quiero informacion para reservar tablas del Bingo Gemellista 2026.",
+  hero: {
+    navLabel: "Colegio Agustin Gemelli",
+    badge: "Evento familiar",
+    title: "Gran Bingo y Fiesta Familiar Gemellista 2026",
+    eyebrow: "Colegio Agustin Gemelli",
+    description:
+      "Una noche para compartir en familia, ganar grandes premios y seguir construyendo juntos el futuro de nuestros estudiantes.",
+    primaryCta: "Reservar tablas",
+    secondaryCta: "Confirmar asistencia",
+    awardsCta: "Conocer los premios",
+  },
+  event: {
+    date: "01 de Agosto de 2026",
+    time: "Hora por confirmar",
+    place: "Instalaciones del colegio",
+    tablePrice: "Valor por confirmar",
+    entrance: "Valor por confirmar",
+    mainPrize: "Premio mayor por confirmar",
+    payment: "Pago en efectivo en Tesoreria",
+    games: "Cantidad por confirmar",
+    pendingNote: "Dato pendiente de confirmacion oficial.",
+  },
+  intro: {
+    title: "Una noche para compartir, disfrutar y ayudar",
+    paragraphs: [
+      "El Bingo Gemellista reune a familias, estudiantes, egresados, colaboradores, empresas aliadas y amigos del colegio alrededor de una actividad alegre, organizada y solidaria.",
+      "Cada participacion aporta al fortalecimiento de los proyectos institucionales y nos permite seguir creando mejores experiencias para los estudiantes.",
+    ],
+  },
+  stats: [
+    { value: "Por confirmar", label: "Familias confirmadas" },
+    { value: "Por confirmar", label: "Tablas reservadas" },
+    { value: "Por confirmar", label: "Patrocinadores" },
+    { value: "Por confirmar", label: "Premios confirmados" },
+  ],
+  information: {
+    label: "Informacion esencial",
+    title: "Todo lo importante en un solo lugar",
+    description: "Los datos finales se actualizan desde el panel administrativo para evitar versiones cruzadas o informacion desactualizada.",
+    pendingText: "Pendiente de confirmacion.",
+    paymentAlert: "Las tablas se adquieren con pago en efectivo en la Tesoreria del colegio.",
+  },
+  reasons: [
+    { icon: "UsersRound", title: "Ambiente familiar", description: "Un espacio tranquilo y cercano para compartir con personas de todas las edades." },
+    { icon: "Trophy", title: "Grandes premios", description: "La pagina queda preparada para publicar premios confirmados, donantes y categorias." },
+    { icon: "Ticket", title: "Oportunidades para ganar", description: "Cada juego suma emocion y mantiene viva la participacion de toda la comunidad." },
+    { icon: "Music2", title: "Musica y entretenimiento", description: "Momentos especiales para acompanar la noche sin recargar la experiencia." },
+    { icon: "Utensils", title: "Zona gastronomica", description: "Opciones familiares para disfrutar durante el evento, sujetas a disponibilidad." },
+    { icon: "HandHeart", title: "Apoyo al colegio", description: "Participar tambien es ayudar a que los proyectos institucionales sigan creciendo." },
+  ],
+  prizes: {
+    label: "Premios",
+    title: "Premios preparados para celebrar juntos",
+    description: "La informacion final de premios se carga desde el editor administrativo.",
+    featuredNote: "Contenido de ejemplo. Reemplazar por el premio oficial.",
+    cards: [
+      { icon: "Trophy", label: "Por confirmar", title: "Premio mayor", description: "Espacio reservado para publicar el premio principal oficial del Bingo Gemellista 2026.", featured: true },
+      { icon: "Gift", label: "Ejemplo editable", title: "Premio familiar destacado", description: "Reemplaza este bloque por un premio real donado por familias o aliados." },
+      { icon: "Gift", label: "Ejemplo editable", title: "Bono o experiencia", description: "Puede convertirse en bono, tecnologia, viaje, servicio o experiencia confirmada." },
+      { icon: "Gift", label: "Ejemplo editable", title: "Sorpresa de patrocinador", description: "Espacio para vincular una marca aliada con un premio especifico." },
+    ],
+  },
+  participation: { label: "Como participar", title: "Cuatro pasos claros para llegar tranquilo", steps: ["Reserva o compra tus tablas por los canales oficiales del colegio.", "Confirma cuantas personas asistiran y cuantas tablas deseas.", "Recibe la informacion final del evento y las indicaciones de ingreso.", "Llega con tu familia, disfruta la noche y participa en los juegos."] },
+  schedule: { label: "Cronograma", title: "Una noche organizada, con momentos para todos", items: [
+    { time: "Por confirmar", title: "Apertura de puertas", description: "Ingreso y bienvenida de familias." },
+    { time: "Por confirmar", title: "Bienvenida", description: "Saludo institucional y orientaciones generales." },
+    { time: "Por confirmar", title: "Inicio del bingo", description: "Primeros juegos de la noche." },
+    { time: "Por confirmar", title: "Rifas", description: "Premios especiales y pausas de entretenimiento." },
+    { time: "Por confirmar", title: "Presentacion especial", description: "Espacio musical o cultural sujeto a programacion." },
+    { time: "Por confirmar", title: "Premio mayor", description: "Juego principal de cierre." },
+    { time: "Por confirmar", title: "Cierre", description: "Agradecimientos y salida organizada." },
+  ] },
+  video: { label: "Video promocional", title: "Una invitacion para sentir la noche antes de llegar", description: "Este bloque esta preparado para YouTube, Vimeo o video institucional. El reproductor solo carga cuando el usuario decide reproducirlo.", status: "Video pendiente de configuracion." },
+  gallery: { label: "Galeria", title: "Recuerdos de una comunidad que se encuentra", description: "Galeria responsive preparada para fotos reales de ediciones anteriores.", caption: "Placeholder generado. Reemplazar por foto oficial." },
+  food: { label: "Zona gastronomica", title: "Algo rico para acompanar la noche", description: "La oferta final puede estar sujeta a disponibilidad y se confirmara con la organizacion del evento.", options: ["Perros calientes", "Empanadas", "Hamburguesas", "Pinchos", "Bebidas", "Postres"] },
+  donations: { title: "Ayudanos a hacer esta noche aun mas especial", description: "Las familias, empresas y aliados que deseen donar un premio pueden vincularse al Bingo Gemellista y aportar al exito de esta actividad.", cta: "Quiero donar un premio" },
+  sponsors: { label: "Publicidad para empresas", title: "Planes para marcas que quieren acompanar a la comunidad", recommendedLabel: "Recomendado", cta: "Contactar", plans: [
+    { title: "Pendon fisico", price: "Precio por confirmar", benefits: ["Presencia visible durante el evento", "Mencion como aliado", "Ubicacion sujeta a disponibilidad"] },
+    { title: "Publicidad digital", price: "Precio por confirmar", benefits: ["Publicacion en piezas digitales", "Espacio para logo o mensaje", "Alcance en comunidad educativa"] },
+    { title: "Plan combinado", price: "Precio por confirmar", recommended: true, benefits: ["Pendon fisico y presencia digital", "Mayor exposicion", "Prioridad en comunicacion del evento"] },
+  ] },
+  confirmation: { label: "Confirmacion", title: "Cuentanos como nos acompanas", description: "Cada confirmacion se envia de forma segura a la API del sitio y queda guardada en Supabase para la organizacion.", whatsappCta: "Resolver por WhatsApp" },
+  footer: { text: "Bingo Gemellista 2026 - Colegio Agustin Gemelli", backLink: "Volver a Sales Col Gemelli" },
 };
 
-export const eventSummary = [
-  { icon: CalendarDays, label: "Fecha", value: bingoEvent.date },
-  { icon: CalendarDays, label: "Hora", value: bingoEvent.time },
-  { icon: MapPin, label: "Lugar", value: bingoEvent.place },
-  { icon: Ticket, label: "Tabla", value: bingoEvent.tablePrice },
-  { icon: UsersRound, label: "Ingreso", value: bingoEvent.entrance },
-  { icon: Trophy, label: "Premio mayor", value: bingoEvent.mainPrize },
-];
+function mergeContent<T>(base: T, override?: DeepPartial<T>): T {
+  if (!override) return base;
+  if (Array.isArray(base)) return (Array.isArray(override) ? override : base) as T;
+  if (typeof base !== "object" || base === null) return (override ?? base) as T;
+  return Object.entries(base).reduce((merged, [key, value]) => ({
+    ...merged,
+    [key]: mergeContent(value, (override as Record<string, unknown>)[key] as DeepPartial<typeof value>),
+  }), {} as T);
+}
 
-export const bingoStats = [
-  { value: "Por confirmar", label: "Familias confirmadas" },
-  { value: "Por confirmar", label: "Tablas reservadas" },
-  { value: "Por confirmar", label: "Patrocinadores" },
-  { value: "Por confirmar", label: "Premios confirmados" },
-];
+export async function getBingoLandingContent() {
+  try {
+    const { supabaseUrl } = getSupabaseEnv();
+    const serviceRoleKey = getSupabaseServiceRoleKey();
+    const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/bingo_landing_content?id=eq.default&select=content`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return defaultBingoContent;
+    const rows = (await response.json()) as { content?: DeepPartial<BingoLandingContent> }[];
+    return mergeContent(defaultBingoContent, rows[0]?.content);
+  } catch {
+    return defaultBingoContent;
+  }
+}
 
-export const essentialInfo = [
-  { label: "Fecha", value: bingoEvent.date },
-  { label: "Hora", value: bingoEvent.time },
-  { label: "Lugar", value: bingoEvent.place },
-  { label: "Tabla", value: bingoEvent.tablePrice },
-  { label: "Ingreso", value: bingoEvent.entrance },
-  { label: "Premio mayor", value: bingoEvent.mainPrize },
-  { label: "Forma de pago", value: bingoEvent.payment },
-  { label: "Juegos", value: bingoEvent.games },
-];
-
-export const reasonsToAttend = [
-  {
-    icon: UsersRound,
-    title: "Ambiente familiar",
-    description:
-      "Un espacio tranquilo y cercano para compartir con personas de todas las edades.",
-  },
-  {
-    icon: Trophy,
-    title: "Grandes premios",
-    description:
-      "La pagina queda preparada para publicar premios confirmados, donantes y categorias.",
-  },
-  {
-    icon: Ticket,
-    title: "Oportunidades para ganar",
-    description:
-      "Cada juego suma emocion y mantiene viva la participacion de toda la comunidad.",
-  },
-  {
-    icon: Music2,
-    title: "Musica y entretenimiento",
-    description:
-      "Momentos especiales para acompanar la noche sin recargar la experiencia.",
-  },
-  {
-    icon: Utensils,
-    title: "Zona gastronomica",
-    description:
-      "Opciones familiares para disfrutar durante el evento, sujetas a disponibilidad.",
-  },
-  {
-    icon: HandHeart,
-    title: "Apoyo al colegio",
-    description:
-      "Participar tambien es ayudar a que los proyectos institucionales sigan creciendo.",
-  },
-];
-
-export const prizeCards = [
-  {
-    icon: Trophy,
-    label: "Por confirmar",
-    title: "Premio mayor",
-    description:
-      "Espacio reservado para publicar el premio principal oficial del Bingo Gemellista 2026.",
-    featured: true,
-  },
-  {
-    icon: Gift,
-    label: "Ejemplo editable",
-    title: "Premio familiar destacado",
-    description:
-      "Reemplaza este bloque por un premio real donado por familias o aliados.",
-  },
-  {
-    icon: Gift,
-    label: "Ejemplo editable",
-    title: "Bono o experiencia",
-    description:
-      "Puede convertirse en bono, tecnologia, viaje, servicio o experiencia confirmada.",
-  },
-  {
-    icon: Gift,
-    label: "Ejemplo editable",
-    title: "Sorpresa de patrocinador",
-    description:
-      "Espacio para vincular una marca aliada con un premio especifico.",
-  },
-];
-
-export const participationSteps = [
-  "Reserva o compra tus tablas por los canales oficiales del colegio.",
-  "Confirma cuantas personas asistiran y cuantas tablas deseas.",
-  "Recibe la informacion final del evento y las indicaciones de ingreso.",
-  "Llega con tu familia, disfruta la noche y participa en los juegos.",
-];
-
-export const scheduleItems = [
-  {
-    time: "Por confirmar",
-    title: "Apertura de puertas",
-    description: "Ingreso y bienvenida de familias.",
-  },
-  {
-    time: "Por confirmar",
-    title: "Bienvenida",
-    description: "Saludo institucional y orientaciones generales.",
-  },
-  {
-    time: "Por confirmar",
-    title: "Inicio del bingo",
-    description: "Primeros juegos de la noche.",
-  },
-  {
-    time: "Por confirmar",
-    title: "Rifas",
-    description: "Premios especiales y pausas de entretenimiento.",
-  },
-  {
-    time: "Por confirmar",
-    title: "Presentacion especial",
-    description: "Espacio musical o cultural sujeto a programacion.",
-  },
-  {
-    time: "Por confirmar",
-    title: "Premio mayor",
-    description: "Juego principal de cierre.",
-  },
-  {
-    time: "Por confirmar",
-    title: "Cierre",
-    description: "Agradecimientos y salida organizada.",
-  },
-];
-
-export const foodOptions = [
-  "Perros calientes",
-  "Empanadas",
-  "Hamburguesas",
-  "Pinchos",
-  "Bebidas",
-  "Postres",
-];
-
-export const sponsorPlans = [
-  {
-    title: "Pendon fisico",
-    price: "Precio por confirmar",
-    benefits: [
-      "Presencia visible durante el evento",
-      "Mencion como aliado",
-      "Ubicacion sujeta a disponibilidad",
-    ],
-  },
-  {
-    title: "Publicidad digital",
-    price: "Precio por confirmar",
-    benefits: [
-      "Publicacion en piezas digitales",
-      "Espacio para logo o mensaje",
-      "Alcance en comunidad educativa",
-    ],
-  },
-  {
-    title: "Plan combinado",
-    price: "Precio por confirmar",
-    recommended: true,
-    benefits: [
-      "Pendon fisico y presencia digital",
-      "Mayor exposicion",
-      "Prioridad en comunicacion del evento",
-    ],
-  },
-];
+export const iconMap = { CalendarDays, Gift, HandHeart, MapPin, Music2, Ticket, Trophy, Utensils, UsersRound };

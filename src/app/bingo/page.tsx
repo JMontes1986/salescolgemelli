@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { BingoLanding } from "@/components/bingo/BingoLanding";
+import { getBingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Bingo Gemellista | Sales Col Gemelli",
@@ -26,6 +29,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BingoPage() {
-  return <BingoLanding />;
+export default async function BingoPage() {
+  const content = await getBingoLandingContent();
+
+  return <BingoLanding content={content} />;
 }

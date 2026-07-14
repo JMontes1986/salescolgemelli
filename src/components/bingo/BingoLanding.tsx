@@ -6,26 +6,10 @@ import {
   ChevronRight,
   MessageCircle,
   Play,
-  Utensils,
 } from "lucide-react";
-import {
-  bingoEvent,
-  bingoStats,
-  essentialInfo,
-  eventSummary,
-  foodOptions,
-  participationSteps,
-  prizeCards,
-  reasonsToAttend,
-  scheduleItems,
-  sponsorPlans,
-} from "@/lib/bingo-data";
+import { iconMap, type BingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
 import { BingoRegistrationForm } from "./RegistrationForm";
-
-const whatsappMessage =
-  "Hola, quiero informacion para reservar tablas del Bingo Gemellista 2026.";
-const whatsappUrl = `https://wa.me/${siteConfig.bingoWhatsAppNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
@@ -33,6 +17,12 @@ function SectionLabel({ children }: { children: ReactNode }) {
       {children}
     </p>
   );
+}
+
+function EditableIcon({ name, className }: { name: keyof typeof iconMap; className?: string }) {
+  const Icon = iconMap[name] ?? iconMap.Gift;
+
+  return <Icon className={className} />;
 }
 
 function SectionTitle({
@@ -49,7 +39,27 @@ function SectionTitle({
   );
 }
 
-export function BingoLanding() {
+export function BingoLanding({ content }: { content: BingoLandingContent }) {
+  const whatsappUrl = `https://wa.me/${siteConfig.bingoWhatsAppNumber}?text=${encodeURIComponent(content.whatsappMessage)}`;
+  const eventSummary = [
+    { icon: iconMap.CalendarDays, label: "Fecha", value: content.event.date },
+    { icon: iconMap.CalendarDays, label: "Hora", value: content.event.time },
+    { icon: iconMap.MapPin, label: "Lugar", value: content.event.place },
+    { icon: iconMap.Ticket, label: "Tabla", value: content.event.tablePrice },
+    { icon: iconMap.UsersRound, label: "Ingreso", value: content.event.entrance },
+    { icon: iconMap.Trophy, label: "Premio mayor", value: content.event.mainPrize },
+  ];
+  const essentialInfo = [
+    { label: "Fecha", value: content.event.date },
+    { label: "Hora", value: content.event.time },
+    { label: "Lugar", value: content.event.place },
+    { label: "Tabla", value: content.event.tablePrice },
+    { label: "Ingreso", value: content.event.entrance },
+    { label: "Premio mayor", value: content.event.mainPrize },
+    { label: "Forma de pago", value: content.event.payment },
+    { label: "Juegos", value: content.event.games },
+  ];
+
   return (
     <main className="min-h-screen bg-white text-[#070a2c]">
       <section className="relative min-h-[100dvh] overflow-hidden bg-[#11142d] text-white">
@@ -64,45 +74,45 @@ export function BingoLanding() {
         <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-7 sm:px-8 lg:px-10">
           <nav className="flex items-center justify-between">
             <Link href="/" className="text-xs font-bold uppercase tracking-[0.32em] text-white/90">
-              Colegio Agustin Gemelli
+              {content.hero.navLabel}
             </Link>
             <a
               href="#confirmacion"
               className="rounded-md border border-white/25 px-4 py-3 text-sm font-bold text-white/95 transition hover:bg-white/10 active:translate-y-px"
             >
-              Confirmar asistencia
+              {content.hero.secondaryCta}
             </a>
           </nav>
 
           <div className="grid flex-1 gap-10 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:pb-16">
             <div className="max-w-3xl self-end">
               <span className="inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
-                Evento familiar
+                {content.hero.badge}
               </span>
               <h1 className="mt-8 max-w-4xl text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-                {bingoEvent.title}
+                {content.hero.title}
               </h1>
               <p className="mt-7 max-w-2xl text-xl leading-8 text-white/92">
-                {bingoEvent.description}
+                {content.hero.description}
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <a
                   href="#confirmacion"
                   className="inline-flex h-12 items-center justify-center rounded-md bg-[#ffc83d] px-6 text-sm font-bold text-[#070a2c] transition hover:bg-[#ffd35c] active:translate-y-px"
                 >
-                  Reservar tablas
+                  {content.hero.primaryCta}
                 </a>
                 <a
                   href="#confirmacion"
                   className="inline-flex h-12 items-center justify-center rounded-md border border-white/30 px-6 text-sm font-bold text-white transition hover:bg-white/10 active:translate-y-px"
                 >
-                  Confirmar asistencia
+                  {content.hero.secondaryCta}
                 </a>
                 <a
                   href="#premios"
                   className="inline-flex h-12 items-center justify-center gap-2 px-2 text-sm font-bold text-white transition hover:text-[#ffc83d]"
                 >
-                  Conocer los premios <ChevronRight className="h-4 w-4" />
+                  {content.hero.awardsCta} <ChevronRight className="h-4 w-4" />
                 </a>
               </div>
             </div>
@@ -117,7 +127,7 @@ export function BingoLanding() {
                         {item.label}
                       </p>
                       <p className="mt-2 font-bold text-white">{item.value}</p>
-                      <p className="mt-1 text-sm text-white/60">Dato pendiente de confirmacion oficial.</p>
+                      <p className="mt-1 text-sm text-white/60">{content.event.pendingNote}</p>
                     </div>
                   </div>
                 ))}
@@ -141,23 +151,16 @@ export function BingoLanding() {
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-start">
           <div>
             <h2 className="max-w-xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl">
-              Una noche para compartir, disfrutar y ayudar
+              {content.intro.title}
             </h2>
             <div className="mt-7 max-w-2xl space-y-5 text-lg leading-8 text-[#394461]">
-              <p>
-                El Bingo Gemellista reune a familias, estudiantes, egresados,
-                colaboradores, empresas aliadas y amigos del colegio alrededor de
-                una actividad alegre, organizada y solidaria.
-              </p>
-              <p>
-                Cada participacion aporta al fortalecimiento de los proyectos
-                institucionales y nos permite seguir creando mejores experiencias
-                para los estudiantes.
-              </p>
+              {content.intro.paragraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {bingoStats.map((stat) => (
+            {content.stats.map((stat) => (
               <article key={stat.label} className="rounded-md border border-slate-200 bg-[#f7f8fb] p-6">
                 <p className="text-3xl font-semibold tracking-tight">{stat.value}</p>
                 <p className="mt-3 text-sm text-[#53617d]">{stat.label}</p>
@@ -169,11 +172,10 @@ export function BingoLanding() {
 
       <section id="informacion" className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Informacion esencial</SectionLabel>
-          <SectionTitle>Todo lo importante en un solo lugar</SectionTitle>
+          <SectionLabel>{content.information.label}</SectionLabel>
+          <SectionTitle>{content.information.title}</SectionTitle>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#3f4d68]">
-            Los datos finales se actualizan desde un unico archivo para evitar
-            versiones cruzadas o informacion desactualizada.
+            {content.information.description}
           </p>
 
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -181,12 +183,12 @@ export function BingoLanding() {
               <article key={item.label} className="rounded-md border border-slate-200 bg-white p-6">
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#486283]">{item.label}</p>
                 <h3 className="mt-5 text-xl font-semibold text-[#070a2c]">{item.value}</h3>
-                <p className="mt-4 text-sm text-[#53617d]">Pendiente de confirmacion.</p>
+                <p className="mt-4 text-sm text-[#53617d]">{content.information.pendingText}</p>
               </article>
             ))}
           </div>
           <div className="mt-6 rounded-md border border-[#ffd34f] bg-[#fff9e5] px-5 py-4 font-semibold">
-            Las tablas se adquieren con pago en efectivo en la Tesoreria del colegio.
+            {content.information.paymentAlert}
           </div>
         </div>
       </section>
@@ -196,14 +198,14 @@ export function BingoLanding() {
           <SectionLabel>Por que asistir</SectionLabel>
           <SectionTitle>Una actividad sencilla, familiar y con proposito</SectionTitle>
           <div className="mt-12 grid gap-4 lg:grid-cols-[1.08fr_0.92fr_0.92fr]">
-            {reasonsToAttend.map((reason, index) => (
+            {content.reasons.map((reason, index) => (
               <article
                 key={reason.title}
                 className={`rounded-md border border-slate-200 bg-white p-8 ${
                   index === 0 ? "lg:row-span-2" : ""
                 }`}
               >
-                <reason.icon className="h-7 w-7 text-[#ff9c00]" />
+                <EditableIcon name={reason.icon as keyof typeof iconMap} className="h-7 w-7 text-[#ff9c00]" />
                 <h3 className="mt-8 text-xl font-semibold">{reason.title}</h3>
                 <p className="mt-5 max-w-sm text-base leading-7 text-[#4a5874]">{reason.description}</p>
               </article>
@@ -214,16 +216,15 @@ export function BingoLanding() {
 
       <section id="premios" className="bg-[#171931] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Premios</SectionLabel>
+          <SectionLabel>{content.prizes.label}</SectionLabel>
           <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight sm:text-5xl">
-            Premios preparados para celebrar juntos
+            {content.prizes.title}
           </h2>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82">
-            La informacion final de premios se carga desde un arreglo editable.
-            Los ejemplos actuales estan marcados para reemplazo.
+            {content.prizes.description}
           </p>
           <div className="mt-12 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
-            {prizeCards.map((prize) => (
+            {content.prizes.cards.map((prize) => (
               <article
                 key={prize.title}
                 className={`rounded-md border p-7 ${
@@ -232,7 +233,7 @@ export function BingoLanding() {
                     : "border-white/35 bg-white/5"
                 }`}
               >
-                <prize.icon className={`h-7 w-7 ${prize.featured ? "text-[#d77200]" : "text-[#ffc83d]"}`} />
+                <EditableIcon name={prize.icon as keyof typeof iconMap} className={`h-7 w-7 ${prize.featured ? "text-[#d77200]" : "text-[#ffc83d]"}`} />
                 <p className={`mt-4 text-xs font-bold uppercase tracking-[0.28em] ${prize.featured ? "text-[#d77200]" : "text-white/55"}`}>
                   {prize.label}
                 </p>
@@ -240,7 +241,7 @@ export function BingoLanding() {
                 <p className={`mt-6 leading-8 ${prize.featured ? "text-[#42506c]" : "text-white/82"}`}>{prize.description}</p>
                 {prize.featured ? (
                   <div className="mt-8 rounded-md bg-[#fff8e3] p-4 text-sm text-[#a14f00]">
-                    Contenido de ejemplo. Reemplazar por el premio oficial.
+                    {content.prizes.featuredNote}
                   </div>
                 ) : null}
               </article>
@@ -251,10 +252,10 @@ export function BingoLanding() {
 
       <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Como participar</SectionLabel>
-          <SectionTitle>Cuatro pasos claros para llegar tranquilo</SectionTitle>
+          <SectionLabel>{content.participation.label}</SectionLabel>
+          <SectionTitle>{content.participation.title}</SectionTitle>
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {participationSteps.map((step, index) => (
+            {content.participation.steps.map((step, index) => (
               <article key={step} className="rounded-md border border-slate-200 bg-[#f7f8fb] p-6">
                 <span className="grid h-9 w-9 place-items-center rounded-full bg-[#11142d] text-sm font-bold text-white">
                   {index + 1}
@@ -268,10 +269,10 @@ export function BingoLanding() {
 
       <section className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Cronograma</SectionLabel>
-          <SectionTitle>Una noche organizada, con momentos para todos</SectionTitle>
+          <SectionLabel>{content.schedule.label}</SectionLabel>
+          <SectionTitle>{content.schedule.title}</SectionTitle>
           <div className="mt-12 space-y-4">
-            {scheduleItems.map((item) => (
+            {content.schedule.items.map((item) => (
               <article key={item.title} className="grid gap-5 rounded-md border border-slate-200 bg-white p-6 md:grid-cols-[160px_1fr]">
                 <p className="font-mono text-sm font-bold text-[#d77200]">{item.time}</p>
                 <div>
@@ -287,11 +288,10 @@ export function BingoLanding() {
       <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>
-            <SectionLabel>Video promocional</SectionLabel>
-            <SectionTitle>Una invitacion para sentir la noche antes de llegar</SectionTitle>
+            <SectionLabel>{content.video.label}</SectionLabel>
+            <SectionTitle>{content.video.title}</SectionTitle>
             <p className="mt-7 max-w-xl text-lg leading-8 text-[#40506d]">
-              Este bloque esta preparado para YouTube, Vimeo o video institucional.
-              El reproductor solo carga cuando el usuario decide reproducirlo.
+              {content.video.description}
             </p>
           </div>
           <div className="relative overflow-hidden rounded-lg bg-[#11142d] shadow-2xl shadow-slate-900/20">
@@ -311,7 +311,7 @@ export function BingoLanding() {
               <Play className="h-8 w-8 fill-current" />
             </button>
             <div className="absolute inset-x-4 bottom-4 rounded-md bg-white/95 px-4 py-3 text-sm text-[#293753]">
-              Video pendiente de configuracion.
+              {content.video.status}
             </div>
           </div>
         </div>
@@ -319,9 +319,9 @@ export function BingoLanding() {
 
       <section className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Galeria</SectionLabel>
-          <SectionTitle>Recuerdos de una comunidad que se encuentra</SectionTitle>
-          <p className="mt-6 text-[#52617d]">Galeria responsive preparada para fotos reales de ediciones anteriores.</p>
+          <SectionLabel>{content.gallery.label}</SectionLabel>
+          <SectionTitle>{content.gallery.title}</SectionTitle>
+          <p className="mt-6 text-[#52617d]">{content.gallery.description}</p>
           <div className="mt-12 max-w-md overflow-hidden rounded-md shadow-2xl shadow-slate-900/12">
             <Image
               src="/images/bingo/bingo-card.svg"
@@ -331,7 +331,7 @@ export function BingoLanding() {
               className="aspect-[4/3] w-full object-cover"
             />
             <p className="bg-[#11142d] px-4 py-3 text-sm font-semibold text-white">
-              Placeholder generado. Reemplazar por foto oficial.
+              {content.gallery.caption}
             </p>
           </div>
         </div>
@@ -339,16 +339,15 @@ export function BingoLanding() {
 
       <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Zona gastronomica</SectionLabel>
-          <SectionTitle>Algo rico para acompanar la noche</SectionTitle>
+          <SectionLabel>{content.food.label}</SectionLabel>
+          <SectionTitle>{content.food.title}</SectionTitle>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#40506d]">
-            La oferta final puede estar sujeta a disponibilidad y se confirmara
-            con la organizacion del evento.
+            {content.food.description}
           </p>
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {foodOptions.map((option) => (
+            {content.food.options.map((option) => (
               <article key={option} className="flex items-center gap-4 rounded-md border border-slate-200 bg-[#f7f8fb] p-5 text-lg font-medium">
-                <Utensils className="h-5 w-5 text-[#ff9c00]" />
+                <EditableIcon name="Utensils" className="h-5 w-5 text-[#ff9c00]" />
                 {option}
               </article>
             ))}
@@ -360,11 +359,10 @@ export function BingoLanding() {
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <h2 className="max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl">
-              Ayudanos a hacer esta noche aun mas especial
+              {content.donations.title}
             </h2>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#40506d]">
-              Las familias, empresas y aliados que deseen donar un premio pueden
-              vincularse al Bingo Gemellista y aportar al exito de esta actividad.
+              {content.donations.description}
             </p>
           </div>
           <a
@@ -373,17 +371,17 @@ export function BingoLanding() {
             rel="noreferrer"
             className="inline-flex h-12 items-center justify-center rounded-md bg-[#11142d] px-6 text-sm font-bold text-white transition hover:bg-[#20254a] active:translate-y-px"
           >
-            Quiero donar un premio
+            {content.donations.cta}
           </a>
         </div>
       </section>
 
       <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
-          <SectionLabel>Publicidad para empresas</SectionLabel>
-          <SectionTitle>Planes para marcas que quieren acompanar a la comunidad</SectionTitle>
+          <SectionLabel>{content.sponsors.label}</SectionLabel>
+          <SectionTitle>{content.sponsors.title}</SectionTitle>
           <div className="mt-12 grid gap-4 lg:grid-cols-3">
-            {sponsorPlans.map((plan) => (
+            {content.sponsors.plans.map((plan) => (
               <article
                 key={plan.title}
                 className={`rounded-md border p-6 ${
@@ -393,7 +391,7 @@ export function BingoLanding() {
                 }`}
               >
                 {plan.recommended ? (
-                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d77200]">Recomendado</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d77200]">{content.sponsors.recommendedLabel}</p>
                 ) : null}
                 <h3 className="mt-4 text-3xl font-semibold">{plan.title}</h3>
                 <p className="mt-5 text-lg font-semibold">{plan.price}</p>
@@ -422,13 +420,12 @@ export function BingoLanding() {
       <section id="confirmacion" className="bg-[#171931] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
           <div>
-            <SectionLabel>Confirmacion</SectionLabel>
+            <SectionLabel>{content.confirmation.label}</SectionLabel>
             <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-[0.98] tracking-tight sm:text-5xl">
-              Cuentanos como nos acompanas
+              {content.confirmation.title}
             </h2>
             <p className="mt-7 max-w-xl text-lg leading-8 text-white/75">
-              Cada confirmacion se envia de forma segura a la API del sitio y
-              queda guardada en Supabase para la organizacion.
+              {content.confirmation.description}
             </p>
             <a
               href={whatsappUrl}
@@ -437,7 +434,7 @@ export function BingoLanding() {
               className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-bold text-white transition hover:bg-white/10 active:translate-y-px"
             >
               <MessageCircle className="h-4 w-4" />
-              Resolver por WhatsApp
+              {content.confirmation.whatsappCta}
             </a>
           </div>
           <BingoRegistrationForm />
@@ -446,9 +443,9 @@ export function BingoLanding() {
 
       <footer className="bg-[#11142d] px-5 py-10 text-white sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
-          <p>Bingo Gemellista 2026 - Colegio Agustin Gemelli</p>
+          <p>{content.footer.text}</p>
           <Link href="/" className="font-semibold text-white hover:text-[#ffc83d]">
-            Volver a Sales Col Gemelli
+            {content.footer.backLink}
           </Link>
         </div>
       </footer>
