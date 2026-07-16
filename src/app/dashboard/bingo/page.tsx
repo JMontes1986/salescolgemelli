@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Eye, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,27 @@ const sectionHelp: Record<string, string> = {
   "confirmation": "Textos del formulario de confirmacion.",
   "footer": "Textos finales de la pagina.",
 };
+
+const editorSections = [
+  { key: "hero", title: "Portada", description: "Titulos, botones principales y textos de la primera pantalla." },
+  { key: "event", title: "Datos del evento", description: "Fecha, hora, lugar, precios y notas importantes." },
+  { key: "intro", title: "Presentacion", description: "Texto introductorio para explicar el proposito del Bingo." },
+  { key: "stats", title: "Indicadores", description: "Numeros destacados como familias, tablas, premios o aliados." },
+  { key: "information", title: "Informacion esencial", description: "Avisos relevantes para familias y forma de pago." },
+  { key: "reasons", title: "Razones para asistir", description: "Tarjetas con beneficios o motivos para participar." },
+  { key: "prizes", title: "Premios", description: "Premios principales, donantes y notas destacadas." },
+  { key: "participation", title: "Como participar", description: "Pasos que deben seguir las familias para asistir." },
+  { key: "schedule", title: "Cronograma", description: "Momentos y horarios de la noche del evento." },
+  { key: "video", title: "Video", description: "Textos del bloque de video promocional." },
+  { key: "gallery", title: "Galeria", description: "Textos y pie de foto de la galeria publica." },
+  { key: "food", title: "Comida", description: "Opciones de la zona gastronomica." },
+  { key: "donations", title: "Donaciones", description: "Invitacion para familias o empresas donantes." },
+  { key: "sponsors", title: "Publicidad", description: "Planes y beneficios para patrocinadores." },
+  { key: "confirmation", title: "Formulario", description: "Textos de confirmacion y boton de WhatsApp." },
+  { key: "footer", title: "Pie de pagina", description: "Texto final y enlace de regreso." },
+] as const;
+
+type EditorSectionKey = typeof editorSections[number]["key"];
 
 function isObject(value: EditableValue): value is EditableObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -211,6 +232,7 @@ export default function BingoContentAdminPage() {
   const [content, setContent] = useState<BingoLandingContent>(() => cloneValue(defaultBingoContent));
   const [status, setStatus] = useState("Cargando contenido editable...");
   const [saving, setSaving] = useState(false);
+  const [activeSection, setActiveSection] = useState<EditorSectionKey>("hero");
 
   useEffect(() => {
     fetch("/api/dashboard/bingo-content", { cache: "no-store" })
@@ -263,10 +285,63 @@ export default function BingoContentAdminPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
-            Ruta publica: <strong>/bingo</strong>. Los cambios se guardan en Supabase y se aplican al publicar con el boton <strong>Guardar cambios</strong>.
+          <div className="grid gap-3 rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p><strong>Ruta publica:</strong> /bingo</p>
+              <p>Elige una seccion, edita sus campos y publica con <strong>Guardar cambios</strong>. No tienes que buscar entre toda la landing a la vez.</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href="/bingo" target="_blank" rel="noreferrer"><Eye className="mr-2 h-4 w-4" />Ver landing</a>
+            </Button>
           </div>
-          <FieldEditor fieldKey="landing" value={content as EditableValue} path={[]} onChange={handleChange} onAddItem={handleAddItem} onRemoveItem={handleRemoveItem} />
+
+          <section className="grid gap-6 xl:grid-cols-[320px_1fr]">
+            <aside className="space-y-3 rounded-xl border bg-muted/20 p-4 xl:sticky xl:top-4 xl:self-start">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">1. Escoge que vas a editar</h2>
+                <p className="text-sm text-muted-foreground">Las secciones estan separadas igual que en la pagina publica para que sea mas facil ubicarlas.</p>
+              </div>
+              <div className="space-y-2">
+                {editorSections.map((section, index) => {
+                  const selected = activeSection === section.key;
+                  return (
+                    <button
+                      key={section.key}
+                      type="button"
+                      onClick={() => setActiveSection(section.key)}
+                      className={`w-full rounded-lg border p-3 text-left transition hover:border-primary/60 hover:bg-background ${selected ? "border-primary bg-background shadow-sm" : "bg-background/60"}`}
+                    >
+                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        {selected ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <span className="grid h-4 w-4 place-items-center rounded-full border text-[10px] text-muted-foreground">{index + 1}</span>}
+                        {section.title}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{section.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <div className="space-y-5">
+              <section className="rounded-xl border p-4 shadow-sm">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-foreground">Mensaje inicial de WhatsApp</h2>
+                  <p className="text-sm text-muted-foreground">Este campo se mantiene siempre visible porque afecta varios botones de contacto.</p>
+                </div>
+                <FieldEditor fieldKey="whatsappMessage" value={content.whatsappMessage as EditableValue} path={["whatsappMessage"]} onChange={handleChange} onAddItem={handleAddItem} onRemoveItem={handleRemoveItem} />
+              </section>
+
+              <section className="space-y-4 rounded-xl border p-4 shadow-sm">
+                <div>
+                  <p className="text-sm font-medium text-primary">2. Editando ahora</p>
+                  <h2 className="text-2xl font-semibold text-foreground">{editorSections.find((section) => section.key === activeSection)?.title}</h2>
+                  <p className="text-sm text-muted-foreground">{editorSections.find((section) => section.key === activeSection)?.description}</p>
+                </div>
+                <FieldEditor fieldKey={activeSection} value={content[activeSection] as EditableValue} path={[activeSection]} onChange={handleChange} onAddItem={handleAddItem} onRemoveItem={handleRemoveItem} />
+              </section>
+            </div>
+          </section>
+
           <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-lg border bg-background/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">{status}</p>
             <Button onClick={saveContent} disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</Button>
