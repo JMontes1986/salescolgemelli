@@ -25,6 +25,25 @@ function EditableIcon({ name, className }: { name: keyof typeof iconMap; classNa
   return <Icon className={className} />;
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function shouldShowPendingNote(value: string, note?: string) {
+  if (!note?.trim()) return false;
+  const normalizedValue = normalizeText(value.trim());
+
+  return (
+    normalizedValue.length === 0 ||
+    normalizedValue.includes("por confirmar") ||
+    normalizedValue.includes("pendiente") ||
+    normalizedValue.includes("sin definir")
+  );
+}
+
 function SectionTitle({
   children,
   className = "",
@@ -127,7 +146,9 @@ export function BingoLanding({ content }: { content: BingoLandingContent }) {
                         {item.label}
                       </p>
                       <p className="mt-2 font-bold text-white">{item.value}</p>
-                      <p className="mt-1 text-sm text-white/60">{content.event.pendingNote}</p>
+                      {shouldShowPendingNote(item.value, content.event.pendingNote) ? (
+                        <p className="mt-1 text-sm text-white/60">{content.event.pendingNote}</p>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -183,7 +204,9 @@ export function BingoLanding({ content }: { content: BingoLandingContent }) {
               <article key={item.label} className="rounded-md border border-slate-200 bg-white p-6">
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#486283]">{item.label}</p>
                 <h3 className="mt-5 text-xl font-semibold text-[#070a2c]">{item.value}</h3>
-                <p className="mt-4 text-sm text-[#53617d]">{content.information.pendingText}</p>
+                {shouldShowPendingNote(item.value, content.information.pendingText) ? (
+                  <p className="mt-4 text-sm text-[#53617d]">{content.information.pendingText}</p>
+                ) : null}
               </article>
             ))}
           </div>
