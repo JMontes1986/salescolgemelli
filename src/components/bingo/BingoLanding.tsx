@@ -3,9 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   CheckCircle2,
-  ChevronRight,
   MessageCircle,
-  Play,
 } from "lucide-react";
 import { iconMap, type BingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
@@ -127,12 +125,6 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
                 >
                   {content.hero.secondaryCta}
                 </a>
-                <a
-                  href="#premios"
-                  className="inline-flex h-12 items-center justify-center gap-2 px-2 text-sm font-bold text-white transition hover:text-[#ffc83d]"
-                >
-                  {content.hero.awardsCta} <ChevronRight className="h-4 w-4" />
-                </a>
               </div>
             </div>
 
@@ -168,35 +160,6 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
         WhatsApp
       </a>
 
-      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-start">
-          <div>
-            <h2 className="max-w-xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl">
-              {content.intro.title}
-            </h2>
-            <div className="mt-7 max-w-2xl space-y-5 text-lg leading-8 text-[#394461]">
-              {content.intro.paragraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
-          </div>
-          <article className="rounded-md border border-[#ffc83d]/60 bg-[#fff8df] p-8 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.34em] text-[#d77200]">
-              Preventa activa
-            </p>
-            <p className="mt-5 text-7xl font-semibold leading-none tracking-tight text-[#070a2c] sm:text-8xl">
-              {new Intl.NumberFormat("es-CO").format(tablesSold)}
-            </p>
-            <p className="mt-4 text-lg font-semibold text-[#394461]">
-              Tablas vendidas en preventa
-            </p>
-            <p className="mt-3 text-sm leading-6 text-[#53617d]">
-              Este dato se actualiza desde las preventas registradas para que la comunidad vea cómo avanza la reserva de tablas.
-            </p>
-          </article>
-        </div>
-      </section>
-
       <section id="informacion" className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
           <SectionLabel>{content.information.label}</SectionLabel>
@@ -216,8 +179,13 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
               </article>
             ))}
           </div>
-          <div className="mt-6 rounded-md border border-[#ffd34f] bg-[#fff9e5] px-5 py-4 font-semibold">
-            {content.information.paymentAlert}
+          <div className="mt-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="rounded-md border border-[#ffd34f] bg-[#fff9e5] px-5 py-4 font-semibold">
+              {content.information.paymentAlert}
+            </div>
+            <div className="rounded-md border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-[#070a2c]">
+              Preventa: {new Intl.NumberFormat("es-CO").format(tablesSold)} tablas
+            </div>
           </div>
         </div>
       </section>
@@ -243,42 +211,6 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
         </div>
       </section>
 
-      <section id="premios" className="bg-[#171931] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.prizes.label}</SectionLabel>
-          <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight sm:text-5xl">
-            {content.prizes.title}
-          </h2>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82">
-            {content.prizes.description}
-          </p>
-          <div className="mt-12 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
-            {content.prizes.cards.map((prize) => (
-              <article
-                key={prize.title}
-                className={`rounded-md border p-7 ${
-                  prize.featured
-                    ? "border-white bg-white text-[#070a2c] lg:row-span-2"
-                    : "border-white/35 bg-white/5"
-                }`}
-              >
-                <EditableIcon name={prize.icon as keyof typeof iconMap} className={`h-7 w-7 ${prize.featured ? "text-[#d77200]" : "text-[#ffc83d]"}`} />
-                <p className={`mt-4 text-xs font-bold uppercase tracking-[0.28em] ${prize.featured ? "text-[#d77200]" : "text-white/55"}`}>
-                  {prize.label}
-                </p>
-                <h3 className={`mt-4 font-semibold ${prize.featured ? "text-4xl" : "text-2xl"}`}>{prize.title}</h3>
-                <p className={`mt-6 leading-8 ${prize.featured ? "text-[#42506c]" : "text-white/82"}`}>{prize.description}</p>
-                {prize.featured ? (
-                  <div className="mt-8 rounded-md bg-[#fff8e3] p-4 text-sm text-[#a14f00]">
-                    {content.prizes.featuredNote}
-                  </div>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="mx-auto max-w-7xl">
           <SectionLabel>{content.participation.label}</SectionLabel>
@@ -292,76 +224,6 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
                 <p className="mt-9 text-base leading-7 text-[#33415f]">{step}</p>
               </article>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.schedule.label}</SectionLabel>
-          <SectionTitle>{content.schedule.title}</SectionTitle>
-          <div className="mt-12 space-y-4">
-            {content.schedule.items.map((item) => (
-              <article key={item.title} className="grid gap-5 rounded-md border border-slate-200 bg-white p-6 md:grid-cols-[160px_1fr]">
-                <p className="font-mono text-sm font-bold text-[#d77200]">{item.time}</p>
-                <div>
-                  <h3 className="text-xl font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-[#52617d]">{item.description}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-          <div>
-            <SectionLabel>{content.video.label}</SectionLabel>
-            <SectionTitle>{content.video.title}</SectionTitle>
-            <p className="mt-7 max-w-xl text-lg leading-8 text-[#40506d]">
-              {content.video.description}
-            </p>
-          </div>
-          <div className="relative overflow-hidden rounded-lg bg-[#11142d] shadow-2xl shadow-slate-900/20">
-            <Image
-              src="/images/bingo/bingo-card.svg"
-              alt="Vista previa del video del Bingo Gemellista"
-              width={1200}
-              height={760}
-              className="aspect-video w-full object-cover opacity-75"
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,45,0.92),transparent_65%)]" />
-            <button
-              type="button"
-              className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-[#11142d] shadow-xl transition hover:scale-105 active:scale-100"
-              aria-label="Reproducir video promocional"
-            >
-              <Play className="h-8 w-8 fill-current" />
-            </button>
-            <div className="absolute inset-x-4 bottom-4 rounded-md bg-white/95 px-4 py-3 text-sm text-[#293753]">
-              {content.video.status}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.gallery.label}</SectionLabel>
-          <SectionTitle>{content.gallery.title}</SectionTitle>
-          <p className="mt-6 text-[#52617d]">{content.gallery.description}</p>
-          <div className="mt-12 max-w-md overflow-hidden rounded-md shadow-2xl shadow-slate-900/12">
-            <Image
-              src="/images/bingo/bingo-card.svg"
-              alt="Galeria del Bingo Gemellista"
-              width={820}
-              height={520}
-              className="aspect-[4/3] w-full object-cover"
-            />
-            <p className="bg-[#11142d] px-4 py-3 text-sm font-semibold text-white">
-              {content.gallery.caption}
-            </p>
           </div>
         </div>
       </section>
@@ -381,27 +243,6 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
               </article>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="bg-[#fff9e9] px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <h2 className="max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl">
-              {content.donations.title}
-            </h2>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-[#40506d]">
-              {content.donations.description}
-            </p>
-          </div>
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-[#11142d] px-6 text-sm font-bold text-white transition hover:bg-[#20254a] active:translate-y-px"
-          >
-            {content.donations.cta}
-          </a>
         </div>
       </section>
 

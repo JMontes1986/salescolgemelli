@@ -27,7 +27,7 @@ export const defaultBingoContent = {
     title: "Gran Bingo y Fiesta Familiar Gemellista 2026",
     eyebrow: "Colegio Agustin Gemelli",
     description:
-      "Una noche para compartir en familia, ganar grandes premios y seguir construyendo juntos el futuro de nuestros estudiantes.",
+      "La informacion importante del Bingo Gemellista en un solo lugar: fecha, lugar, participacion, comida, publicidad y confirmacion.",
     primaryCta: "Reservar tablas",
     secondaryCta: "Confirmar asistencia",
     awardsCta: "Conocer los premios",
@@ -58,18 +58,16 @@ export const defaultBingoContent = {
   ],
   information: {
     label: "Informacion esencial",
-    title: "Todo lo importante en un solo lugar",
-    description: "Los datos finales se actualizan desde el panel administrativo para evitar versiones cruzadas o informacion desactualizada.",
+    title: "Datos del evento",
+    description: "Consulta aqui los datos clave. Si algun punto sigue pendiente, se actualizara cuando exista confirmacion oficial.",
     pendingText: "Pendiente de confirmacion.",
     paymentAlert: "Las tablas se adquieren con pago en efectivo en la Tesoreria del colegio.",
   },
   reasons: [
-    { icon: "UsersRound", title: "Ambiente familiar", description: "Un espacio tranquilo y cercano para compartir con personas de todas las edades." },
-    { icon: "Trophy", title: "Grandes premios", description: "La pagina queda preparada para publicar premios confirmados, donantes y categorias." },
-    { icon: "Ticket", title: "Oportunidades para ganar", description: "Cada juego suma emocion y mantiene viva la participacion de toda la comunidad." },
-    { icon: "Music2", title: "Musica y entretenimiento", description: "Momentos especiales para acompanar la noche sin recargar la experiencia." },
-    { icon: "Utensils", title: "Zona gastronomica", description: "Opciones familiares para disfrutar durante el evento, sujetas a disponibilidad." },
-    { icon: "HandHeart", title: "Apoyo al colegio", description: "Participar tambien es ayudar a que los proyectos institucionales sigan creciendo." },
+    { icon: "UsersRound", title: "Plan familiar", description: "Una noche sencilla para compartir con la comunidad Gemellista." },
+    { icon: "Trophy", title: "Premios", description: "Juegos y oportunidades para participar durante el evento." },
+    { icon: "Utensils", title: "Comida", description: "Zona gastronomica disponible para acompanar la noche." },
+    { icon: "HandHeart", title: "Apoyo al colegio", description: "Tu participacion ayuda a fortalecer los proyectos institucionales." },
   ],
   prizes: {
     label: "Premios",
@@ -83,7 +81,7 @@ export const defaultBingoContent = {
       { icon: "Gift", label: "Ejemplo editable", title: "Sorpresa de patrocinador", description: "Espacio para vincular una marca aliada con un premio especifico." },
     ],
   },
-  participation: { label: "Como participar", title: "Cuatro pasos claros para llegar tranquilo", steps: ["Reserva o compra tus tablas por los canales oficiales del colegio.", "Confirma cuantas personas asistiran y cuantas tablas deseas.", "Recibe la informacion final del evento y las indicaciones de ingreso.", "Llega con tu familia, disfruta la noche y participa en los juegos."] },
+  participation: { label: "Como participar", title: "Participar es facil", steps: ["Reserva o compra tus tablas por los canales oficiales.", "Confirma tus datos y la cantidad de asistentes.", "Recibe las indicaciones finales del colegio.", "Asiste, disfruta y participa en los juegos."] },
   schedule: { label: "Cronograma", title: "Una noche organizada, con momentos para todos", items: [
     { time: "Por confirmar", title: "Apertura de puertas", description: "Ingreso y bienvenida de familias." },
     { time: "Por confirmar", title: "Bienvenida", description: "Saludo institucional y orientaciones generales." },
@@ -95,14 +93,14 @@ export const defaultBingoContent = {
   ] },
   video: { label: "Video promocional", title: "Una invitacion para sentir la noche antes de llegar", description: "Este bloque esta preparado para YouTube, Vimeo o video institucional. El reproductor solo carga cuando el usuario decide reproducirlo.", status: "Video pendiente de configuracion." },
   gallery: { label: "Galeria", title: "Recuerdos de una comunidad que se encuentra", description: "Galeria responsive preparada para fotos reales de ediciones anteriores.", caption: "Placeholder generado. Reemplazar por foto oficial." },
-  food: { label: "Zona gastronomica", title: "Algo rico para acompanar la noche", description: "La oferta final puede estar sujeta a disponibilidad y se confirmara con la organizacion del evento.", options: ["Perros calientes", "Empanadas", "Hamburguesas", "Pinchos", "Bebidas", "Postres"] },
+  food: { label: "Zona gastronomica", title: "Comida y bebidas", description: "Opciones practicas para comprar durante el evento. La disponibilidad final sera confirmada por la organizacion.", options: ["Perros calientes", "Empanadas", "Hamburguesas", "Pinchos", "Bebidas", "Postres"] },
   donations: { title: "Ayudanos a hacer esta noche aun mas especial", description: "Las familias, empresas y aliados que deseen donar un premio pueden vincularse al Bingo Gemellista y aportar al exito de esta actividad.", cta: "Quiero donar un premio" },
-  sponsors: { label: "Publicidad para empresas", title: "Planes para marcas que quieren acompanar a la comunidad", recommendedLabel: "Recomendado", cta: "Contactar", plans: [
+  sponsors: { label: "Publicidad para empresas", title: "Espacios para marcas aliadas", recommendedLabel: "Recomendado", cta: "Contactar", plans: [
     { title: "Pendon fisico", price: "Precio por confirmar", benefits: ["Presencia visible durante el evento", "Mencion como aliado", "Ubicacion sujeta a disponibilidad"] },
     { title: "Publicidad digital", price: "Precio por confirmar", benefits: ["Publicacion en piezas digitales", "Espacio para logo o mensaje", "Alcance en comunidad educativa"] },
     { title: "Plan combinado", price: "Precio por confirmar", recommended: true, benefits: ["Pendon fisico y presencia digital", "Mayor exposicion", "Prioridad en comunicacion del evento"] },
   ] },
-  confirmation: { label: "Confirmacion", title: "Cuentanos como nos acompanas", description: "Cada confirmacion se envia de forma segura a la API del sitio y queda guardada en Supabase para la organizacion.", whatsappCta: "Resolver por WhatsApp" },
+  confirmation: { label: "Confirmacion", title: "Confirma tu asistencia", description: "Diligencia el formulario o escribe por WhatsApp para que la organizacion registre tu participacion.", whatsappCta: "Resolver por WhatsApp" },
   footer: { text: "Bingo Gemellista 2026 - Colegio Agustin Gemelli", backLink: "Volver a Sales Col Gemelli" },
 };
 
