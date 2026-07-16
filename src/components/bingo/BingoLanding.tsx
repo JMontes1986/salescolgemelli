@@ -58,7 +58,7 @@ function SectionTitle({
   );
 }
 
-export function BingoLanding({ content }: { content: BingoLandingContent }) {
+export function BingoLanding({ content, tablesSold }: { content: BingoLandingContent; tablesSold: number }) {
   const whatsappUrl = `https://wa.me/${siteConfig.bingoWhatsAppNumber}?text=${encodeURIComponent(content.whatsappMessage)}`;
   const eventSummary = [
     { icon: iconMap.CalendarDays, label: "Fecha", value: content.event.date },
@@ -180,14 +180,20 @@ export function BingoLanding({ content }: { content: BingoLandingContent }) {
               ))}
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {content.stats.map((stat) => (
-              <article key={stat.label} className="rounded-md border border-slate-200 bg-[#f7f8fb] p-6">
-                <p className="text-3xl font-semibold tracking-tight">{stat.value}</p>
-                <p className="mt-3 text-sm text-[#53617d]">{stat.label}</p>
-              </article>
-            ))}
-          </div>
+          <article className="rounded-md border border-[#ffc83d]/60 bg-[#fff8df] p-8 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.34em] text-[#d77200]">
+              Preventa activa
+            </p>
+            <p className="mt-5 text-7xl font-semibold leading-none tracking-tight text-[#070a2c] sm:text-8xl">
+              {new Intl.NumberFormat("es-CO").format(tablesSold)}
+            </p>
+            <p className="mt-4 text-lg font-semibold text-[#394461]">
+              Tablas vendidas en preventa
+            </p>
+            <p className="mt-3 text-sm leading-6 text-[#53617d]">
+              Este dato se actualiza desde las preventas registradas para que la comunidad vea cómo avanza la reserva de tablas.
+            </p>
+          </article>
         </div>
       </section>
 

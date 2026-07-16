@@ -19,8 +19,26 @@ async function fetchBingoLandingContent() {
   return data.content ?? defaultBingoContent;
 }
 
-export function BingoLandingRealtime({ initialContent }: { initialContent: BingoLandingContent }) {
+async function fetchPreSaleTablesSold() {
+  const response = await fetch("/api/bingo/presale-tables", { cache: "no-store" });
+  const data = (await response.json().catch(() => ({}))) as { tablesSold?: number };
+
+  if (!response.ok) {
+    throw new Error("No se pudo actualizar el total de tablas en preventa.");
+  }
+
+  return Number.isFinite(data.tablesSold) ? Number(data.tablesSold) : 0;
+}
+
+export function BingoLandingRealtime({
+  initialContent,
+  initialTablesSold,
+}: {
+  initialContent: BingoLandingContent;
+  initialTablesSold: number;
+}) {
   const [content, setContent] = useState(initialContent);
+  const [tablesSold, setTablesSold] = useState(initialTablesSold);
 
   const refreshContent = useCallback(async () => {
     try {
@@ -30,11 +48,25 @@ export function BingoLandingRealtime({ initialContent }: { initialContent: Bingo
     }
   }, []);
 
+  const refreshTablesSold = useCallback(async () => {
+    try {
+      setTablesSold(await fetchPreSaleTablesSold());
+    } catch (error) {
+      console.error("No se pudo sincronizar el total de tablas en preventa.", error);
+    }
+  }, []);
+
   useSupabaseRealtime({
     tables: ["bingo_landing_content"],
     onChange: refreshContent,
     fallbackIntervalMs: 5_000,
   });
 
-  return <BingoLanding content={content} />;
+  useSupabaseRealtime({
+    tables: ["purchases"],
+    onChange: refreshTablesSold,
+    fallbackIntervalMs: 5_000,
+  });
+
+  return <BingoLanding content={content} tablesSold={tablesSold} />;
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BingoLandingRealtime } from "@/components/bingo/BingoLandingRealtime";
-import { getBingoLandingContent } from "@/lib/bingo-data";
+import { getBingoLandingContent, getBingoPreSaleTablesSold } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,10 @@ export const metadata: Metadata = {
 };
 
 export default async function BingoPage() {
-  const content = await getBingoLandingContent();
+  const [content, tablesSold] = await Promise.all([
+    getBingoLandingContent(),
+    getBingoPreSaleTablesSold(),
+  ]);
 
-  return <BingoLandingRealtime initialContent={content} />;
+  return <BingoLandingRealtime initialContent={content} initialTablesSold={tablesSold} />;
 }

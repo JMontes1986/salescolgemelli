@@ -132,4 +132,57 @@ export async function getBingoLandingContent() {
   }
 }
 
+function countCartUnits(items: unknown, onlyTables: boolean) {
+  if (!Array.isArray(items)) return 0;
+
+  return items.reduce((total, item) => {
+    if (!item || typeof item !== "object") return total;
+
+    const record = item as Record<string, unknown>;
+    const quantity = Number(record.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) return total;
+
+    if (onlyTables) {
+      const searchable = `${String(record.name ?? "")} ${String(record.id ?? "")}`;
+      const normalized = searchable
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+      if (!normalized.includes("tabla") && !normalized.includes("bingo")) {
+        return total;
+      }
+    }
+
+    return total + quantity;
+  }, 0);
+}
+
+export async function getBingoPreSaleTablesSold() {
+  try {
+    const { supabaseUrl } = getSupabaseEnv();
+    const serviceRoleKey = getSupabaseServiceRoleKey();
+    const params = new URLSearchParams({
+      select: "items",
+      id: "like.PV%",
+      status: "in.(pre-sale,pre-sale-confirmed)",
+    });
+    const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/purchases?${params.toString()}`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) return 0;
+
+    const rows = (await response.json()) as { items?: unknown }[];
+    const tableUnits = rows.reduce((total, row) => total + countCartUnits(row.items, true), 0);
+
+    return tableUnits > 0
+      ? tableUnits
+      : rows.reduce((total, row) => total + countCartUnits(row.items, false), 0);
+  } catch {
+    return 0;
+  }
+}
+
 export const iconMap = { CalendarDays, Gift, HandHeart, MapPin, Music2, Ticket, Trophy, Utensils, UsersRound };
