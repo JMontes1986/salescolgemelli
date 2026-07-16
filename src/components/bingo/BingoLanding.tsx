@@ -2,8 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  ArrowRight,
   CheckCircle2,
   MessageCircle,
+  Sparkles,
 } from "lucide-react";
 import { iconMap, type BingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
@@ -11,7 +13,7 @@ import { BingoRegistrationForm } from "./RegistrationForm";
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-xs font-bold uppercase tracking-[0.34em] text-[#d77200]">
+    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#b23178]">
       {children}
     </p>
   );
@@ -50,14 +52,80 @@ function SectionTitle({
   className?: string;
 }) {
   return (
-    <h2 className={`mt-4 max-w-3xl text-4xl font-semibold leading-[0.98] tracking-tight text-[#070a2c] sm:text-5xl ${className}`}>
+    <h2 className={`mt-4 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-[#232328] sm:text-5xl ${className}`}>
       {children}
     </h2>
   );
 }
 
+function SectionIntro({
+  label,
+  title,
+  description,
+  className = "",
+}: {
+  label: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <SectionLabel>{label}</SectionLabel>
+      <SectionTitle>{title}</SectionTitle>
+      {description ? (
+        <p className="mt-5 max-w-2xl text-base leading-7 text-[#4b4b52] sm:text-lg">
+          {description}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SectionBand({
+  id,
+  children,
+  variant = "light",
+}: {
+  id?: string;
+  children: ReactNode;
+  variant?: "light" | "soft" | "dark";
+}) {
+  const styles = {
+    light: "bg-[#fffdf7]",
+    soft: "bg-[#f6fbfb]",
+    dark: "bg-[#232328] text-white",
+  };
+
+  return (
+    <section id={id} className={`${styles[variant]} px-5 py-16 sm:px-8 lg:px-10 lg:py-24`}>
+      <div className="mx-auto max-w-7xl">{children}</div>
+    </section>
+  );
+}
+
+function MotionItem({
+  children,
+  index = 0,
+  className = "",
+}: {
+  children: ReactNode;
+  index?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`bingo-reveal ${className}`}
+      style={{ animationDelay: `${index * 90}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function BingoLanding({ content, tablesSold }: { content: BingoLandingContent; tablesSold: number }) {
   const whatsappUrl = `https://wa.me/${siteConfig.bingoWhatsAppNumber}?text=${encodeURIComponent(content.whatsappMessage)}`;
+  const tablesSoldLabel = new Intl.NumberFormat("es-CO").format(tablesSold);
   const eventSummary = [
     { icon: iconMap.CalendarDays, label: "Fecha", value: content.event.date },
     { icon: iconMap.CalendarDays, label: "Hora", value: content.event.time },
@@ -76,76 +144,119 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
     { label: "Forma de pago", value: content.event.payment },
     { label: "Juegos", value: content.event.games },
   ];
+  const marqueeItems = [
+    content.information.label,
+    content.participation.label,
+    content.food.label,
+    content.sponsors.label,
+    content.confirmation.label,
+  ];
 
   return (
-    <main className="min-h-screen bg-white text-[#070a2c]">
-      <section className="relative min-h-[100dvh] overflow-hidden bg-[#11142d] text-white">
+    <main className="bingo-landing min-h-screen bg-[#fffdf7] text-[#232328]">
+      <section className="relative min-h-[100dvh] overflow-hidden bg-[#232328] text-white">
         <Image
           src="/images/bingo/bingo-card.svg"
           alt="Ambiente del Bingo Gemellista"
           fill
           priority
-          className="object-cover opacity-35"
+          className="object-cover opacity-[0.42]"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,45,0.97)_0%,rgba(17,20,45,0.88)_32%,rgba(17,20,45,0.48)_70%,rgba(17,20,45,0.40)_100%)]" />
-        <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-7 sm:px-8 lg:px-10">
-          <nav className="flex items-center justify-between">
-            <Link href="/" className="text-xs font-bold uppercase tracking-[0.32em] text-white/90">
+        <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(35,35,40,0.97)_0%,rgba(35,35,40,0.91)_42%,rgba(35,35,40,0.48)_100%)]" />
+        <div className="absolute inset-0 bingo-stage-lines" />
+        <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
+          <nav className="bingo-reveal flex items-center justify-between gap-4">
+            <Link href="/" className="text-xs font-black uppercase tracking-[0.28em] text-white/90 transition hover:text-[#ecc643]">
               {content.hero.navLabel}
             </Link>
             <a
               href="#confirmacion"
-              className="rounded-md border border-white/25 px-4 py-3 text-sm font-bold text-white/95 transition hover:bg-white/10 active:translate-y-px"
+              className="inline-flex h-11 items-center justify-center rounded-md border border-white/20 bg-white/10 px-4 text-sm font-black text-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white/16 active:translate-y-px"
             >
               {content.hero.secondaryCta}
             </a>
           </nav>
 
-          <div className="grid flex-1 gap-10 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:pb-16">
-            <div className="max-w-3xl self-end">
-              <span className="inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
-                {content.hero.badge}
-              </span>
-              <h1 className="mt-8 max-w-4xl text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-                {content.hero.title}
-              </h1>
-              <p className="mt-7 max-w-2xl text-xl leading-8 text-white/92">
-                {content.hero.description}
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="#confirmacion"
-                  className="inline-flex h-12 items-center justify-center rounded-md bg-[#ffc83d] px-6 text-sm font-bold text-[#070a2c] transition hover:bg-[#ffd35c] active:translate-y-px"
-                >
-                  {content.hero.primaryCta}
-                </a>
-                <a
-                  href="#confirmacion"
-                  className="inline-flex h-12 items-center justify-center rounded-md border border-white/30 px-6 text-sm font-bold text-white transition hover:bg-white/10 active:translate-y-px"
-                >
-                  {content.hero.secondaryCta}
-                </a>
-              </div>
+          <div className="grid flex-1 gap-10 py-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:py-16">
+            <div className="self-end">
+              <MotionItem>
+                <span className="inline-flex items-center gap-2 rounded-md border border-white/18 bg-white/10 px-4 py-2 text-sm font-bold text-white/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-md">
+                  <Sparkles className="h-4 w-4 text-[#ecc643]" />
+                  {content.hero.badge}
+                </span>
+              </MotionItem>
+              <MotionItem index={1}>
+                <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl">
+                  {content.hero.title}
+                </h1>
+              </MotionItem>
+              <MotionItem index={2}>
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/84 sm:text-xl">
+                  {content.hero.description}
+                </p>
+              </MotionItem>
+              <MotionItem index={3}>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href="#confirmacion"
+                    className="bingo-primary-action inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#ecc643] px-6 text-sm font-black text-[#232328] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f2d263] active:translate-y-px"
+                  >
+                    {content.hero.primaryCta}
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                  <a
+                    href="#informacion"
+                    className="inline-flex h-12 items-center justify-center rounded-md border border-white/24 bg-white/[0.08] px-6 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.14] active:translate-y-px"
+                  >
+                    Ver datos del evento
+                  </a>
+                </div>
+              </MotionItem>
             </div>
 
-            <aside className="self-end rounded-lg border border-white/15 bg-white/10 p-6 shadow-2xl shadow-black/25 backdrop-blur-md">
-              <div className="divide-y divide-white/15">
-                {eventSummary.map((item) => (
-                  <div key={item.label} className="grid grid-cols-[auto_1fr] gap-4 py-4 first:pt-0 last:pb-0">
-                    <item.icon className="mt-1 h-5 w-5 text-[#ffc83d]" />
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/55">
+            <MotionItem index={4} className="self-end">
+              <aside className="bingo-ticket-panel overflow-hidden rounded-lg border border-white/16 bg-white/[0.13] shadow-2xl shadow-black/30 backdrop-blur-xl">
+                <div className="grid border-b border-white/14 bg-white/[0.08] px-5 py-5 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-white/58">Datos clave</p>
+                    <h2 className="mt-2 text-2xl font-black text-white">Todo para llegar listo</h2>
+                  </div>
+                  <div className="mt-4 rounded-md bg-[#0eb9c3] px-4 py-3 text-sm font-black text-[#08272a] sm:mt-0">
+                    Preventa: {tablesSoldLabel}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2">
+                  {eventSummary.map((item, index) => (
+                    <article
+                      key={item.label}
+                      className={`group border-b border-white/12 p-5 transition duration-300 hover:bg-white/[0.08] sm:even:border-l ${
+                        index >= eventSummary.length - 2 ? "sm:border-b-0" : ""
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5 text-[#ecc643] transition duration-300 group-hover:-translate-y-0.5" />
+                      <p className="mt-4 text-xs font-black uppercase tracking-[0.22em] text-white/50">
                         {item.label}
                       </p>
-                      <p className="mt-2 font-bold text-white">{item.value}</p>
+                      <p className="mt-2 text-lg font-black text-white">{item.value}</p>
                       {shouldShowPendingNote(item.value, content.event.pendingNote) ? (
-                        <p className="mt-1 text-sm text-white/60">{content.event.pendingNote}</p>
+                        <p className="mt-2 text-sm leading-6 text-white/56">{content.event.pendingNote}</p>
                       ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </aside>
+                    </article>
+                  ))}
+                </div>
+              </aside>
+            </MotionItem>
+          </div>
+
+          <div className="bingo-marquee mb-2 overflow-hidden border-y border-white/16 py-3 text-xs font-black uppercase tracking-[0.32em] text-white/68">
+            <div className="bingo-marquee-track flex min-w-max gap-8">
+              {[...marqueeItems, ...marqueeItems].map((item, index) => (
+                <span key={`${item}-${index}`} className="flex items-center gap-8">
+                  {item}
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ecc643]" />
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -154,121 +265,141 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
         href={whatsappUrl}
         target="_blank"
         rel="noreferrer"
-        className="fixed bottom-5 right-5 z-30 inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#19a84f] px-5 text-sm font-bold text-white shadow-lg shadow-emerald-900/25 transition hover:bg-[#148d42] active:translate-y-px"
+        className="fixed bottom-24 right-5 z-30 inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#128c4a] px-5 text-sm font-black text-white shadow-[0_18px_35px_-18px_rgba(18,140,74,0.95)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#0f7d42] active:translate-y-px"
       >
         <MessageCircle className="h-5 w-5" />
         WhatsApp
       </a>
 
-      <section id="informacion" className="bg-[#f5f6fa] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.information.label}</SectionLabel>
-          <SectionTitle>{content.information.title}</SectionTitle>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#3f4d68]">
-            {content.information.description}
-          </p>
+      <SectionBand id="informacion" variant="soft">
+        <SectionIntro
+          label={content.information.label}
+          title={content.information.title}
+          description={content.information.description}
+        />
 
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {essentialInfo.map((item) => (
-              <article key={item.label} className="rounded-md border border-slate-200 bg-white p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#486283]">{item.label}</p>
-                <h3 className="mt-5 text-xl font-semibold text-[#070a2c]">{item.value}</h3>
+        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {essentialInfo.map((item, index) => (
+            <MotionItem key={item.label} index={index}>
+              <article className="h-full rounded-md border border-[#dce9e9] bg-white p-5 shadow-[0_14px_35px_-26px_rgba(35,35,40,0.42)] transition duration-300 hover:-translate-y-1 hover:border-[#0eb9c3]/55">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#126d74]">{item.label}</p>
+                <h3 className="mt-4 text-xl font-black text-[#232328]">{item.value}</h3>
                 {shouldShowPendingNote(item.value, content.information.pendingText) ? (
-                  <p className="mt-4 text-sm text-[#53617d]">{content.information.pendingText}</p>
+                  <p className="mt-3 text-sm leading-6 text-[#5f686a]">{content.information.pendingText}</p>
                 ) : null}
               </article>
-            ))}
+            </MotionItem>
+          ))}
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-stretch">
+          <div className="rounded-md border border-[#ecc643]/65 bg-[#fff8d9] px-5 py-4 text-sm font-bold leading-6 text-[#5d4b10] shadow-[0_14px_35px_-28px_rgba(236,198,67,0.95)] sm:text-base">
+            {content.information.paymentAlert}
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-            <div className="rounded-md border border-[#ffd34f] bg-[#fff9e5] px-5 py-4 font-semibold">
-              {content.information.paymentAlert}
-            </div>
-            <div className="rounded-md border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-[#070a2c]">
-              Preventa: {new Intl.NumberFormat("es-CO").format(tablesSold)} tablas
-            </div>
+          <div className="rounded-md border border-[#0eb9c3]/35 bg-white px-5 py-4 text-sm font-black text-[#232328]">
+            Preventa registrada: {tablesSoldLabel} tablas
           </div>
         </div>
-      </section>
+      </SectionBand>
 
-      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>Por que asistir</SectionLabel>
-          <SectionTitle>Una actividad sencilla, familiar y con proposito</SectionTitle>
-          <div className="mt-12 grid gap-4 lg:grid-cols-[1.08fr_0.92fr_0.92fr]">
+      <SectionBand>
+        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+          <SectionIntro
+            label="Por que asistir"
+            title="Una noche clara para compartir en familia"
+            description="La informacion esta organizada para que cada familia sepa que hacer, donde llegar y como confirmar sin perderse entre textos largos."
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
             {content.reasons.map((reason, index) => (
+              <MotionItem key={reason.title} index={index}>
+                <article
+                  className={`group h-full rounded-md border border-[#ece5dd] bg-white p-6 shadow-[0_18px_42px_-30px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#d2528d]/45 ${
+                    index === 0 ? "sm:min-h-56" : ""
+                  }`}
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#fff1f7] text-[#b23178] transition duration-300 group-hover:-translate-y-0.5">
+                    <EditableIcon name={reason.icon as keyof typeof iconMap} className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-6 text-2xl font-black text-[#232328]">{reason.title}</h3>
+                  <p className="mt-4 max-w-sm text-base leading-7 text-[#4b4b52]">{reason.description}</p>
+                </article>
+              </MotionItem>
+            ))}
+          </div>
+        </div>
+      </SectionBand>
+
+      <SectionBand variant="soft">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <SectionIntro
+            label={content.participation.label}
+            title={content.participation.title}
+            description="Cuatro pasos simples para que el padre de familia confirme y llegue sin dudas."
+          />
+          <div className="relative">
+            <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-[#0eb9c3]/35 sm:block" />
+            <div className="grid gap-4">
+              {content.participation.steps.map((step, index) => (
+                <MotionItem key={step} index={index}>
+                  <article className="relative grid gap-4 rounded-md border border-[#dce9e9] bg-white p-5 shadow-[0_16px_38px_-30px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#0eb9c3]/55 sm:grid-cols-[3rem_1fr] sm:items-center">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0eb9c3] text-sm font-black text-[#062f34] ring-4 ring-[#eafafa]">
+                      {index + 1}
+                    </span>
+                    <p className="text-base font-semibold leading-7 text-[#33415f]">{step}</p>
+                  </article>
+                </MotionItem>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SectionBand>
+
+      <SectionBand>
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+          <SectionIntro
+            label={content.food.label}
+            title={content.food.title}
+            description={content.food.description}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {content.food.options.map((option, index) => (
+              <MotionItem key={option} index={index}>
+                <article className="group flex min-h-20 items-center gap-4 rounded-md border border-[#ece5dd] bg-white p-5 text-lg font-black text-[#232328] shadow-[0_15px_34px_-28px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#fff8d9] text-[#8a6f12] transition duration-300 group-hover:-rotate-2">
+                    <EditableIcon name="Utensils" className="h-5 w-5" />
+                  </span>
+                  {option}
+                </article>
+              </MotionItem>
+            ))}
+          </div>
+        </div>
+      </SectionBand>
+
+      <SectionBand variant="soft">
+        <SectionIntro
+          label={content.sponsors.label}
+          title={content.sponsors.title}
+          description="Empresas y familias aliadas pueden hacerse visibles ante la comunidad durante el evento."
+        />
+        <div className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_0.9fr_1fr]">
+          {content.sponsors.plans.map((plan, index) => (
+            <MotionItem key={plan.title} index={index}>
               <article
-                key={reason.title}
-                className={`rounded-md border border-slate-200 bg-white p-8 ${
-                  index === 0 ? "lg:row-span-2" : ""
-                }`}
-              >
-                <EditableIcon name={reason.icon as keyof typeof iconMap} className="h-7 w-7 text-[#ff9c00]" />
-                <h3 className="mt-8 text-xl font-semibold">{reason.title}</h3>
-                <p className="mt-5 max-w-sm text-base leading-7 text-[#4a5874]">{reason.description}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.participation.label}</SectionLabel>
-          <SectionTitle>{content.participation.title}</SectionTitle>
-          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {content.participation.steps.map((step, index) => (
-              <article key={step} className="rounded-md border border-slate-200 bg-[#f7f8fb] p-6">
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-[#11142d] text-sm font-bold text-white">
-                  {index + 1}
-                </span>
-                <p className="mt-9 text-base leading-7 text-[#33415f]">{step}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.food.label}</SectionLabel>
-          <SectionTitle>{content.food.title}</SectionTitle>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#40506d]">
-            {content.food.description}
-          </p>
-          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {content.food.options.map((option) => (
-              <article key={option} className="flex items-center gap-4 rounded-md border border-slate-200 bg-[#f7f8fb] p-5 text-lg font-medium">
-                <EditableIcon name="Utensils" className="h-5 w-5 text-[#ff9c00]" />
-                {option}
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <SectionLabel>{content.sponsors.label}</SectionLabel>
-          <SectionTitle>{content.sponsors.title}</SectionTitle>
-          <div className="mt-12 grid gap-4 lg:grid-cols-3">
-            {content.sponsors.plans.map((plan) => (
-              <article
-                key={plan.title}
-                className={`rounded-md border p-6 ${
+                className={`group h-full rounded-md border p-6 shadow-[0_18px_42px_-30px_rgba(35,35,40,0.48)] transition duration-300 hover:-translate-y-1 ${
                   plan.recommended
-                    ? "border-[#ffb323] bg-[#fff9e9]"
-                    : "border-slate-200 bg-[#f7f8fb]"
+                    ? "border-[#d2528d]/45 bg-[#fff1f7]"
+                    : "border-[#dce9e9] bg-white"
                 }`}
               >
                 {plan.recommended ? (
-                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d77200]">{content.sponsors.recommendedLabel}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b23178]">{content.sponsors.recommendedLabel}</p>
                 ) : null}
-                <h3 className="mt-4 text-3xl font-semibold">{plan.title}</h3>
-                <p className="mt-5 text-lg font-semibold">{plan.price}</p>
-                <ul className="mt-8 space-y-4 text-sm text-[#52617d]">
+                <h3 className="mt-4 text-3xl font-black text-[#232328]">{plan.title}</h3>
+                <p className="mt-4 text-lg font-black text-[#126d74]">{plan.price}</p>
+                <ul className="mt-7 space-y-4 text-sm leading-6 text-[#4b4b52]">
                   {plan.benefits.map((benefit) => (
                     <li key={benefit} className="flex gap-3">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#ff9c00]" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#b23178]" />
                       {benefit}
                     </li>
                   ))}
@@ -277,31 +408,33 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
                   href={whatsappUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-8 inline-flex h-11 w-full items-center justify-center rounded-md bg-[#11142d] text-sm font-bold text-white transition hover:bg-[#20254a] active:translate-y-px"
+                  className="mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#232328] text-sm font-black text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#34343a] active:translate-y-px"
                 >
-                  Contactar
+                  {content.sponsors.cta}
+                  <ArrowRight className="h-4 w-4" />
                 </a>
               </article>
-            ))}
-          </div>
+            </MotionItem>
+          ))}
         </div>
-      </section>
+      </SectionBand>
 
-      <section id="confirmacion" className="bg-[#171931] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+      <section id="confirmacion" className="relative overflow-hidden bg-[#232328] px-5 py-16 text-white sm:px-8 lg:px-10 lg:py-24">
+        <div className="absolute inset-0 bingo-stage-lines opacity-35" />
+        <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
           <div>
             <SectionLabel>{content.confirmation.label}</SectionLabel>
-            <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-[0.98] tracking-tight sm:text-5xl">
+            <h2 className="mt-4 max-w-xl text-4xl font-black leading-[0.95] tracking-tight sm:text-5xl">
               {content.confirmation.title}
             </h2>
-            <p className="mt-7 max-w-xl text-lg leading-8 text-white/75">
+            <p className="mt-6 max-w-xl text-lg leading-8 text-white/72">
               {content.confirmation.description}
             </p>
             <a
               href={whatsappUrl}
               target="_blank"
               rel="noreferrer"
-              className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-bold text-white transition hover:bg-white/10 active:translate-y-px"
+              className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md border border-white/20 bg-white/10 px-5 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white/16 active:translate-y-px"
             >
               <MessageCircle className="h-4 w-4" />
               {content.confirmation.whatsappCta}
@@ -311,10 +444,10 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
         </div>
       </section>
 
-      <footer className="bg-[#11142d] px-5 py-10 text-white sm:px-8 lg:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="bg-[#19191e] px-5 py-10 text-white sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-white/68 sm:flex-row sm:items-center sm:justify-between">
           <p>{content.footer.text}</p>
-          <Link href="/" className="font-semibold text-white hover:text-[#ffc83d]">
+          <Link href="/" className="font-bold text-white transition hover:text-[#ecc643]">
             {content.footer.backLink}
           </Link>
         </div>

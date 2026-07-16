@@ -89,7 +89,7 @@ export function BingoRegistrationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg bg-white p-6 text-[#080b2c] shadow-2xl shadow-black/20 sm:p-8">
+    <form onSubmit={handleSubmit} className="bingo-reveal rounded-lg border border-white/12 bg-white p-5 text-[#232328] shadow-[0_28px_80px_-45px_rgba(0,0,0,0.68)] sm:p-7">
       <div className="grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">
           Nombre completo *
@@ -97,7 +97,7 @@ export function BingoRegistrationForm() {
             required
             value={form.fullName}
             onChange={(event) => updateField("fullName", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -105,7 +105,7 @@ export function BingoRegistrationForm() {
           <input
             value={form.documentNumber}
             onChange={(event) => updateField("documentNumber", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -115,7 +115,7 @@ export function BingoRegistrationForm() {
             inputMode="tel"
             value={form.phone}
             onChange={(event) => updateField("phone", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -124,7 +124,7 @@ export function BingoRegistrationForm() {
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -133,7 +133,7 @@ export function BingoRegistrationForm() {
             required
             value={form.gradeCourse}
             onChange={(event) => updateField("gradeCourse", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -142,7 +142,7 @@ export function BingoRegistrationForm() {
             required
             value={form.studentName}
             onChange={(event) => updateField("studentName", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -154,7 +154,7 @@ export function BingoRegistrationForm() {
             type="number"
             value={form.attendees}
             onChange={(event) => updateField("attendees", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
@@ -166,7 +166,7 @@ export function BingoRegistrationForm() {
             type="number"
             value={form.tables}
             onChange={(event) => updateField("tables", event.target.value)}
-            className="h-11 rounded-md border border-slate-300 px-3 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+            className="h-11 rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
           />
         </label>
       </div>
@@ -177,17 +177,17 @@ export function BingoRegistrationForm() {
           value={form.notes}
           onChange={(event) => updateField("notes", event.target.value)}
           rows={4}
-          className="rounded-md border border-slate-300 px-3 py-2 outline-none transition focus:border-[#f2a900] focus:ring-2 focus:ring-[#f2a900]/30"
+          className="rounded-md border border-[#dbe1e1] bg-[#fbfdfd] px-3 py-2 outline-none focus:border-[#0eb9c3] focus:ring-2 focus:ring-[#0eb9c3]/20"
         />
       </label>
 
-      <label className="mt-6 flex items-start gap-3 rounded-md bg-slate-50 p-4 text-sm">
+      <label className="mt-6 flex items-start gap-3 rounded-md border border-[#e8eeee] bg-[#f6fbfb] p-4 text-sm leading-6">
         <input
           required
           type="checkbox"
           checked={form.privacy}
           onChange={(event) => updateField("privacy", event.target.checked)}
-          className="mt-1 h-5 w-5 rounded border-slate-300 accent-[#11152f]"
+          className="mt-1 h-5 w-5 rounded border-slate-300 accent-[#0eb9c3]"
         />
         <span>Autorizo el tratamiento de datos personales para la gestion de mi confirmacion.</span>
       </label>
@@ -210,7 +210,7 @@ export function BingoRegistrationForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#11152f] px-5 text-sm font-bold text-white transition hover:bg-[#20254a] active:translate-y-px disabled:opacity-70"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#232328] px-5 text-sm font-black text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#34343a] active:translate-y-px disabled:opacity-70"
         >
           {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           Enviar confirmacion
@@ -219,7 +219,7 @@ export function BingoRegistrationForm() {
           href={whatsappUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-12 items-center justify-center rounded-md border border-[#11152f]/20 px-5 text-sm font-bold text-[#11152f] transition hover:bg-[#f8f6ec] active:translate-y-px"
+          className="inline-flex h-12 items-center justify-center rounded-md border border-[#b23178]/25 px-5 text-sm font-black text-[#b23178] transition duration-300 hover:-translate-y-0.5 hover:bg-[#fff1f7] active:translate-y-px"
         >
           Enviar por WhatsApp
         </a>
