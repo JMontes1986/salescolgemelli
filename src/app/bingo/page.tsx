@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BingoLanding } from "@/components/bingo/BingoLanding";
+import { BingoLandingRealtime } from "@/components/bingo/BingoLandingRealtime";
 import { getBingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
 
@@ -32,5 +32,5 @@ export const metadata: Metadata = {
 export default async function BingoPage() {
   const content = await getBingoLandingContent();
 
-  return <BingoLanding content={content} />;
+  return <BingoLandingRealtime initialContent={content} />;
 }

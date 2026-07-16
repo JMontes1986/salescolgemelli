@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { getSupabaseEnv } from '@/lib/supabase';
 
-type RealtimeTable = 'products' | 'purchases' | 'cashboxSessions' | 'returns' | 'auditLogs' | 'users';
+type RealtimeTable = 'products' | 'purchases' | 'cashboxSessions' | 'returns' | 'auditLogs' | 'users' | 'bingo_landing_content';
 
 type RealtimeStatus = 'connected' | 'fallback' | 'disconnected';
 
