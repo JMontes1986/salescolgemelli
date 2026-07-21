@@ -174,7 +174,6 @@ export function BingoLanding({
           className="object-cover opacity-[0.42]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(35,35,40,0.97)_0%,rgba(35,35,40,0.91)_42%,rgba(35,35,40,0.48)_100%)]" />
-        <div className="absolute inset-0 bingo-stage-lines" />
         <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
           <nav className="bingo-reveal flex items-center justify-between gap-4">
             <Link href="/" className="text-xs font-black uppercase tracking-[0.28em] text-white/90 transition hover:text-[#ecc643]">
