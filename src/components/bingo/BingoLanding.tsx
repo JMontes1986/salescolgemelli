@@ -306,7 +306,7 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
           <SectionIntro
             label="Por que asistir"
             title="Una noche clara para compartir en familia"
-            description="La informacion esta organizada para que cada familia sepa que hacer, donde llegar y como confirmar sin perderse entre textos largos."
+            description="Ven a vivir una tarde familiar llena de premios, alegria y union gemellista. Confirma tu asistencia hoy y asegura tu lugar en una celebracion pensada para compartir, apoyar y disfrutar juntos."
           />
           <div className="grid gap-4 sm:grid-cols-2">
             {content.reasons.map((reason, index) => (
