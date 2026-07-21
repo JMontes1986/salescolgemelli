@@ -38,6 +38,14 @@ type BingoRegistration = {
 type BingoViewStats = {
   totalViews: number;
   updatedAt: string | null;
+  browserSummary: Record<string, number>;
+  deviceSummary: Record<string, number>;
+  recentViews: Array<{
+    id: string;
+    viewed_at: string;
+    browser: string;
+    device: string;
+  }>;
 };
 
 const fieldLabels: Record<string, string> = {
@@ -288,7 +296,13 @@ export default function BingoContentAdminPage() {
   const [registrations, setRegistrations] = useState<BingoRegistration[]>([]);
   const [registrationsStatus, setRegistrationsStatus] = useState("Cargando registros...");
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
-  const [viewStats, setViewStats] = useState<BingoViewStats>({ totalViews: 0, updatedAt: null });
+  const [viewStats, setViewStats] = useState<BingoViewStats>({
+    totalViews: 0,
+    updatedAt: null,
+    browserSummary: {},
+    deviceSummary: {},
+    recentViews: [],
+  });
   const [viewsStatus, setViewsStatus] = useState("Cargando visitas...");
   const [loadingViews, setLoadingViews] = useState(false);
   const heroBackgroundImageUrl = content.hero.backgroundImageUrl || "/images/bingo/bingo-card.svg";
@@ -334,6 +348,9 @@ export default function BingoContentAdminPage() {
       setViewStats({
         totalViews: Number(data.totalViews ?? 0),
         updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : null,
+        browserSummary: data.browserSummary && typeof data.browserSummary === "object" ? data.browserSummary : {},
+        deviceSummary: data.deviceSummary && typeof data.deviceSummary === "object" ? data.deviceSummary : {},
+        recentViews: Array.isArray(data.recentViews) ? data.recentViews : [],
       });
       setViewsStatus("Contador actualizado.");
     } catch (error) {
@@ -576,7 +593,7 @@ export default function BingoContentAdminPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="grid gap-6">
             <div>
               <p className="text-sm text-muted-foreground">{viewsStatus}</p>
               <p className="mt-3 text-5xl font-black tracking-tight text-foreground">
@@ -588,12 +605,72 @@ export default function BingoContentAdminPage() {
                   : "Todavia no hay visitas registradas."}
               </p>
             </div>
-            <Button type="button" variant="outline" asChild>
-              <a href="/bingo" target="_blank" rel="noreferrer">
-                <Eye className="mr-2 h-4 w-4" />
-                Ver pagina publica
-              </a>
-            </Button>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <h3 className="text-sm font-semibold text-foreground">Por dispositivo</h3>
+                <div className="mt-3 grid gap-2">
+                  {Object.entries(viewStats.deviceSummary).length > 0 ? (
+                    Object.entries(viewStats.deviceSummary).map(([label, count]) => (
+                      <div key={label} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Sin datos de dispositivo.</p>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <h3 className="text-sm font-semibold text-foreground">Por navegador</h3>
+                <div className="mt-3 grid gap-2">
+                  {Object.entries(viewStats.browserSummary).length > 0 ? (
+                    Object.entries(viewStats.browserSummary).map(([label, count]) => (
+                      <div key={label} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Sin datos de navegador.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" asChild>
+                <a href="/bingo" target="_blank" rel="noreferrer">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Ver pagina publica
+                </a>
+              </Button>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Navegador</TableHead>
+                  <TableHead>Dispositivo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {viewStats.recentViews.length > 0 ? (
+                  viewStats.recentViews.map((view) => (
+                    <TableRow key={view.id}>
+                      <TableCell className="min-w-40 whitespace-nowrap">{formatRegistrationDate(view.viewed_at)}</TableCell>
+                      <TableCell>{view.browser || "Desconocido"}</TableCell>
+                      <TableCell>{view.device || "Desconocido"}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                      Todavia no hay visitas detalladas.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

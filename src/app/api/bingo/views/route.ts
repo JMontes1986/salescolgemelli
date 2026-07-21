@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
 import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase";
 
+function detectBrowser(userAgent: string) {
+  if (/Edg\//i.test(userAgent)) return "Microsoft Edge";
+  if (/OPR\/|Opera/i.test(userAgent)) return "Opera";
+  if (/Chrome\/|CriOS\//i.test(userAgent)) return "Google Chrome";
+  if (/Firefox\/|FxiOS\//i.test(userAgent)) return "Mozilla Firefox";
+  if (/Safari\//i.test(userAgent)) return "Safari";
+  return "Desconocido";
+}
+
+function detectDevice(userAgent: string) {
+  if (/iPad|Tablet|PlayBook|Silk/i.test(userAgent)) return "Tablet";
+  if (/Mobi|Android|iPhone|iPod|IEMobile|Windows Phone/i.test(userAgent)) return "Movil";
+  return "PC";
+}
+
 async function requestSupabaseViews(method: "GET" | "POST" | "PATCH", body?: unknown) {
   const { supabaseUrl } = getSupabaseEnv();
   const serviceRoleKey = getSupabaseServiceRoleKey();
@@ -21,8 +36,35 @@ async function requestSupabaseViews(method: "GET" | "POST" | "PATCH", body?: unk
   });
 }
 
-export async function POST() {
+async function insertViewEvent(request: Request) {
+  const { supabaseUrl } = getSupabaseEnv();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+  const userAgent = request.headers.get("user-agent") ?? "";
+  const browser = detectBrowser(userAgent);
+  const device = detectDevice(userAgent);
+
+  await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/bingo_landing_view_events`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      browser,
+      device,
+      user_agent: userAgent.slice(0, 500),
+      viewed_at: new Date().toISOString(),
+    }),
+    cache: "no-store",
+  });
+}
+
+export async function POST(request: Request) {
   try {
+    await insertViewEvent(request);
+
     const currentResponse = await requestSupabaseViews("GET");
     const currentText = await currentResponse.text();
 

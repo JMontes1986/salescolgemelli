@@ -92,4 +92,28 @@ insert into public.bingo_landing_views (id, total_views, updated_at)
 values ('default', 0, now())
 on conflict (id) do nothing;
 
+create table if not exists public.bingo_landing_view_events (
+  id uuid primary key default gen_random_uuid(),
+  viewed_at timestamptz not null default now(),
+  browser text not null default 'Desconocido',
+  device text not null default 'Desconocido',
+  user_agent text not null default ''
+);
+
+alter table public.bingo_landing_view_events enable row level security;
+
+drop policy if exists "service_role_bingo_landing_view_events_all" on public.bingo_landing_view_events;
+
+create policy "service_role_bingo_landing_view_events_all"
+  on public.bingo_landing_view_events
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+grant select, insert on public.bingo_landing_view_events to service_role;
+
+create index if not exists bingo_landing_view_events_viewed_at_idx
+  on public.bingo_landing_view_events (viewed_at desc);
+
 notify pgrst, 'reload schema';

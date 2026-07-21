@@ -11,6 +11,21 @@ async function getDashboardSession() {
   return verifyAuthSessionCookie(cookieStore.get(AUTH_SESSION_COOKIE)?.value);
 }
 
+type BingoViewEvent = {
+  id: string;
+  viewed_at: string;
+  browser: string;
+  device: string;
+};
+
+function countBy(events: BingoViewEvent[], key: "browser" | "device") {
+  return events.reduce<Record<string, number>>((counts, event) => {
+    const label = event[key] || "Desconocido";
+    counts[label] = (counts[label] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 export async function GET() {
   try {
     const session = await getDashboardSession();
@@ -57,11 +72,31 @@ export async function GET() {
     const rows = responseText
       ? (JSON.parse(responseText) as Array<{ total_views?: number; updated_at?: string }>)
       : [];
+    const eventsUrl = new URL(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/bingo_landing_view_events`);
+    eventsUrl.searchParams.set("select", "id,viewed_at,browser,device");
+    eventsUrl.searchParams.set("order", "viewed_at.desc");
+    eventsUrl.searchParams.set("limit", "50");
+    const eventsResponse = await fetch(eventsUrl.toString(), {
+      method: "GET",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+    const eventsText = await eventsResponse.text();
+    const events = eventsResponse.ok && eventsText
+      ? (JSON.parse(eventsText) as BingoViewEvent[])
+      : [];
 
     return NextResponse.json(
       {
         totalViews: Number(rows[0]?.total_views ?? 0),
         updatedAt: rows[0]?.updated_at ?? null,
+        recentViews: events,
+        browserSummary: countBy(events, "browser"),
+        deviceSummary: countBy(events, "device"),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
