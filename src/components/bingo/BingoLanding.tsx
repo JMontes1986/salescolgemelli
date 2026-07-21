@@ -159,6 +159,8 @@ export function BingoLanding({
     content.sponsors.label,
     content.confirmation.label,
   ];
+  const featuredFoodProduct = foodProducts[0];
+  const secondaryFoodProducts = foodProducts.slice(1);
 
   return (
     <main className="bingo-landing min-h-screen bg-[#fffdf7] text-[#232328]">
@@ -363,53 +365,98 @@ export function BingoLanding({
       </SectionBand>
 
       <SectionBand>
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-          <SectionIntro
-            label={content.food.label}
-            title={content.food.title}
-            description={content.food.description}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+          <div className="lg:sticky lg:top-10">
+            <SectionIntro
+              label={content.food.label}
+              title={content.food.title}
+              description={content.food.description}
+            />
+            <div className="mt-8 rounded-md border border-[#ecc643]/45 bg-[#fff8d9] p-5 text-sm font-bold leading-6 text-[#5d4b10] shadow-[0_18px_42px_-34px_rgba(236,198,67,0.9)]">
+              Compra tus antojos durante el evento y acompana cada juego con algo rico para compartir.
+            </div>
+          </div>
+
+          <div className="space-y-4">
             {foodProducts.length > 0 ? (
-              foodProducts.map((product, index) => (
-                <MotionItem key={product.id} index={index}>
-                  <article className="group overflow-hidden rounded-md border border-[#ece5dd] bg-white shadow-[0_18px_42px_-30px_rgba(35,35,40,0.48)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/75">
-                    <div className="grid min-h-32 grid-cols-[6rem_1fr]">
-                      <div className="relative bg-[#fff8d9]">
-                        {product.imageUrl ? (
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.imageHint || product.name}
-                            fill
-                            sizes="96px"
-                            className="object-cover transition duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[#8a6f12]">
-                            <EditableIcon name="Utensils" className="h-9 w-9" />
-                          </div>
-                        )}
+              <>
+                {featuredFoodProduct ? (
+                  <MotionItem>
+                    <article className="group overflow-hidden rounded-md border border-[#ece5dd] bg-white shadow-[0_28px_70px_-48px_rgba(35,35,40,0.55)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/80">
+                      <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
+                        <div className="relative aspect-[4/3] bg-[#fff8d9] md:aspect-auto md:min-h-[18rem]">
+                          {featuredFoodProduct.imageUrl ? (
+                            <Image
+                              src={featuredFoodProduct.imageUrl}
+                              alt={featuredFoodProduct.imageHint || featuredFoodProduct.name}
+                              fill
+                              sizes="(min-width: 1024px) 420px, 100vw"
+                              className="object-cover transition duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#8a6f12]">
+                              <EditableIcon name="Utensils" className="h-16 w-16" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col justify-center p-7 sm:p-8">
+                          <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b23178]">
+                            Recomendado para compartir
+                          </p>
+                          <h3 className="mt-4 text-4xl font-black leading-none tracking-tight text-[#232328]">
+                            {featuredFoodProduct.name}
+                          </h3>
+                          <p className="mt-5 max-w-sm text-base font-semibold leading-7 text-[#4b4b52]">
+                            Una opcion lista para disfrutar mientras avanza la noche del bingo.
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex min-w-0 items-center p-5">
-                        <h3 className="text-xl font-black leading-tight text-[#232328]">
-                          {product.name}
-                        </h3>
-                      </div>
-                    </div>
-                  </article>
-                </MotionItem>
-              ))
+                    </article>
+                  </MotionItem>
+                ) : null}
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {secondaryFoodProducts.map((product, index) => (
+                    <MotionItem key={product.id} index={index + 1}>
+                      <article className="group overflow-hidden rounded-md border border-[#ece5dd] bg-white shadow-[0_16px_38px_-30px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
+                        <div className="relative aspect-[5/4] bg-[#fff8d9]">
+                          {product.imageUrl ? (
+                            <Image
+                              src={product.imageUrl}
+                              alt={product.imageHint || product.name}
+                              fill
+                              sizes="(min-width: 1280px) 210px, (min-width: 640px) 45vw, 100vw"
+                              className="object-cover transition duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#8a6f12]">
+                              <EditableIcon name="Utensils" className="h-10 w-10" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex min-h-20 items-center p-4">
+                          <h3 className="text-lg font-black leading-tight text-[#232328]">
+                            {product.name}
+                          </h3>
+                        </div>
+                      </article>
+                    </MotionItem>
+                  ))}
+                </div>
+              </>
             ) : (
-              content.food.options.map((option, index) => (
-                <MotionItem key={option} index={index}>
-                  <article className="group flex min-h-20 items-center gap-4 rounded-md border border-[#ece5dd] bg-white p-5 text-lg font-black text-[#232328] shadow-[0_15px_34px_-28px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#fff8d9] text-[#8a6f12] transition duration-300 group-hover:-rotate-2">
-                      <EditableIcon name="Utensils" className="h-5 w-5" />
-                    </span>
-                    {option}
-                  </article>
-                </MotionItem>
-              ))
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {content.food.options.map((option, index) => (
+                  <MotionItem key={option} index={index}>
+                    <article className="group flex min-h-28 items-center gap-4 rounded-md border border-[#ece5dd] bg-white p-5 text-lg font-black text-[#232328] shadow-[0_15px_34px_-28px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#fff8d9] text-[#8a6f12] transition duration-300 group-hover:-rotate-2">
+                        <EditableIcon name="Utensils" className="h-6 w-6" />
+                      </span>
+                      {option}
+                    </article>
+                  </MotionItem>
+                ))}
+              </div>
             )}
           </div>
         </div>
