@@ -226,6 +226,57 @@
     transform: translateY(-1px);
   }
 
+  .dark .bingo-landing {
+    background: #15161a !important;
+    color: #f7f7fb !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) {
+    background: #15161a !important;
+  }
+
+  .dark .bingo-landing section:nth-of-type(even):not(:first-child):not(#confirmacion) {
+    background: #101216 !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) h2,
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) h3 {
+    color: #f8fafc !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) p {
+    color: #cbd5e1 !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) article,
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="bg-white"] {
+    background-color: #1d2027 !important;
+    border-color: rgb(255 255 255 / 0.12) !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="bg-[#fff8d9]"] {
+    background-color: #2b2617 !important;
+    color: #f5d76b !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="text-[#232328]"],
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="text-[#33415f]"],
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="text-[#4b4b52]"] {
+    color: #f8fafc !important;
+  }
+
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="text-[#5d4b10]"],
+  .dark .bingo-landing section:not(:first-child):not(#confirmacion) [class*="text-[#126d74]"] {
+    color: #f5d76b !important;
+  }
+
+  .dark .bingo-landing input,
+  .dark .bingo-landing textarea {
+    background-color: #111318 !important;
+    border-color: rgb(255 255 255 / 0.18) !important;
+    color: #f8fafc !important;
+  }
+
   @keyframes bingo-reveal {
     from {
       opacity: 0;
