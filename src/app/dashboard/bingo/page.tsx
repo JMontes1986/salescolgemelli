@@ -1,16 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Eye, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Download, Eye, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { defaultBingoContent, type BingoLandingContent } from "@/lib/bingo-data";
 
 type EditableValue = string | number | boolean | null | EditableObject | EditableValue[];
 type EditableObject = { [key: string]: EditableValue };
+
+type BingoRegistration = {
+  id: string;
+  created_at: string;
+  full_name: string;
+  document_number: string;
+  phone: string;
+  email: string;
+  grade_course: string;
+  student_name: string;
+  attendees: number;
+  tables: number;
+  notes: string;
+  source: string;
+};
 
 const fieldLabels: Record<string, string> = {
   whatsappMessage: "Mensaje de WhatsApp",
@@ -151,6 +174,20 @@ function removeArrayItem(value: EditableValue, path: (string | number)[], remove
   return updateAtPath(value, path, target.filter((_, index) => index !== removeIndex));
 }
 
+function formatRegistrationDate(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function escapeCsvValue(value: string | number | null | undefined) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
 function FieldEditor({ fieldKey, value, path, onChange, onAddItem, onRemoveItem }: {
   fieldKey: string;
   value: EditableValue;
@@ -233,6 +270,9 @@ export default function BingoContentAdminPage() {
   const [status, setStatus] = useState("Cargando contenido editable...");
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState<EditorSectionKey>("hero");
+  const [registrations, setRegistrations] = useState<BingoRegistration[]>([]);
+  const [registrationsStatus, setRegistrationsStatus] = useState("Cargando registros...");
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
   useEffect(() => {
     fetch("/api/dashboard/bingo-content", { cache: "no-store" })
@@ -243,6 +283,77 @@ export default function BingoContentAdminPage() {
       })
       .catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar el contenido."));
   }, []);
+
+  const loadRegistrations = async () => {
+    setLoadingRegistrations(true);
+    setRegistrationsStatus("Consultando registros...");
+    try {
+      const response = await fetch("/api/dashboard/bingo-registrations", { cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message ?? "No se pudieron cargar los registros.");
+      const nextRegistrations = Array.isArray(data.registrations) ? data.registrations : [];
+      setRegistrations(nextRegistrations);
+      setRegistrationsStatus(
+        nextRegistrations.length === 1
+          ? "1 familia registrada."
+          : `${nextRegistrations.length} familias registradas.`,
+      );
+    } catch (error) {
+      setRegistrationsStatus(error instanceof Error ? error.message : "No se pudieron cargar los registros.");
+    } finally {
+      setLoadingRegistrations(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadRegistrations();
+  }, []);
+
+  const exportRegistrationsCsv = () => {
+    if (registrations.length === 0) {
+      setRegistrationsStatus("No hay registros para exportar.");
+      return;
+    }
+
+    const headers = [
+      "Fecha de registro",
+      "Nombre completo",
+      "Documento",
+      "Telefono",
+      "Correo",
+      "Grado o curso",
+      "Estudiante",
+      "Asistentes",
+      "Tablas",
+      "Observaciones",
+      "Origen",
+      "ID",
+    ];
+    const rows = registrations.map((registration) => [
+      formatRegistrationDate(registration.created_at),
+      registration.full_name,
+      registration.document_number,
+      registration.phone,
+      registration.email,
+      registration.grade_course,
+      registration.student_name,
+      registration.attendees,
+      registration.tables,
+      registration.notes,
+      registration.source,
+      registration.id,
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(","))
+      .join("\r\n");
+    const csvBlob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+    const csvUrl = URL.createObjectURL(csvBlob);
+    const link = document.createElement("a");
+    link.href = csvUrl;
+    link.download = "registros_bingo_colgemelli.csv";
+    link.click();
+    URL.revokeObjectURL(csvUrl);
+  };
 
   const saveContent = async () => {
     setSaving(true);
@@ -346,6 +457,70 @@ export default function BingoContentAdminPage() {
             <p className="text-sm text-muted-foreground">{status}</p>
             <Button onClick={saveContent} disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <CardTitle>Familias registradas</CardTitle>
+            <CardDescription>
+              Consulta las confirmaciones recibidas desde la landing publica del bingo y descarga todos los datos en CSV.
+            </CardDescription>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button type="button" variant="outline" onClick={loadRegistrations} disabled={loadingRegistrations}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loadingRegistrations ? "animate-spin" : ""}`} />
+              Actualizar
+            </Button>
+            <Button type="button" onClick={exportRegistrationsCsv} disabled={registrations.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar CSV
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{registrationsStatus}</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Documento</TableHead>
+                <TableHead>Telefono</TableHead>
+                <TableHead>Correo</TableHead>
+                <TableHead>Curso</TableHead>
+                <TableHead>Estudiante</TableHead>
+                <TableHead>Asist.</TableHead>
+                <TableHead>Tablas</TableHead>
+                <TableHead>Observaciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {registrations.length > 0 ? (
+                registrations.map((registration) => (
+                  <TableRow key={registration.id}>
+                    <TableCell className="min-w-36 whitespace-nowrap">{formatRegistrationDate(registration.created_at)}</TableCell>
+                    <TableCell className="min-w-44 font-medium">{registration.full_name}</TableCell>
+                    <TableCell className="min-w-32">{registration.document_number || "-"}</TableCell>
+                    <TableCell className="min-w-32">{registration.phone}</TableCell>
+                    <TableCell className="min-w-48">{registration.email || "-"}</TableCell>
+                    <TableCell className="min-w-32">{registration.grade_course}</TableCell>
+                    <TableCell className="min-w-44">{registration.student_name}</TableCell>
+                    <TableCell>{registration.attendees}</TableCell>
+                    <TableCell>{registration.tables}</TableCell>
+                    <TableCell className="min-w-64">{registration.notes || "-"}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                    {loadingRegistrations ? "Cargando registros..." : "Todavia no hay familias registradas."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
