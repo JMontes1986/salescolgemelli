@@ -341,7 +341,7 @@ export function BingoLanding({
           <SectionIntro
             label={content.participation.label}
             title={content.participation.title}
-            description="Cuatro pasos simples para que el padre de familia confirme y llegue sin dudas."
+            description="Reserva, confirma y ven preparado para disfrutar una noche familiar llena de premios, encuentro y alegria gemellista."
           />
           <div className="relative">
             <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-[#0eb9c3]/35 sm:block" />
@@ -418,7 +418,7 @@ export function BingoLanding({
         <SectionIntro
           label={content.sponsors.label}
           title={content.sponsors.title}
-          description="Empresas y familias aliadas pueden hacerse visibles ante la comunidad durante el evento."
+          description="Haz que tu marca o tu aporte sea parte de una noche que une a las familias y deja huella en el colegio."
         />
         <div className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_0.9fr_1fr]">
           {content.sponsors.plans.map((plan, index) => (

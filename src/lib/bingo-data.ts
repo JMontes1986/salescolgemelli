@@ -69,7 +69,7 @@ export const defaultBingoContent = {
   information: {
     label: "Informacion esencial",
     title: "Datos del evento",
-    description: "Consulta aqui los datos clave. Si algun punto sigue pendiente, se actualizara cuando exista confirmacion oficial.",
+    description: "Encuentra aqui todo lo que necesitas para animarte, organizar tu llegada y disfrutar el Bingo Gemellista sin complicaciones.",
     pendingText: "Pendiente de confirmacion.",
     paymentAlert: "Las tablas se adquieren con pago en efectivo en la Tesoreria del colegio.",
   },
@@ -82,7 +82,7 @@ export const defaultBingoContent = {
   prizes: {
     label: "Premios",
     title: "Premios preparados para celebrar juntos",
-    description: "La informacion final de premios se carga desde el editor administrativo.",
+    description: "Cada premio suma emocion a la noche: participa, acompana a tu familia y vive la alegria de ganar junto a la comunidad.",
     featuredNote: "Contenido de ejemplo. Reemplazar por el premio oficial.",
     cards: [
       { icon: "Trophy", label: "Por confirmar", title: "Premio mayor", description: "Espacio reservado para publicar el premio principal oficial del Bingo Gemellista 2026.", featured: true },
@@ -103,7 +103,7 @@ export const defaultBingoContent = {
   ] },
   video: { label: "Video promocional", title: "Una invitacion para sentir la noche antes de llegar", description: "Este bloque esta preparado para YouTube, Vimeo o video institucional. El reproductor solo carga cuando el usuario decide reproducirlo.", status: "Video pendiente de configuracion." },
   gallery: { label: "Galeria", title: "Recuerdos de una comunidad que se encuentra", description: "Galeria responsive preparada para fotos reales de ediciones anteriores.", caption: "Placeholder generado. Reemplazar por foto oficial." },
-  food: { label: "Zona gastronomica", title: "Comida y bebidas", description: "Opciones practicas para comprar durante el evento. La disponibilidad final sera confirmada por la organizacion.", options: ["Perros calientes", "Empanadas", "Hamburguesas", "Pinchos", "Bebidas", "Postres"] },
+  food: { label: "Zona gastronomica", title: "Comida y bebidas", description: "Antojos pensados para acompanar la noche, compartir en familia y disfrutar el bingo con algo rico en la mesa.", options: ["Perros calientes", "Empanadas", "Hamburguesas", "Pinchos", "Bebidas", "Postres"] },
   donations: { title: "Ayudanos a hacer esta noche aun mas especial", description: "Las familias, empresas y aliados que deseen donar un premio pueden vincularse al Bingo Gemellista y aportar al exito de esta actividad.", cta: "Quiero donar un premio" },
   sponsors: { label: "Publicidad para empresas", title: "Espacios para marcas aliadas", recommendedLabel: "Recomendado", cta: "Contactar", plans: [
     { title: "Pendon fisico", price: "Precio por confirmar", benefits: ["Presencia visible durante el evento", "Mencion como aliado", "Ubicacion sujeta a disponibilidad"] },
@@ -124,6 +124,58 @@ function mergeContent<T>(base: T, override?: DeepPartial<T>): T {
   }), {} as T);
 }
 
+function replaceStaleLandingText(content: BingoLandingContent): BingoLandingContent {
+  const nextContent = mergeContent(defaultBingoContent, content);
+  const replacements = new Map([
+    [
+      "Los datos finales se actualizan desde el panel administrativo para evitar versiones cruzadas o información desactualizada.",
+      "Encuentra aqui todo lo que necesitas para animarte, organizar tu llegada y disfrutar el Bingo Gemellista sin complicaciones.",
+    ],
+    [
+      "Los datos finales se actualizan desde el panel administrativo para evitar versiones cruzadas o informacion desactualizada.",
+      "Encuentra aqui todo lo que necesitas para animarte, organizar tu llegada y disfrutar el Bingo Gemellista sin complicaciones.",
+    ],
+    [
+      "Consulta aqui los datos clave. Si algun punto sigue pendiente, se actualizara cuando exista confirmacion oficial.",
+      "Encuentra aqui todo lo que necesitas para animarte, organizar tu llegada y disfrutar el Bingo Gemellista sin complicaciones.",
+    ],
+    [
+      "Cuatro pasos claros para llegar tranquilo.",
+      "Reserva, confirma y ven preparado para disfrutar una noche familiar llena de premios, encuentro y alegria gemellista.",
+    ],
+    [
+      "Cuatro pasos simples para que el padre de familia confirme y llegue sin dudas.",
+      "Reserva, confirma y ven preparado para disfrutar una noche familiar llena de premios, encuentro y alegria gemellista.",
+    ],
+    [
+      "Empresas y familias aliadas pueden hacerse visibles ante la comunidad durante el evento.",
+      "Haz que tu marca o tu aporte sea parte de una noche que une a las familias y deja huella en el colegio.",
+    ],
+  ]);
+
+  const replace = (value: string) => replacements.get(value.trim()) ?? value;
+
+  return {
+    ...nextContent,
+    information: {
+      ...nextContent.information,
+      description: replace(nextContent.information.description),
+    },
+    participation: {
+      ...nextContent.participation,
+      title: replace(nextContent.participation.title),
+    },
+    food: {
+      ...nextContent.food,
+      description: replace(nextContent.food.description),
+    },
+    sponsors: {
+      ...nextContent.sponsors,
+      title: replace(nextContent.sponsors.title),
+    },
+  };
+}
+
 export async function getBingoLandingContent() {
   try {
     const { supabaseUrl } = getSupabaseEnv();
@@ -134,7 +186,7 @@ export async function getBingoLandingContent() {
     });
     if (!response.ok) return defaultBingoContent;
     const rows = (await response.json()) as { content?: DeepPartial<BingoLandingContent> }[];
-    return mergeContent(defaultBingoContent, rows[0]?.content);
+    return replaceStaleLandingText(mergeContent(defaultBingoContent, rows[0]?.content));
   } catch {
     return defaultBingoContent;
   }
