@@ -48,6 +48,14 @@ type BingoViewStats = {
   }>;
 };
 
+type EditableTextTarget = {
+  key: string;
+  label: string;
+  path: (string | number)[];
+  fallback: string;
+  tone?: "dark" | "light";
+};
+
 const fieldLabels: Record<string, string> = {
   whatsappMessage: "Mensaje de WhatsApp",
   hero: "Encabezado principal",
@@ -148,6 +156,21 @@ const editorSections = [
   { key: "footer", title: "Pie de pagina", description: "Texto final y enlace de regreso." },
 ] as const;
 
+const visualTextTargets: EditableTextTarget[] = [
+  { key: "hero.title", label: "Titulo principal", path: ["hero", "title"], fallback: defaultBingoContent.hero.title, tone: "light" },
+  { key: "hero.description", label: "Descripcion principal", path: ["hero", "description"], fallback: defaultBingoContent.hero.description, tone: "light" },
+  { key: "information.title", label: "Titulo informacion", path: ["information", "title"], fallback: defaultBingoContent.information.title },
+  { key: "information.description", label: "Texto informacion", path: ["information", "description"], fallback: defaultBingoContent.information.description },
+  { key: "food.title", label: "Titulo gastronomia", path: ["food", "title"], fallback: defaultBingoContent.food.title },
+  { key: "food.description", label: "Texto gastronomia", path: ["food", "description"], fallback: defaultBingoContent.food.description },
+  { key: "participation.title", label: "Titulo participacion", path: ["participation", "title"], fallback: defaultBingoContent.participation.title },
+  { key: "participation.description", label: "Texto participacion", path: [], fallback: "Reserva, confirma y ven preparado para disfrutar una noche familiar llena de premios, encuentro y alegria gemellista." },
+  { key: "sponsors.title", label: "Titulo publicidad", path: ["sponsors", "title"], fallback: defaultBingoContent.sponsors.title },
+  { key: "sponsors.description", label: "Texto publicidad", path: [], fallback: "Haz que tu marca o tu aporte sea parte de una noche que une a las familias y deja huella en el colegio." },
+  { key: "confirmation.title", label: "Titulo confirmacion", path: ["confirmation", "title"], fallback: defaultBingoContent.confirmation.title, tone: "light" },
+  { key: "confirmation.description", label: "Texto confirmacion", path: ["confirmation", "description"], fallback: defaultBingoContent.confirmation.description, tone: "light" },
+];
+
 type EditorSectionKey = typeof editorSections[number]["key"];
 
 function isObject(value: EditableValue): value is EditableObject {
@@ -209,6 +232,22 @@ function fileToDataUrl(file: File) {
     reader.onerror = () => reject(new Error("No se pudo leer la imagen seleccionada."));
     reader.readAsDataURL(file);
   });
+}
+
+function readAtPath(value: EditableValue, path: (string | number)[]): EditableValue {
+  return path.reduce<EditableValue>((current, part) => (
+    Array.isArray(current) ? current[Number(part)] : isObject(current) ? current[String(part)] : null
+  ), value);
+}
+
+function getInlineTextStyle(style?: BingoLandingContent["design"]["textStyles"][string]) {
+  return {
+    ...(style?.fontSize ? { fontSize: `${style.fontSize}px` } : {}),
+    ...(style?.color ? { color: style.color } : {}),
+    ...(style?.bold !== undefined ? { fontWeight: style.bold ? 900 : 500 } : {}),
+    ...(style?.underline ? { textDecoration: "underline" } : {}),
+    ...(style?.shadow ? { textShadow: "0 10px 28px rgba(0,0,0,0.35)" } : {}),
+  };
 }
 
 function FieldEditor({ fieldKey, value, path, onChange, onAddItem, onRemoveItem }: {
@@ -305,7 +344,13 @@ export default function BingoContentAdminPage() {
   });
   const [viewsStatus, setViewsStatus] = useState("Cargando visitas...");
   const [loadingViews, setLoadingViews] = useState(false);
+  const [selectedTextKey, setSelectedTextKey] = useState("hero.title");
   const heroBackgroundImageUrl = content.hero.backgroundImageUrl || "/images/bingo/bingo-card.svg";
+  const selectedTextTarget = visualTextTargets.find((target) => target.key === selectedTextKey) ?? visualTextTargets[0];
+  const selectedTextValue = selectedTextTarget.path.length > 0
+    ? String(readAtPath(content as EditableValue, selectedTextTarget.path) ?? "")
+    : selectedTextTarget.fallback;
+  const selectedTextStyle = content.design?.textStyles?.[selectedTextTarget.key] ?? {};
 
   useEffect(() => {
     fetch("/api/dashboard/bingo-content", { cache: "no-store" })
@@ -442,6 +487,29 @@ export default function BingoContentAdminPage() {
     setContent((current) => removeArrayItem(current as EditableValue, path, index) as BingoLandingContent);
   };
 
+  const handleVisualTextChange = (value: string) => {
+    if (selectedTextTarget.path.length === 0) return;
+    handleChange(selectedTextTarget.path, value);
+  };
+
+  const updateSelectedTextStyle = (
+    patch: Partial<BingoLandingContent["design"]["textStyles"][string]>,
+  ) => {
+    setContent((current) => ({
+      ...current,
+      design: {
+        ...(current.design ?? { textStyles: {} }),
+        textStyles: {
+          ...(current.design?.textStyles ?? {}),
+          [selectedTextTarget.key]: {
+            ...(current.design?.textStyles?.[selectedTextTarget.key] ?? {}),
+            ...patch,
+          },
+        },
+      },
+    }));
+  };
+
   const handleHeroBackgroundUpload = async (file?: File) => {
     if (!file) return;
 
@@ -470,7 +538,7 @@ export default function BingoContentAdminPage() {
         <CardHeader>
           <CardTitle>Editor visual de la landing del Bingo</CardTitle>
           <CardDescription>
-            Edita los textos, botones, valores, premios, cronograma, comida y planes desde campos simples. No necesitas escribir JSON ni codigo.
+            Edita la pagina como un lienzo: selecciona un texto, cambia su contenido y aplica estilo con controles visuales.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -484,11 +552,118 @@ export default function BingoContentAdminPage() {
             </Button>
           </div>
 
+          <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
+            <div className="overflow-hidden rounded-xl border bg-[#232328] text-white shadow-sm">
+              <div className="border-b border-white/12 px-5 py-4">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-white/50">Lienzo editable</p>
+                <h2 className="mt-1 text-xl font-black">Vista rapida de textos principales</h2>
+              </div>
+              <div className="grid gap-4 p-5 md:grid-cols-2">
+                {visualTextTargets.map((target) => {
+                  const value = target.path.length > 0
+                    ? String(readAtPath(content as EditableValue, target.path) ?? "")
+                    : target.fallback;
+                  const style = getInlineTextStyle(content.design?.textStyles?.[target.key]);
+                  const selected = selectedTextKey === target.key;
+
+                  return (
+                    <button
+                      key={target.key}
+                      type="button"
+                      onClick={() => setSelectedTextKey(target.key)}
+                      className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
+                        selected
+                          ? "border-[#ecc643] bg-white text-[#232328]"
+                          : target.tone === "light"
+                            ? "border-white/14 bg-white/10 text-white"
+                            : "border-white/14 bg-[#fffdf7] text-[#232328]"
+                      }`}
+                    >
+                      <span className={`text-[11px] font-black uppercase tracking-[0.2em] ${selected ? "text-[#b23178]" : "text-current opacity-60"}`}>
+                        {target.label}
+                      </span>
+                      <span className="mt-3 block text-xl font-black leading-tight" style={style}>
+                        {value}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <aside className="space-y-4 rounded-xl border bg-background p-4 shadow-sm xl:sticky xl:top-4 xl:self-start">
+              <div>
+                <p className="text-sm font-medium text-primary">Texto seleccionado</p>
+                <h2 className="text-xl font-semibold text-foreground">{selectedTextTarget.label}</h2>
+              </div>
+              <div className="space-y-2">
+                <Label>Contenido</Label>
+                <Textarea
+                  value={selectedTextValue}
+                  onChange={(event) => handleVisualTextChange(event.target.value)}
+                  disabled={selectedTextTarget.path.length === 0}
+                  className="min-h-28"
+                />
+                {selectedTextTarget.path.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Este subtitulo es fijo por ahora; puedes cambiar su estilo visual.</p>
+                ) : null}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <div className="space-y-2">
+                  <Label htmlFor="visual-font-size">Tamano de letra</Label>
+                  <Input
+                    id="visual-font-size"
+                    type="number"
+                    min={12}
+                    max={96}
+                    value={selectedTextStyle.fontSize ?? ""}
+                    onChange={(event) => updateSelectedTextStyle({ fontSize: event.target.value ? Number(event.target.value) : undefined })}
+                    placeholder="Automatico"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="visual-color">Color</Label>
+                  <Input
+                    id="visual-color"
+                    type="color"
+                    value={selectedTextStyle.color ?? (selectedTextTarget.tone === "light" ? "#ffffff" : "#232328")}
+                    onChange={(event) => updateSelectedTextStyle({ color: event.target.value })}
+                    className="h-11 p-1"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button type="button" variant={selectedTextStyle.bold ? "default" : "outline"} onClick={() => updateSelectedTextStyle({ bold: !selectedTextStyle.bold })}>
+                  B
+                </Button>
+                <Button type="button" variant={selectedTextStyle.underline ? "default" : "outline"} onClick={() => updateSelectedTextStyle({ underline: !selectedTextStyle.underline })}>
+                  <span className="underline">U</span>
+                </Button>
+                <Button type="button" variant={selectedTextStyle.shadow ? "default" : "outline"} onClick={() => updateSelectedTextStyle({ shadow: !selectedTextStyle.shadow })}>
+                  Sombra
+                </Button>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setContent((current) => {
+                    const nextStyles = { ...(current.design?.textStyles ?? {}) };
+                    delete nextStyles[selectedTextTarget.key];
+                    return { ...current, design: { ...(current.design ?? { textStyles: {} }), textStyles: nextStyles } };
+                  });
+                }}
+              >
+                Limpiar estilo
+              </Button>
+            </aside>
+          </section>
+
           <section className="grid gap-6 xl:grid-cols-[320px_1fr]">
             <aside className="space-y-3 rounded-xl border bg-muted/20 p-4 xl:sticky xl:top-4 xl:self-start">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">1. Escoge que vas a editar</h2>
-                <p className="text-sm text-muted-foreground">Las secciones estan separadas igual que en la pagina publica para que sea mas facil ubicarlas.</p>
+                <h2 className="text-lg font-semibold text-foreground">Edicion avanzada</h2>
+                <p className="text-sm text-muted-foreground">Usa esta parte si necesitas tocar listas, fechas, botones, cronograma o campos internos.</p>
               </div>
               <div className="space-y-2">
                 {editorSections.map((section, index) => {

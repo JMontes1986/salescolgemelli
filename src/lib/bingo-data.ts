@@ -112,6 +112,15 @@ export const defaultBingoContent = {
     { title: "Plan combinado", price: "Precio por confirmar", recommended: true, benefits: ["Pendon fisico y presencia digital", "Mayor exposicion", "Prioridad en comunicacion del evento"] },
   ] },
   confirmation: { label: "Confirmacion", title: "Confirma tu asistencia", description: "Diligencia el formulario o escribe por WhatsApp para que la organizacion registre tu participacion.", whatsappCta: "Resolver por WhatsApp" },
+  design: {
+    textStyles: {} as Record<string, {
+      fontSize?: number;
+      color?: string;
+      bold?: boolean;
+      underline?: boolean;
+      shadow?: boolean;
+    }>,
+  },
   footer: { text: "Bingo Gemellista 2026 - Colegio Agustin Gemelli", backLink: "Volver a Sales Col Gemelli" },
 };
 

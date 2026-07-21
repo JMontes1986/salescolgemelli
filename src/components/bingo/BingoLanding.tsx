@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -42,6 +42,18 @@ function shouldShowPendingNote(value: string, note?: string) {
     normalizedValue.includes("pendiente") ||
     normalizedValue.includes("sin definir")
   );
+}
+
+function buildTextStyle(style?: BingoLandingContent["design"]["textStyles"][string]): CSSProperties {
+  if (!style) return {};
+
+  return {
+    ...(style.fontSize ? { fontSize: `${style.fontSize}px` } : {}),
+    ...(style.color ? { color: style.color } : {}),
+    ...(style.bold !== undefined ? { fontWeight: style.bold ? 900 : 500 } : {}),
+    ...(style.underline ? { textDecoration: "underline" } : {}),
+    ...(style.shadow ? { textShadow: "0 12px 34px rgba(0,0,0,0.42)" } : {}),
+  };
 }
 
 function SectionTitle({
@@ -161,6 +173,8 @@ export function BingoLanding({
   ];
   const featuredFoodProduct = foodProducts[0];
   const secondaryFoodProducts = foodProducts.slice(1);
+  const textStyles = content.design?.textStyles ?? {};
+  const styleFor = (key: string) => buildTextStyle(textStyles[key]);
 
   return (
     <main className="bingo-landing min-h-screen bg-[#fffdf7] text-[#232328]">
@@ -196,12 +210,12 @@ export function BingoLanding({
                 </span>
               </MotionItem>
               <MotionItem index={1}>
-                <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl">
+                <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl" style={styleFor("hero.title")}>
                   {content.hero.title}
                 </h1>
               </MotionItem>
               <MotionItem index={2}>
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/84 sm:text-xl">
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/84 sm:text-xl" style={styleFor("hero.description")}>
                   {content.hero.description}
                 </p>
               </MotionItem>
@@ -282,11 +296,15 @@ export function BingoLanding({
       </a>
 
       <SectionBand id="informacion" variant="soft">
-        <SectionIntro
-          label={content.information.label}
-          title={content.information.title}
-          description={content.information.description}
-        />
+        <div>
+          <SectionLabel>{content.information.label}</SectionLabel>
+          <SectionTitle>
+            <span style={styleFor("information.title")}>{content.information.title}</span>
+          </SectionTitle>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[#4b4b52] sm:text-lg" style={styleFor("information.description")}>
+            {content.information.description}
+          </p>
+        </div>
 
         <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {essentialInfo.map((item, index) => (
@@ -313,11 +331,15 @@ export function BingoLanding({
 
       <SectionBand>
         <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
-          <SectionIntro
-            label="Por que asistir"
-            title="Una noche clara para compartir en familia"
-            description="Ven a vivir una tarde familiar llena de premios, alegria y union gemellista. Confirma tu asistencia hoy y asegura tu lugar en una celebracion pensada para compartir, apoyar y disfrutar juntos."
-          />
+          <div>
+            <SectionLabel>Por que asistir</SectionLabel>
+            <SectionTitle>
+              <span style={styleFor("reasons.title")}>Una noche clara para compartir en familia</span>
+            </SectionTitle>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[#4b4b52] sm:text-lg" style={styleFor("reasons.description")}>
+              Ven a vivir una tarde familiar llena de premios, alegria y union gemellista. Confirma tu asistencia hoy y asegura tu lugar en una celebracion pensada para compartir, apoyar y disfrutar juntos.
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {content.reasons.map((reason, index) => (
               <MotionItem key={reason.title} index={index}>
@@ -340,11 +362,15 @@ export function BingoLanding({
 
       <SectionBand variant="soft">
         <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-          <SectionIntro
-            label={content.participation.label}
-            title={content.participation.title}
-            description="Reserva, confirma y ven preparado para disfrutar una noche familiar llena de premios, encuentro y alegria gemellista."
-          />
+          <div>
+            <SectionLabel>{content.participation.label}</SectionLabel>
+            <SectionTitle>
+              <span style={styleFor("participation.title")}>{content.participation.title}</span>
+            </SectionTitle>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[#4b4b52] sm:text-lg" style={styleFor("participation.description")}>
+              Reserva, confirma y ven preparado para disfrutar una noche familiar llena de premios, encuentro y alegria gemellista.
+            </p>
+          </div>
           <div className="relative">
             <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-[#0eb9c3]/35 sm:block" />
             <div className="grid gap-4">
@@ -366,11 +392,15 @@ export function BingoLanding({
       <SectionBand>
         <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="lg:sticky lg:top-10">
-            <SectionIntro
-              label={content.food.label}
-              title={content.food.title}
-              description={content.food.description}
-            />
+            <div>
+              <SectionLabel>{content.food.label}</SectionLabel>
+              <SectionTitle>
+                <span style={styleFor("food.title")}>{content.food.title}</span>
+              </SectionTitle>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[#4b4b52] sm:text-lg" style={styleFor("food.description")}>
+                {content.food.description}
+              </p>
+            </div>
             <div className="mt-8 rounded-md border border-[#ecc643]/45 bg-[#fff8d9] p-5 text-sm font-bold leading-6 text-[#5d4b10] shadow-[0_18px_42px_-34px_rgba(236,198,67,0.9)]">
               Compra tus antojos durante el evento y acompaña cada juego con algo rico para compartir.
             </div>
@@ -462,11 +492,15 @@ export function BingoLanding({
       </SectionBand>
 
       <SectionBand variant="soft">
-        <SectionIntro
-          label={content.sponsors.label}
-          title={content.sponsors.title}
-          description="Haz que tu marca o tu aporte sea parte de una noche que une a las familias y deja huella en el colegio."
-        />
+        <div>
+          <SectionLabel>{content.sponsors.label}</SectionLabel>
+          <SectionTitle>
+            <span style={styleFor("sponsors.title")}>{content.sponsors.title}</span>
+          </SectionTitle>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[#4b4b52] sm:text-lg" style={styleFor("sponsors.description")}>
+            Haz que tu marca o tu aporte sea parte de una noche que une a las familias y deja huella en el colegio.
+          </p>
+        </div>
         <div className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_0.9fr_1fr]">
           {content.sponsors.plans.map((plan, index) => (
             <MotionItem key={plan.title} index={index}>
@@ -510,10 +544,10 @@ export function BingoLanding({
         <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
           <div>
             <SectionLabel>{content.confirmation.label}</SectionLabel>
-            <h2 className="mt-4 max-w-xl text-4xl font-black leading-[0.95] tracking-tight sm:text-5xl">
+            <h2 className="mt-4 max-w-xl text-4xl font-black leading-[0.95] tracking-tight sm:text-5xl" style={styleFor("confirmation.title")}>
               {content.confirmation.title}
             </h2>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-white/72">
+            <p className="mt-6 max-w-xl text-lg leading-8 text-white/72" style={styleFor("confirmation.description")}>
               {content.confirmation.description}
             </p>
             <a
