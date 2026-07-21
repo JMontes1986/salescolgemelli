@@ -373,7 +373,7 @@ export function BingoLanding({
               description={content.food.description}
             />
             <div className="mt-8 rounded-md border border-[#ecc643]/45 bg-[#fff8d9] p-5 text-sm font-bold leading-6 text-[#5d4b10] shadow-[0_18px_42px_-34px_rgba(236,198,67,0.9)]">
-              Compra tus antojos durante el evento y acompana cada juego con algo rico para compartir.
+              Compra tus antojos durante el evento y acompaña cada juego con algo rico para compartir.
             </div>
           </div>
 
