@@ -7,7 +7,7 @@ import {
   MessageCircle,
   Sparkles,
 } from "lucide-react";
-import { iconMap, type BingoLandingContent } from "@/lib/bingo-data";
+import { iconMap, type BingoFoodProduct, type BingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
 import { BingoRegistrationForm } from "./RegistrationForm";
 
@@ -123,7 +123,15 @@ function MotionItem({
   );
 }
 
-export function BingoLanding({ content, tablesSold }: { content: BingoLandingContent; tablesSold: number }) {
+export function BingoLanding({
+  content,
+  tablesSold,
+  foodProducts,
+}: {
+  content: BingoLandingContent;
+  tablesSold: number;
+  foodProducts: BingoFoodProduct[];
+}) {
   const whatsappUrl = `https://wa.me/${siteConfig.bingoWhatsAppNumber}?text=${encodeURIComponent(content.whatsappMessage)}`;
   const tablesSoldLabel = new Intl.NumberFormat("es-CO").format(tablesSold);
   const eventSummary = [
@@ -360,17 +368,48 @@ export function BingoLanding({ content, tablesSold }: { content: BingoLandingCon
             title={content.food.title}
             description={content.food.description}
           />
-          <div className="grid gap-3 sm:grid-cols-2">
-            {content.food.options.map((option, index) => (
-              <MotionItem key={option} index={index}>
-                <article className="group flex min-h-20 items-center gap-4 rounded-md border border-[#ece5dd] bg-white p-5 text-lg font-black text-[#232328] shadow-[0_15px_34px_-28px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#fff8d9] text-[#8a6f12] transition duration-300 group-hover:-rotate-2">
-                    <EditableIcon name="Utensils" className="h-5 w-5" />
-                  </span>
-                  {option}
-                </article>
-              </MotionItem>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {foodProducts.length > 0 ? (
+              foodProducts.map((product, index) => (
+                <MotionItem key={product.id} index={index}>
+                  <article className="group overflow-hidden rounded-md border border-[#ece5dd] bg-white shadow-[0_18px_42px_-30px_rgba(35,35,40,0.48)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/75">
+                    <div className="grid min-h-32 grid-cols-[6rem_1fr]">
+                      <div className="relative bg-[#fff8d9]">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.imageHint || product.name}
+                            fill
+                            sizes="96px"
+                            className="object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[#8a6f12]">
+                            <EditableIcon name="Utensils" className="h-9 w-9" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 items-center p-5">
+                        <h3 className="text-xl font-black leading-tight text-[#232328]">
+                          {product.name}
+                        </h3>
+                      </div>
+                    </div>
+                  </article>
+                </MotionItem>
+              ))
+            ) : (
+              content.food.options.map((option, index) => (
+                <MotionItem key={option} index={index}>
+                  <article className="group flex min-h-20 items-center gap-4 rounded-md border border-[#ece5dd] bg-white p-5 text-lg font-black text-[#232328] shadow-[0_15px_34px_-28px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#fff8d9] text-[#8a6f12] transition duration-300 group-hover:-rotate-2">
+                      <EditableIcon name="Utensils" className="h-5 w-5" />
+                    </span>
+                    {option}
+                  </article>
+                </MotionItem>
+              ))
+            )}
           </div>
         </div>
       </SectionBand>

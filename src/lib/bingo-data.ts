@@ -13,6 +13,16 @@ import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase";
 
 export type BingoLandingContent = typeof defaultBingoContent;
 
+export type BingoFoodProduct = {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  imageHint: string;
+  category: string;
+  stock: number;
+};
+
 type DeepPartial<T> = T extends (infer U)[]
   ? DeepPartial<U>[]
   : T extends object
@@ -180,6 +190,40 @@ export async function getBingoPreSaleTablesSold() {
       : rows.reduce((total, row) => total + countCartUnits(row.items, false), 0);
   } catch {
     return 0;
+  }
+}
+
+export async function getBingoFoodProducts(): Promise<BingoFoodProduct[]> {
+  try {
+    const { supabaseUrl } = getSupabaseEnv();
+    const serviceRoleKey = getSupabaseServiceRoleKey();
+    const params = new URLSearchParams({
+      select: 'id,name,price,"imageUrl","imageHint",category,stock,availability,position',
+      order: "position.asc",
+    });
+    const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/products?${params.toString()}`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) return [];
+
+    const rows = (await response.json()) as Array<BingoFoodProduct & { availability?: unknown; position?: number }>;
+
+    return rows
+      .filter((product) => Array.isArray(product.availability) && product.availability.includes("pos"))
+      .filter((product) => Number(product.stock) > 0)
+      .map((product) => ({
+        id: product.id,
+        name: product.name,
+        price: Number(product.price) || 0,
+        imageUrl: product.imageUrl ?? "",
+        imageHint: product.imageHint ?? "",
+        category: product.category ?? "general",
+        stock: Number(product.stock) || 0,
+      }));
+  } catch {
+    return [];
   }
 }
 

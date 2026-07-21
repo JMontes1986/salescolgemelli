@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { BingoLanding } from "./BingoLanding";
-import { defaultBingoContent, type BingoLandingContent } from "@/lib/bingo-data";
+import { defaultBingoContent, type BingoFoodProduct, type BingoLandingContent } from "@/lib/bingo-data";
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 
 async function fetchBingoLandingContent() {
@@ -30,15 +30,29 @@ async function fetchPreSaleTablesSold() {
   return Number.isFinite(data.tablesSold) ? Number(data.tablesSold) : 0;
 }
 
+async function fetchFoodProducts() {
+  const response = await fetch("/api/bingo/food-products", { cache: "no-store" });
+  const data = (await response.json().catch(() => ({}))) as { products?: BingoFoodProduct[] };
+
+  if (!response.ok) {
+    throw new Error("No se pudieron actualizar los productos de la zona gastronomica.");
+  }
+
+  return Array.isArray(data.products) ? data.products : [];
+}
+
 export function BingoLandingRealtime({
   initialContent,
   initialTablesSold,
+  initialFoodProducts,
 }: {
   initialContent: BingoLandingContent;
   initialTablesSold: number;
+  initialFoodProducts: BingoFoodProduct[];
 }) {
   const [content, setContent] = useState(initialContent);
   const [tablesSold, setTablesSold] = useState(initialTablesSold);
+  const [foodProducts, setFoodProducts] = useState(initialFoodProducts);
 
   const refreshContent = useCallback(async () => {
     try {
@@ -56,6 +70,14 @@ export function BingoLandingRealtime({
     }
   }, []);
 
+  const refreshFoodProducts = useCallback(async () => {
+    try {
+      setFoodProducts(await fetchFoodProducts());
+    } catch (error) {
+      console.error("No se pudieron sincronizar los productos de la zona gastronomica.", error);
+    }
+  }, []);
+
   useSupabaseRealtime({
     tables: ["bingo_landing_content"],
     onChange: refreshContent,
@@ -68,5 +90,11 @@ export function BingoLandingRealtime({
     fallbackIntervalMs: 5_000,
   });
 
-  return <BingoLanding content={content} tablesSold={tablesSold} />;
+  useSupabaseRealtime({
+    tables: ["products"],
+    onChange: refreshFoodProducts,
+    fallbackIntervalMs: 10_000,
+  });
+
+  return <BingoLanding content={content} tablesSold={tablesSold} foodProducts={foodProducts} />;
 }
