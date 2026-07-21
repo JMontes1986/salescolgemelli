@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BingoLanding } from "./BingoLanding";
 import { defaultBingoContent, type BingoFoodProduct, type BingoLandingContent } from "@/lib/bingo-data";
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
@@ -53,6 +53,20 @@ export function BingoLandingRealtime({
   const [content, setContent] = useState(initialContent);
   const [tablesSold, setTablesSold] = useState(initialTablesSold);
   const [foodProducts, setFoodProducts] = useState(initialFoodProducts);
+
+  useEffect(() => {
+    const sessionKey = "bingo_landing_view_recorded";
+
+    if (window.sessionStorage.getItem(sessionKey)) {
+      return;
+    }
+
+    window.sessionStorage.setItem(sessionKey, "true");
+    fetch("/api/bingo/views", { method: "POST", cache: "no-store" }).catch((error) => {
+      console.error("No se pudo registrar la visita a la landing del bingo.", error);
+      window.sessionStorage.removeItem(sessionKey);
+    });
+  }, []);
 
   const refreshContent = useCallback(async () => {
     try {

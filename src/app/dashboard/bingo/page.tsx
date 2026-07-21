@@ -35,6 +35,11 @@ type BingoRegistration = {
   source: string;
 };
 
+type BingoViewStats = {
+  totalViews: number;
+  updatedAt: string | null;
+};
+
 const fieldLabels: Record<string, string> = {
   whatsappMessage: "Mensaje de WhatsApp",
   hero: "Encabezado principal",
@@ -283,6 +288,9 @@ export default function BingoContentAdminPage() {
   const [registrations, setRegistrations] = useState<BingoRegistration[]>([]);
   const [registrationsStatus, setRegistrationsStatus] = useState("Cargando registros...");
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+  const [viewStats, setViewStats] = useState<BingoViewStats>({ totalViews: 0, updatedAt: null });
+  const [viewsStatus, setViewsStatus] = useState("Cargando visitas...");
+  const [loadingViews, setLoadingViews] = useState(false);
   const heroBackgroundImageUrl = content.hero.backgroundImageUrl || "/images/bingo/bingo-card.svg";
 
   useEffect(() => {
@@ -316,8 +324,28 @@ export default function BingoContentAdminPage() {
     }
   };
 
+  const loadViewStats = async () => {
+    setLoadingViews(true);
+    setViewsStatus("Consultando visitas...");
+    try {
+      const response = await fetch("/api/dashboard/bingo-views", { cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message ?? "No se pudieron cargar las visitas.");
+      setViewStats({
+        totalViews: Number(data.totalViews ?? 0),
+        updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : null,
+      });
+      setViewsStatus("Contador actualizado.");
+    } catch (error) {
+      setViewsStatus(error instanceof Error ? error.message : "No se pudieron cargar las visitas.");
+    } finally {
+      setLoadingViews(false);
+    }
+  };
+
   useEffect(() => {
     void loadRegistrations();
+    void loadViewStats();
   }, []);
 
   const exportRegistrationsCsv = () => {
@@ -530,6 +558,42 @@ export default function BingoContentAdminPage() {
           <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-lg border bg-background/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">{status}</p>
             <Button onClick={saveContent} disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <CardTitle>Visitas de la landing</CardTitle>
+            <CardDescription>
+              Conteo de navegadores que han abierto la pagina publica /bingo durante su sesion.
+            </CardDescription>
+          </div>
+          <Button type="button" variant="outline" onClick={loadViewStats} disabled={loadingViews}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loadingViews ? "animate-spin" : ""}`} />
+            Actualizar
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+            <div>
+              <p className="text-sm text-muted-foreground">{viewsStatus}</p>
+              <p className="mt-3 text-5xl font-black tracking-tight text-foreground">
+                {new Intl.NumberFormat("es-CO").format(viewStats.totalViews)}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {viewStats.updatedAt
+                  ? `Ultima visita registrada: ${formatRegistrationDate(viewStats.updatedAt)}`
+                  : "Todavia no hay visitas registradas."}
+              </p>
+            </div>
+            <Button type="button" variant="outline" asChild>
+              <a href="/bingo" target="_blank" rel="noreferrer">
+                <Eye className="mr-2 h-4 w-4" />
+                Ver pagina publica
+              </a>
+            </Button>
           </div>
         </CardContent>
       </Card>
