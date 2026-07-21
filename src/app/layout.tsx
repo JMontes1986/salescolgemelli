@@ -3,7 +3,6 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FloatingThemeToggle } from "@/components/theme-toggle";
-import { SecurityAiAssistant } from "@/components/security-ai-assistant";
 
 const MOLLY_FAVICON_URL = "/molly-ventas.png";
 const SITE_URL = "https://salescolgemelli.vercel.app";
@@ -79,7 +78,6 @@ export default function RootLayout({
         <ThemeProvider>
           <FloatingThemeToggle />
           {children}
-          <SecurityAiAssistant />
           <Toaster />
         </ThemeProvider>
       </body>
