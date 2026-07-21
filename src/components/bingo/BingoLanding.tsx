@@ -164,10 +164,11 @@ export function BingoLanding({
     <main className="bingo-landing min-h-screen bg-[#fffdf7] text-[#232328]">
       <section className="relative min-h-[100dvh] overflow-hidden bg-[#232328] text-white">
         <Image
-          src="/images/bingo/bingo-card.svg"
+          src={content.hero.backgroundImageUrl || "/images/bingo/bingo-card.svg"}
           alt="Ambiente del Bingo Gemellista"
           fill
           priority
+          unoptimized={content.hero.backgroundImageUrl.startsWith("data:")}
           className="object-cover opacity-[0.42]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(35,35,40,0.97)_0%,rgba(35,35,40,0.91)_42%,rgba(35,35,40,0.48)_100%)]" />

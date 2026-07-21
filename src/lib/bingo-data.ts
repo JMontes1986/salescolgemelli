@@ -33,6 +33,7 @@ export const defaultBingoContent = {
   whatsappMessage: "Hola, quiero informacion para reservar tablas del Bingo Gemellista 2026.",
   hero: {
     navLabel: "Colegio Agustin Gemelli",
+    backgroundImageUrl: "/images/bingo/bingo-card.svg",
     badge: "Evento familiar",
     title: "Gran Bingo y Fiesta Familiar Gemellista 2026",
     eyebrow: "Colegio Agustin Gemelli",

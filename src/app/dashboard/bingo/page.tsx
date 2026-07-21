@@ -61,6 +61,7 @@ const fieldLabels: Record<string, string> = {
   stats: "Indicadores",
   value: "Valor",
   label: "Etiqueta",
+  backgroundImageUrl: "Imagen de fondo",
   information: "Informacion esencial",
   pendingText: "Texto pendiente",
   paymentAlert: "Aviso de pago",
@@ -188,6 +189,15 @@ function escapeCsvValue(value: string | number | null | undefined) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen seleccionada."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function FieldEditor({ fieldKey, value, path, onChange, onAddItem, onRemoveItem }: {
   fieldKey: string;
   value: EditableValue;
@@ -273,6 +283,7 @@ export default function BingoContentAdminPage() {
   const [registrations, setRegistrations] = useState<BingoRegistration[]>([]);
   const [registrationsStatus, setRegistrationsStatus] = useState("Cargando registros...");
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+  const heroBackgroundImageUrl = content.hero.backgroundImageUrl || "/images/bingo/bingo-card.svg";
 
   useEffect(() => {
     fetch("/api/dashboard/bingo-content", { cache: "no-store" })
@@ -386,6 +397,28 @@ export default function BingoContentAdminPage() {
     setContent((current) => removeArrayItem(current as EditableValue, path, index) as BingoLandingContent);
   };
 
+  const handleHeroBackgroundUpload = async (file?: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setStatus("Selecciona un archivo de imagen valido.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setStatus("La imagen debe pesar maximo 2 MB para publicarse rapido en la landing.");
+      return;
+    }
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      handleChange(["hero", "backgroundImageUrl"], dataUrl);
+      setStatus("Imagen cargada en el editor. Guarda cambios para publicarla.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo cargar la imagen.");
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       <Card>
@@ -440,6 +473,47 @@ export default function BingoContentAdminPage() {
                   <p className="text-sm text-muted-foreground">Este campo se mantiene siempre visible porque afecta varios botones de contacto.</p>
                 </div>
                 <FieldEditor fieldKey="whatsappMessage" value={content.whatsappMessage as EditableValue} path={["whatsappMessage"]} onChange={handleChange} onAddItem={handleAddItem} onRemoveItem={handleRemoveItem} />
+              </section>
+
+              <section className="space-y-4 rounded-xl border p-4 shadow-sm">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Imagen de fondo de portada</h2>
+                  <p className="text-sm text-muted-foreground">La imagen actual del fondo mide 1200 x 800 px. Usa una imagen horizontal parecida para que se vea bien en computador y celular.</p>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+                  <div className="relative aspect-[3/2] overflow-hidden rounded-lg border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={heroBackgroundImageUrl} alt="Vista previa del fondo de portada" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="hero-background-url">URL de imagen</Label>
+                      <Input
+                        id="hero-background-url"
+                        value={heroBackgroundImageUrl}
+                        onChange={(event) => handleChange(["hero", "backgroundImageUrl"], event.target.value)}
+                        placeholder="/images/bingo/bingo-card.svg"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hero-background-upload">Subir imagen</Label>
+                      <Input
+                        id="hero-background-upload"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        onChange={(event) => void handleHeroBackgroundUpload(event.target.files?.[0])}
+                      />
+                      <p className="text-xs text-muted-foreground">Recomendado: 1200 x 800 px o proporcion 3:2. Peso maximo: 2 MB.</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleChange(["hero", "backgroundImageUrl"], "/images/bingo/bingo-card.svg")}
+                    >
+                      Restaurar imagen original
+                    </Button>
+                  </div>
+                </div>
               </section>
 
               <section className="space-y-4 rounded-xl border p-4 shadow-sm">
