@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       {
         protocol: 'https',
@@ -62,7 +63,35 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const sharedStaticAssetHeaders = [
+      {
+        key: 'Cache-Control',
+        value: 'public, max-age=86400, stale-while-revalidate=604800',
+      },
+    ];
+
     return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: sharedStaticAssetHeaders,
+      },
+      {
+        source: '/molly-ventas.png',
+        headers: sharedStaticAssetHeaders,
+      },
+      {
+        source: '/og-image.png',
+        headers: sharedStaticAssetHeaders,
+      },
       {
         source: '/:path*',
         headers: [
