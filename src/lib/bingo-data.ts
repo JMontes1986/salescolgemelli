@@ -29,6 +29,16 @@ type DeepPartial<T> = T extends (infer U)[]
     ? { [K in keyof T]?: DeepPartial<T[K]> }
     : T;
 
+const BINGO_LANDING_BLOCKED_PRODUCT_TERMS = [
+  "aguardiente",
+  "alcohol",
+  "cerveza",
+  "licor",
+  "ron",
+  "whisky",
+  "vino",
+];
+
 export const defaultBingoContent = {
   whatsappMessage: "Hola, quiero informacion para reservar tablas del Bingo Gemellista 2026.",
   hero: {
@@ -228,6 +238,19 @@ function countCartUnits(items: unknown, onlyTables: boolean) {
   }, 0);
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isAllowedBingoLandingProduct(product: Pick<BingoFoodProduct, "name" | "category">) {
+  const searchable = normalizeSearchText(`${product.name} ${product.category}`);
+
+  return !BINGO_LANDING_BLOCKED_PRODUCT_TERMS.some((term) => searchable.includes(term));
+}
+
 export async function getBingoPreSaleTablesSold() {
   try {
     const { supabaseUrl } = getSupabaseEnv();
@@ -275,6 +298,10 @@ export async function getBingoFoodProducts(): Promise<BingoFoodProduct[]> {
     return rows
       .filter((product) => Array.isArray(product.availability) && product.availability.includes("pos"))
       .filter((product) => Number(product.stock) > 0)
+      .filter((product) => isAllowedBingoLandingProduct({
+        name: product.name,
+        category: product.category ?? "",
+      }))
       .map((product) => ({
         id: product.id,
         name: product.name,
