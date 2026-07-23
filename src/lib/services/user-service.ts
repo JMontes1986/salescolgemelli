@@ -553,12 +553,10 @@ export async function authenticateUser(
             password_provided,
           );
         } catch (localAuthError) {
-          if (!isMissingUsersTableError(localAuthError)) {
-            throw localAuthError;
-          }
-
           console.warn(
-            "No se pudo intentar autenticacion local porque falta public.users en Supabase.",
+            isMissingUsersTableError(localAuthError)
+              ? "No se pudo intentar autenticacion local porque falta public.users en Supabase."
+              : "No se pudo intentar autenticacion local; se devolvera el error original de Supabase Auth.",
             localAuthError,
           );
         }
