@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { iconMap, type BingoFoodProduct, type BingoLandingContent } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
+import { formatCurrency } from "@/lib/utils";
 import { BingoRegistrationForm } from "./RegistrationForm";
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -435,6 +436,9 @@ export function BingoLanding({
                           <h3 className="mt-4 text-4xl font-black leading-none tracking-tight text-[#232328]">
                             {featuredFoodProduct.name}
                           </h3>
+                          <p className="mt-3 text-2xl font-black text-[#126d74]">
+                            {formatCurrency(featuredFoodProduct.price)}
+                          </p>
                           <p className="mt-5 max-w-sm text-base font-semibold leading-7 text-[#4b4b52]">
                             Una opcion lista para disfrutar mientras avanza la noche del bingo.
                           </p>
@@ -463,10 +467,13 @@ export function BingoLanding({
                             </div>
                           )}
                         </div>
-                        <div className="flex min-h-20 items-center p-4">
+                        <div className="flex min-h-24 flex-col justify-center p-4">
                           <h3 className="text-lg font-black leading-tight text-[#232328]">
                             {product.name}
                           </h3>
+                          <p className="mt-2 text-base font-black text-[#126d74]">
+                            {formatCurrency(product.price)}
+                          </p>
                         </div>
                       </article>
                     </MotionItem>
