@@ -1,4 +1,4 @@
-﻿create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto";
 
 grant usage on schema public to anon, authenticated;
 
@@ -56,7 +56,7 @@ create policy "dashboard_users_delete"
   using (auth.uid() is not null);
 
 create table if not exists public.products (
-  id text primary key default gen_random_uuid()::text,
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   price numeric not null default 0,
   stock integer not null default 0,
@@ -107,7 +107,7 @@ where "sellerId" is null
 
 create table if not exists public.self_service_reservations (
   purchase_id text not null references public.purchases(id) on delete cascade,
-  product_id text not null references public.products(id) on delete cascade,
+  product_id uuid not null references public.products(id) on delete cascade,
   pending_quantity integer not null check (pending_quantity >= 0),
   status text not null,
   expires_at timestamptz,
@@ -302,7 +302,7 @@ begin
     raise exception 'La compra tiene un identificador invÃ¡lido.';
   end if;
 
-  if p_delivery_code is null or trim(p_delivery_code) !~ '^[0-9A-Za-z_-]{1,80}$' then
+  if p_delivery_code is null or trim(p_delivery_code) !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
     raise exception 'El cÃ³digo adicional del QR es invÃ¡lido.';
   end if;
 
@@ -389,9 +389,9 @@ begin
     lookup_delivery_code := nullif(btrim(coalesce(token_payload->>'deliveryCode', '')), '');
 
     if lookup_code is null
-      or lookup_code !~ '^[0-9A-Za-z_-]{1,80}$'
+      or lookup_code !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
       or lookup_delivery_code is null
-      or lookup_delivery_code !~ '^[0-9A-Za-z_-]{1,80}$' then
+      or lookup_delivery_code !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
       raise exception 'El QR firmado no corresponde a una compra vÃ¡lida.';
     end if;
 
@@ -724,7 +724,7 @@ declare
 begin
   perform public.require_dashboard_strong_permission('cashbox', 'cerrar caja');
 
-  if p_session_id is null or trim(p_session_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
+  if p_session_id is null or trim(p_session_id) !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
     raise exception 'La sesiÃ³n de caja no es vÃ¡lida.';
   end if;
 
@@ -869,7 +869,7 @@ begin
   )
   select
     safe_purchase_id,
-    reservation_items.product_id,
+    reservation_items.product_id::uuid,
     reservation_items.pending_quantity,
     p_status,
     safe_expires_at,
@@ -885,7 +885,7 @@ begin
     from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) as input(item)
     group by trim(item->>'id')
   ) reservation_items
-  where reservation_items.product_id ~ '^[0-9A-Za-z_-]{1,80}$'
+  where reservation_items.product_id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     and reservation_items.pending_quantity > 0
   on conflict (purchase_id, product_id) do update
     set
@@ -1070,7 +1070,7 @@ begin
     group by trim(item->>'id')
     order by min(ord)
   loop
-    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
       raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
@@ -1080,7 +1080,7 @@ begin
 
     select * into product_record
     from public.products
-    where id = normalized_item.id
+    where id = normalized_item.id::uuid
     for update;
 
     if not found then
@@ -1106,7 +1106,7 @@ begin
 
     update public.products
     set stock = stock - normalized_item.quantity
-    where id = normalized_item.id;
+    where id = normalized_item.id::uuid;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
@@ -1229,7 +1229,7 @@ begin
     raise exception 'El celular no tiene un formato vÃ¡lido.';
   end if;
 
-  if safe_seller_id = '' or safe_seller_id !~ '^[0-9A-Za-z_-]{1,80}$' then
+  if safe_seller_id = '' or safe_seller_id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
     raise exception 'El vendedor tiene un identificador invÃ¡lido.';
   end if;
 
@@ -1255,7 +1255,7 @@ begin
     group by trim(item->>'id')
     order by min(ord)
   loop
-    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
       raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
@@ -1268,7 +1268,7 @@ begin
 
     select * into product_record
     from public.products
-    where id = normalized_item.id
+    where id = normalized_item.id::uuid
     for update;
 
     if not found then
@@ -1292,7 +1292,7 @@ begin
     set
       stock = stock + normalized_item.quantity,
       "preSaleSold" = coalesce("preSaleSold", 0) + normalized_item.quantity
-    where id = normalized_item.id;
+    where id = normalized_item.id::uuid;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
@@ -1393,7 +1393,7 @@ begin
     raise exception 'El celular no tiene un formato vÃ¡lido.';
   end if;
 
-  if safe_seller_id = '' or safe_seller_id !~ '^[0-9A-Za-z_-]{1,80}$' then
+  if safe_seller_id = '' or safe_seller_id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
     raise exception 'El vendedor tiene un identificador invÃ¡lido.';
   end if;
 
@@ -1419,7 +1419,7 @@ begin
     group by trim(item->>'id')
     order by min(ord)
   loop
-    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
       raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
@@ -1432,7 +1432,7 @@ begin
 
     select * into product_record
     from public.products
-    where id = normalized_item.id
+    where id = normalized_item.id::uuid
     for update;
 
     if not found then
@@ -1456,7 +1456,7 @@ begin
     set
       stock = stock + normalized_item.quantity,
       "preSaleSold" = coalesce("preSaleSold", 0) + normalized_item.quantity
-    where id = normalized_item.id;
+    where id = normalized_item.id::uuid;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
@@ -1569,7 +1569,7 @@ begin
     group by trim(item->>'id')
     order by min(ord)
   loop
-    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
       raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
@@ -1582,7 +1582,7 @@ begin
 
     select * into product_record
     from public.products
-    where id = normalized_item.id
+    where id = normalized_item.id::uuid
     for update;
 
     if not found then
@@ -1600,7 +1600,7 @@ begin
 
     select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
     from public.self_service_reservations
-    where product_id = normalized_item.id
+    where product_id = normalized_item.id::uuid
       and pending_quantity > 0
       and (
         status = 'partially-delivered'
@@ -1751,7 +1751,7 @@ begin
     group by trim(item->>'id')
     order by min(ord)
   loop
-    if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+    if normalized_item.id is null or normalized_item.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
       raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
@@ -1761,7 +1761,7 @@ begin
 
     select * into product_record
     from public.products
-    where id = normalized_item.id
+    where id = normalized_item.id::uuid
     for update;
 
     if not found then
@@ -1776,7 +1776,7 @@ begin
     select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
     from public.self_service_reservations
     where purchase_id <> purchase_record.id
-      and product_id = normalized_item.id
+      and product_id = normalized_item.id::uuid
       and pending_quantity > 0
       and (
         status = 'partially-delivered'
@@ -1885,7 +1885,7 @@ begin
       from jsonb_array_elements(purchase_record.items) as input(item)
       group by trim(item->>'id')
     loop
-      if item_record.id is null or item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+      if item_record.id is null or item_record.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
         raise exception 'La compra contiene un producto invÃ¡lido.';
       end if;
 
@@ -1898,7 +1898,7 @@ begin
 
       select * into product_record
       from public.products
-      where id = item_record.id
+      where id = item_record.id::uuid
       for update;
 
       if not found then
@@ -1908,7 +1908,7 @@ begin
       select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
       from public.self_service_reservations
       where purchase_id <> purchase_record.id
-        and product_id = item_record.id
+        and product_id = item_record.id::uuid
         and pending_quantity > 0
         and (
           status = 'partially-delivered'
@@ -1921,7 +1921,7 @@ begin
 
       update public.products
       set stock = stock - item_record.quantity
-      where id = item_record.id;
+      where id = item_record.id::uuid;
     end loop;
   elsif p_target_status = 'pre-sale-confirmed' then
     if purchase_record.status <> 'pre-sale' then
@@ -1936,7 +1936,7 @@ begin
       from jsonb_array_elements(purchase_record.items) as input(item)
       group by trim(item->>'id')
     loop
-      if item_record.id is null or item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+      if item_record.id is null or item_record.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
         raise exception 'La compra contiene un producto invÃ¡lido.';
       end if;
 
@@ -1949,7 +1949,7 @@ begin
 
       select * into product_record
       from public.products
-      where id = item_record.id
+      where id = item_record.id::uuid
       for update;
 
       if not found then
@@ -2074,7 +2074,7 @@ begin
       from jsonb_array_elements(purchase_record.items) as input(item)
       group by trim(item->>'id')
     loop
-      if stock_item_record.id is null or stock_item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
+      if stock_item_record.id is null or stock_item_record.id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
         raise exception 'La compra contiene un producto invÃ¡lido.';
       end if;
 
@@ -2087,7 +2087,7 @@ begin
 
       select * into product_record
       from public.products
-      where id = stock_item_record.id
+      where id = stock_item_record.id::uuid
       for update;
 
       if not found then
@@ -2097,7 +2097,7 @@ begin
       select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
       from public.self_service_reservations
       where purchase_id <> purchase_record.id
-        and product_id = stock_item_record.id
+        and product_id = stock_item_record.id::uuid
         and pending_quantity > 0
         and (
           status = 'partially-delivered'
@@ -2110,7 +2110,7 @@ begin
 
       update public.products
       set stock = stock - stock_item_record.quantity
-      where id = stock_item_record.id;
+      where id = stock_item_record.id::uuid;
     end loop;
 
     insert into public."auditLogs" (
