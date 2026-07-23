@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react';
+import { useState, useEffect, useCallback, type MouseEvent } from 'react';
 import Link from 'next/link';
 import type { Product, Purchase } from '@/lib/types';
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,6 @@ import { getProductsByAvailability } from '@/lib/services/product-service';
 import { addPreSalePurchase, getSelfServicePurchasesByCedula, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { MOLLY_LOGO_URL } from '@/components/icons';
 
 
@@ -41,6 +40,8 @@ const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() ||
 const DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE = 'daviplata://pagar?llave={key}&referencia={code}';
 const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE;
 const DAVIPLATA_DEEP_LINK_PREFIX = 'daviplata:';
+const SELF_SERVICE_REFRESH_INTERVAL_MS = 60_000;
+const SELF_SERVICE_REFRESH_JITTER_MS = 15_000;
 
 const buildDaviplataPaymentHref = (paymentCode: string | null, _total: number) => {
   if (!DAVIPLATA_BREB_KEY || !DAVIPLATA_BREB_LINK_TEMPLATE) return '';
@@ -135,7 +136,6 @@ export default function SelfServicePage() {
   const { toast } = useToast();
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
-  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
   const activeCedula = cedula.trim();
   const hasActiveCedula = activeCedula.length > 0;
 
@@ -178,10 +178,24 @@ export default function SelfServicePage() {
     loadProducts();
   }, [loadProducts]);
 
-  useSupabaseRealtime({
-    tables: realtimeTables,
-    onChange: () => loadProducts(false),
-  });
+  useEffect(() => {
+    const initialJitter = Math.floor(Math.random() * SELF_SERVICE_REFRESH_JITTER_MS);
+    let intervalId: number | null = null;
+
+    const timeoutId = window.setTimeout(() => {
+      loadProducts(false);
+      intervalId = window.setInterval(() => {
+        loadProducts(false);
+      }, SELF_SERVICE_REFRESH_INTERVAL_MS);
+    }, initialJitter);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [loadProducts]);
 
   const getSelfServiceReserved = useCallback((productId: string) => {
     const reserved = reservedQuantities[productId] || 0;
