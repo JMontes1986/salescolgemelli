@@ -1,4 +1,4 @@
-create extension if not exists "pgcrypto";
+﻿create extension if not exists "pgcrypto";
 
 grant usage on schema public to anon, authenticated;
 
@@ -105,6 +105,20 @@ where "sellerId" is null
   and status = 'pending'
   and "reservationExpiresAt" is null;
 
+create table if not exists public.self_service_reservations (
+  purchase_id text not null references public.purchases(id) on delete cascade,
+  product_id text not null references public.products(id) on delete cascade,
+  pending_quantity integer not null check (pending_quantity >= 0),
+  status text not null,
+  expires_at timestamptz,
+  updated_at timestamptz not null default now(),
+  primary key (purchase_id, product_id)
+);
+
+alter table public.self_service_reservations enable row level security;
+revoke all on public.self_service_reservations from anon, authenticated;
+grant select, insert, update, delete on public.self_service_reservations to service_role;
+
 create table if not exists public.bingo_registrations (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
@@ -187,6 +201,14 @@ create index if not exists purchases_delivery_code_upper_idx
 create index if not exists purchases_id_upper_idx
   on public.purchases (upper(id));
 
+create index if not exists self_service_reservations_active_product_idx
+  on public.self_service_reservations (product_id, expires_at)
+  where pending_quantity > 0
+    and status in ('pending', 'partially-delivered');
+
+create index if not exists self_service_reservations_purchase_idx
+  on public.self_service_reservations (purchase_id);
+
 create index if not exists products_position_idx
   on public.products (position);
 
@@ -239,7 +261,7 @@ begin
   where key = 'delivery_qr_hmac';
 
   if secret_value is null or secret_value !~ '^[0-9a-f]{64}$' then
-    raise exception 'No está configurada la firma segura de QR.';
+    raise exception 'No estÃ¡ configurada la firma segura de QR.';
   end if;
 
   return decode(secret_value, 'hex');
@@ -277,11 +299,11 @@ declare
   signature text;
 begin
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'La compra tiene un identificador inválido.';
+    raise exception 'La compra tiene un identificador invÃ¡lido.';
   end if;
 
   if p_delivery_code is null or trim(p_delivery_code) !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'El código adicional del QR es inválido.';
+    raise exception 'El cÃ³digo adicional del QR es invÃ¡lido.';
   end if;
 
   payload := jsonb_build_object(
@@ -313,12 +335,12 @@ declare
   expires_at bigint;
 begin
   if p_token is null or trim(p_token) !~ '^[0-9A-Za-z_-]{20,}\.[0-9A-Za-z_-]{32,}$' then
-    raise exception 'El QR firmado no tiene un formato válido.';
+    raise exception 'El QR firmado no tiene un formato vÃ¡lido.';
   end if;
 
   token_parts := string_to_array(trim(p_token), '.');
   if array_length(token_parts, 1) <> 2 then
-    raise exception 'El QR firmado no tiene un formato válido.';
+    raise exception 'El QR firmado no tiene un formato vÃ¡lido.';
   end if;
 
   encoded_payload := token_parts[1];
@@ -326,14 +348,14 @@ begin
   expected_signature := public.sign_delivery_qr_payload(encoded_payload);
 
   if provided_signature <> expected_signature then
-    raise exception 'La firma del QR no es válida.';
+    raise exception 'La firma del QR no es vÃ¡lida.';
   end if;
 
   payload := convert_from(public.base64url_decode(encoded_payload), 'UTF8')::jsonb;
   expires_at := (payload->>'exp')::bigint;
 
   if expires_at is null or expires_at < floor(extract(epoch from now()))::bigint then
-    raise exception 'El QR de entrega expiró. Digite el código manualmente o regenere el comprobante.';
+    raise exception 'El QR de entrega expirÃ³. Digite el cÃ³digo manualmente o regenere el comprobante.';
   end if;
 
   return payload;
@@ -370,7 +392,7 @@ begin
       or lookup_code !~ '^[0-9A-Za-z_-]{1,80}$'
       or lookup_delivery_code is null
       or lookup_delivery_code !~ '^[0-9A-Za-z_-]{1,80}$' then
-      raise exception 'El QR firmado no corresponde a una compra válida.';
+      raise exception 'El QR firmado no corresponde a una compra vÃ¡lida.';
     end if;
 
     select *
@@ -521,7 +543,7 @@ grant execute on function public.current_session_is_dashboard_strong() to authen
 
 create or replace function public.require_dashboard_strong_permission(
   p_permission text,
-  p_action text default 'realizar esta acción'
+  p_action text default 'realizar esta acciÃ³n'
 )
 returns void
 language plpgsql
@@ -531,15 +553,15 @@ set search_path = public
 as $$
 begin
   if auth.uid() is null then
-    raise exception 'Se requiere una sesión autenticada para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+    raise exception 'Se requiere una sesiÃ³n autenticada para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acciÃ³n');
   end if;
 
   if not public.current_user_has_permission(p_permission) then
-    raise exception 'No tiene permiso para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+    raise exception 'No tiene permiso para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acciÃ³n');
   end if;
 
   if not public.current_session_is_recent(900) then
-    raise exception 'La sesión superó 15 minutos. Vuelva a iniciar sesión para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acción');
+    raise exception 'La sesiÃ³n superÃ³ 15 minutos. Vuelva a iniciar sesiÃ³n para %.', coalesce(nullif(btrim(p_action), ''), 'realizar esta acciÃ³n');
   end if;
 end;
 $$;
@@ -597,7 +619,7 @@ begin
     'RETURN_PROCESS',
     'AUDIT_LOG_FAILURE'
   ) then
-    p_details := 'Intento de registrar acción de auditoría no permitida: ' || coalesce(nullif(btrim(p_action), ''), '[vacía]');
+    p_details := 'Intento de registrar acciÃ³n de auditorÃ­a no permitida: ' || coalesce(nullif(btrim(p_action), ''), '[vacÃ­a]');
     safe_action := 'AUDIT_LOG_FAILURE';
   end if;
 
@@ -610,7 +632,7 @@ begin
   ) values (
     now()::text,
     left(coalesce(nullif(btrim(p_user_id), ''), 'anonymous'), 120),
-    left(coalesce(nullif(btrim(p_user_name), ''), 'Anónimo'), 160),
+    left(coalesce(nullif(btrim(p_user_name), ''), 'AnÃ³nimo'), 160),
     safe_action,
     left(coalesce(nullif(btrim(p_details), ''), 'Sin detalles.'), 1200)
   )
@@ -661,7 +683,7 @@ begin
     where session."userId" = auth.uid()::text
       and session.status = 'open'
   ) then
-    raise exception 'Ya existe una sesión de caja abierta para este usuario.';
+    raise exception 'Ya existe una sesiÃ³n de caja abierta para este usuario.';
   end if;
 
   insert into public."cashboxSessions" (
@@ -703,7 +725,7 @@ begin
   perform public.require_dashboard_strong_permission('cashbox', 'cerrar caja');
 
   if p_session_id is null or trim(p_session_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'La sesión de caja no es válida.';
+    raise exception 'La sesiÃ³n de caja no es vÃ¡lida.';
   end if;
 
   if coalesce(p_closing_balance, 0) < 0 then
@@ -718,7 +740,7 @@ begin
     for update;
 
   if not found or saved_session.status <> 'open' then
-    raise exception 'La sesión no existe o ya ha sido cerrada.';
+    raise exception 'La sesiÃ³n no existe o ya ha sido cerrada.';
   end if;
 
   update public."cashboxSessions"
@@ -807,6 +829,102 @@ $$;
 revoke all on function public.next_counter(text) from public;
 grant execute on function public.next_counter(text) to anon, authenticated;
 
+create or replace function public.sync_self_service_reservations(
+  p_purchase_id text,
+  p_items jsonb,
+  p_status text,
+  p_expires_at text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_purchase_id text := trim(coalesce(p_purchase_id, ''));
+  safe_expires_at timestamptz := nullif(p_expires_at, '')::timestamptz;
+begin
+  if safe_purchase_id = '' then
+    return;
+  end if;
+
+  delete from public.self_service_reservations
+  where purchase_id = safe_purchase_id;
+
+  if p_status not in ('pending', 'partially-delivered') then
+    return;
+  end if;
+
+  if p_status = 'pending' and (safe_expires_at is null or safe_expires_at <= now()) then
+    return;
+  end if;
+
+  insert into public.self_service_reservations (
+    purchase_id,
+    product_id,
+    pending_quantity,
+    status,
+    expires_at,
+    updated_at
+  )
+  select
+    safe_purchase_id,
+    reservation_items.product_id,
+    reservation_items.pending_quantity,
+    p_status,
+    safe_expires_at,
+    now()
+  from (
+    select
+      trim(item->>'id') as product_id,
+      sum(greatest(
+        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
+          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
+        0
+      ))::integer as pending_quantity
+    from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) as input(item)
+    group by trim(item->>'id')
+  ) reservation_items
+  where reservation_items.product_id ~ '^[0-9A-Za-z_-]{1,80}$'
+    and reservation_items.pending_quantity > 0
+  on conflict (purchase_id, product_id) do update
+    set
+      pending_quantity = excluded.pending_quantity,
+      status = excluded.status,
+      expires_at = excluded.expires_at,
+      updated_at = excluded.updated_at;
+end;
+$$;
+
+revoke all on function public.sync_self_service_reservations(text, jsonb, text, text) from public;
+grant execute on function public.sync_self_service_reservations(text, jsonb, text, text) to service_role;
+
+do $$
+declare
+  purchase_record public.purchases%rowtype;
+begin
+  for purchase_record in
+    select *
+    from public.purchases
+    where "sellerId" is null
+      and (
+        status = 'partially-delivered'
+        or (
+          status = 'pending'
+          and nullif("reservationExpiresAt", '')::timestamptz > now()
+        )
+      )
+  loop
+    perform public.sync_self_service_reservations(
+      purchase_record.id,
+      purchase_record.items,
+      purchase_record.status,
+      purchase_record."reservationExpiresAt"
+    );
+  end loop;
+end;
+$$;
+
 create or replace function public.get_self_service_reserved_quantities(
   p_exclude_purchase_id text default null
 )
@@ -815,34 +933,20 @@ language sql
 security definer
 set search_path = public
 as $$
-  with reservation_items as (
+  with reserved_totals as (
     select
-      trim(item->>'id') as product_id,
-      greatest(
-        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
-          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
-        0
-      ) as pending_quantity
-    from public.purchases purchase
-    cross join jsonb_array_elements(purchase.items) as input(item)
-    where purchase."sellerId" is null
+      product_id,
+      sum(pending_quantity)::integer as reserved_quantity
+    from public.self_service_reservations
+    where pending_quantity > 0
       and (
-        purchase.status = 'partially-delivered'
-        or (
-          purchase.status = 'pending'
-          and nullif(purchase."reservationExpiresAt", '')::timestamptz > now()
-        )
+        status = 'partially-delivered'
+        or (status = 'pending' and expires_at > now())
       )
       and (
         p_exclude_purchase_id is null
-        or purchase.id <> trim(p_exclude_purchase_id)
+        or purchase_id <> trim(p_exclude_purchase_id)
       )
-  ),
-  reserved_totals as (
-    select product_id, sum(pending_quantity)::integer as reserved_quantity
-    from reservation_items
-    where product_id ~ '^[0-9A-Za-z_-]{1,80}$'
-      and pending_quantity > 0
     group by product_id
   )
   select coalesce(jsonb_object_agg(product_id, reserved_quantity), '{}'::jsonb)
@@ -954,7 +1058,7 @@ begin
   end if;
 
   if jsonb_array_length(p_items) > 30 then
-    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+    raise exception 'No se pueden incluir mÃ¡s de 30 productos diferentes en una compra.';
   end if;
 
   for normalized_item in
@@ -967,16 +1071,16 @@ begin
     order by min(ord)
   loop
     if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-      raise exception 'La compra contiene un producto inválido.';
+      raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
     if normalized_item.quantity is null or normalized_item.quantity < 1 or normalized_item.quantity > 99 then
-      raise exception 'La compra contiene una cantidad inválida.';
+      raise exception 'La compra contiene una cantidad invÃ¡lida.';
     end if;
 
     select * into product_record
     from public.products
-    where id::text = normalized_item.id
+    where id = normalized_item.id
     for update;
 
     if not found then
@@ -985,11 +1089,11 @@ begin
 
     if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
       and not coalesce(product_record.availability, '{}'::text[]) @> array['pos']::text[] then
-      raise exception '% no está disponible para este canal de venta.', product_record.name;
+      raise exception '% no estÃ¡ disponible para este canal de venta.', product_record.name;
     end if;
 
     if product_record.price < 0 then
-      raise exception '% tiene un precio inválido.', product_record.name;
+      raise exception '% tiene un precio invÃ¡lido.', product_record.name;
     end if;
 
     if product_record.stock < normalized_item.quantity then
@@ -1002,7 +1106,7 @@ begin
 
     update public.products
     set stock = stock - normalized_item.quantity
-    where id::text = normalized_item.id;
+    where id = normalized_item.id;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
@@ -1118,19 +1222,19 @@ begin
   perform public.require_dashboard_strong_permission('presale', 'registrar preventas');
 
   if safe_cedula !~ '^[0-9A-Za-z.-]{4,30}$' then
-    raise exception 'La cédula no tiene un formato válido.';
+    raise exception 'La cÃ©dula no tiene un formato vÃ¡lido.';
   end if;
 
   if safe_celular !~ '^[0-9+()[:space:]-]{7,20}$' then
-    raise exception 'El celular no tiene un formato válido.';
+    raise exception 'El celular no tiene un formato vÃ¡lido.';
   end if;
 
   if safe_seller_id = '' or safe_seller_id !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'El vendedor tiene un identificador inválido.';
+    raise exception 'El vendedor tiene un identificador invÃ¡lido.';
   end if;
 
   if safe_seller_name = '' or length(safe_seller_name) > 120 then
-    raise exception 'El nombre del vendedor no tiene un formato válido.';
+    raise exception 'El nombre del vendedor no tiene un formato vÃ¡lido.';
   end if;
 
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
@@ -1138,7 +1242,7 @@ begin
   end if;
 
   if jsonb_array_length(p_items) > 30 then
-    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+    raise exception 'No se pueden incluir mÃ¡s de 30 productos diferentes en una compra.';
   end if;
 
   for normalized_item in
@@ -1152,19 +1256,19 @@ begin
     order by min(ord)
   loop
     if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-      raise exception 'La compra contiene un producto inválido.';
+      raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
     if normalized_item.quantities_valid is not true
       or normalized_item.quantity is null
       or normalized_item.quantity < 1
       or normalized_item.quantity > 99 then
-      raise exception 'La compra contiene una cantidad inválida.';
+      raise exception 'La compra contiene una cantidad invÃ¡lida.';
     end if;
 
     select * into product_record
     from public.products
-    where id::text = normalized_item.id
+    where id = normalized_item.id
     for update;
 
     if not found then
@@ -1173,11 +1277,11 @@ begin
 
     if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
       and not coalesce(product_record.availability, '{}'::text[]) @> array['presale']::text[] then
-      raise exception '% no está disponible para preventa.', product_record.name;
+      raise exception '% no estÃ¡ disponible para preventa.', product_record.name;
     end if;
 
     if product_record.price < 0 then
-      raise exception '% tiene un precio inválido.', product_record.name;
+      raise exception '% tiene un precio invÃ¡lido.', product_record.name;
     end if;
 
     if first_item_name = '' then
@@ -1188,7 +1292,7 @@ begin
     set
       stock = stock + normalized_item.quantity,
       "preSaleSold" = coalesce("preSaleSold", 0) + normalized_item.quantity
-    where id::text = normalized_item.id;
+    where id = normalized_item.id;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
@@ -1282,19 +1386,19 @@ declare
   safe_seller_name text := btrim(coalesce(p_seller_name, ''));
 begin
   if safe_cedula !~ '^[0-9A-Za-z.-]{4,30}$' then
-    raise exception 'La cédula no tiene un formato válido.';
+    raise exception 'La cÃ©dula no tiene un formato vÃ¡lido.';
   end if;
 
   if safe_celular !~ '^[0-9+()[:space:]-]{7,20}$' then
-    raise exception 'El celular no tiene un formato válido.';
+    raise exception 'El celular no tiene un formato vÃ¡lido.';
   end if;
 
   if safe_seller_id = '' or safe_seller_id !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'El vendedor tiene un identificador inválido.';
+    raise exception 'El vendedor tiene un identificador invÃ¡lido.';
   end if;
 
   if safe_seller_name = '' or length(safe_seller_name) > 120 then
-    raise exception 'El nombre del vendedor no tiene un formato válido.';
+    raise exception 'El nombre del vendedor no tiene un formato vÃ¡lido.';
   end if;
 
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
@@ -1302,7 +1406,7 @@ begin
   end if;
 
   if jsonb_array_length(p_items) > 30 then
-    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+    raise exception 'No se pueden incluir mÃ¡s de 30 productos diferentes en una compra.';
   end if;
 
   for normalized_item in
@@ -1316,19 +1420,19 @@ begin
     order by min(ord)
   loop
     if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-      raise exception 'La compra contiene un producto inválido.';
+      raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
     if normalized_item.quantities_valid is not true
       or normalized_item.quantity is null
       or normalized_item.quantity < 1
       or normalized_item.quantity > 99 then
-      raise exception 'La compra contiene una cantidad inválida.';
+      raise exception 'La compra contiene una cantidad invÃ¡lida.';
     end if;
 
     select * into product_record
     from public.products
-    where id::text = normalized_item.id
+    where id = normalized_item.id
     for update;
 
     if not found then
@@ -1337,11 +1441,11 @@ begin
 
     if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
       and not coalesce(product_record.availability, '{}'::text[]) @> array['presale']::text[] then
-      raise exception '% no está disponible para preventa.', product_record.name;
+      raise exception '% no estÃ¡ disponible para preventa.', product_record.name;
     end if;
 
     if product_record.price < 0 then
-      raise exception '% tiene un precio inválido.', product_record.name;
+      raise exception '% tiene un precio invÃ¡lido.', product_record.name;
     end if;
 
     if first_item_name = '' then
@@ -1352,7 +1456,7 @@ begin
     set
       stock = stock + normalized_item.quantity,
       "preSaleSold" = coalesce("preSaleSold", 0) + normalized_item.quantity
-    where id::text = normalized_item.id;
+    where id = normalized_item.id;
 
     purchase_total := purchase_total + (product_record.price * normalized_item.quantity);
     verified_items := verified_items || jsonb_build_array(jsonb_build_object(
@@ -1440,11 +1544,11 @@ declare
   safe_celular text := btrim(coalesce(p_celular, ''));
 begin
   if safe_cedula !~ '^[0-9A-Za-z.-]{4,30}$' then
-    raise exception 'La cédula no tiene un formato válido.';
+    raise exception 'La cÃ©dula no tiene un formato vÃ¡lido.';
   end if;
 
   if safe_celular !~ '^[0-9+()[:space:]-]{7,20}$' then
-    raise exception 'El celular no tiene un formato válido.';
+    raise exception 'El celular no tiene un formato vÃ¡lido.';
   end if;
 
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
@@ -1452,7 +1556,7 @@ begin
   end if;
 
   if jsonb_array_length(p_items) > 30 then
-    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+    raise exception 'No se pueden incluir mÃ¡s de 30 productos diferentes en una compra.';
   end if;
 
   for normalized_item in
@@ -1466,19 +1570,19 @@ begin
     order by min(ord)
   loop
     if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-      raise exception 'La compra contiene un producto inválido.';
+      raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
     if normalized_item.quantities_valid is not true
       or normalized_item.quantity is null
       or normalized_item.quantity < 1
       or normalized_item.quantity > 99 then
-      raise exception 'La compra contiene una cantidad inválida.';
+      raise exception 'La compra contiene una cantidad invÃ¡lida.';
     end if;
 
     select * into product_record
     from public.products
-    where id::text = normalized_item.id
+    where id = normalized_item.id
     for update;
 
     if not found then
@@ -1487,31 +1591,21 @@ begin
 
     if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
       and not coalesce(product_record.availability, '{}'::text[]) @> array['self-service']::text[] then
-      raise exception '% no está disponible para autogestión.', product_record.name;
+      raise exception '% no estÃ¡ disponible para autogestiÃ³n.', product_record.name;
     end if;
 
     if product_record.price < 0 then
-      raise exception '% tiene un precio inválido.', product_record.name;
+      raise exception '% tiene un precio invÃ¡lido.', product_record.name;
     end if;
 
-    select coalesce(sum(
-      greatest(
-        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
-          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
-        0
-      )
-    ), 0)::integer into reserved_quantity
-    from public.purchases reserved_purchase
-    cross join jsonb_array_elements(reserved_purchase.items) as input(item)
-    where reserved_purchase."sellerId" is null
+    select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
+    from public.self_service_reservations
+    where product_id = normalized_item.id
+      and pending_quantity > 0
       and (
-        reserved_purchase.status = 'partially-delivered'
-        or (
-          reserved_purchase.status = 'pending'
-          and nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz > now()
-        )
-      )
-      and trim(item->>'id') = normalized_item.id;
+        status = 'partially-delivered'
+        or (status = 'pending' and expires_at > now())
+      );
 
     if product_record.stock - reserved_quantity < normalized_item.quantity then
       raise exception 'Stock insuficiente para %.', product_record.name;
@@ -1574,6 +1668,13 @@ begin
     (now() + interval '2 hours')::text
   ) returning * into saved_purchase;
 
+  perform public.sync_self_service_reservations(
+    saved_purchase.id,
+    saved_purchase.items,
+    saved_purchase.status,
+    saved_purchase."reservationExpiresAt"
+  );
+
   return saved_purchase;
 end;
 $$;
@@ -1601,15 +1702,15 @@ declare
   reserved_quantity integer := 0;
 begin
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'La compra tiene un identificador inválido.';
+    raise exception 'La compra tiene un identificador invÃ¡lido.';
   end if;
 
   if p_cedula is null or trim(p_cedula) !~ '^[0-9A-Za-z.-]{4,30}$' then
-    raise exception 'La cédula no tiene un formato válido.';
+    raise exception 'La cÃ©dula no tiene un formato vÃ¡lido.';
   end if;
 
   if p_celular is null or trim(p_celular) !~ '^[0-9+()[:space:]-]{7,20}$' then
-    raise exception 'El celular no tiene un formato válido.';
+    raise exception 'El celular no tiene un formato vÃ¡lido.';
   end if;
 
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
@@ -1617,7 +1718,7 @@ begin
   end if;
 
   if jsonb_array_length(p_items) > 30 then
-    raise exception 'No se pueden incluir más de 30 productos diferentes en una compra.';
+    raise exception 'No se pueden incluir mÃ¡s de 30 productos diferentes en una compra.';
   end if;
 
   select * into purchase_record
@@ -1638,7 +1739,7 @@ begin
   end if;
 
   if coalesce(nullif(purchase_record."reservationExpiresAt", '')::timestamptz, now() - interval '1 second') <= now() then
-    raise exception 'La reserva de esta compra expiró. Genere un nuevo código de pago.';
+    raise exception 'La reserva de esta compra expirÃ³. Genere un nuevo cÃ³digo de pago.';
   end if;
 
   for normalized_item in
@@ -1651,16 +1752,16 @@ begin
     order by min(ord)
   loop
     if normalized_item.id is null or normalized_item.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-      raise exception 'La compra contiene un producto inválido.';
+      raise exception 'La compra contiene un producto invÃ¡lido.';
     end if;
 
     if normalized_item.quantity is null or normalized_item.quantity < 1 or normalized_item.quantity > 99 then
-      raise exception 'La compra contiene una cantidad inválida.';
+      raise exception 'La compra contiene una cantidad invÃ¡lida.';
     end if;
 
     select * into product_record
     from public.products
-    where id::text = normalized_item.id
+    where id = normalized_item.id
     for update;
 
     if not found then
@@ -1669,28 +1770,18 @@ begin
 
     if cardinality(coalesce(product_record.availability, '{}'::text[])) > 0
       and not coalesce(product_record.availability, '{}'::text[]) @> array['self-service']::text[] then
-      raise exception '% no está disponible para autogestión.', product_record.name;
+      raise exception '% no estÃ¡ disponible para autogestiÃ³n.', product_record.name;
     end if;
 
-    select coalesce(sum(
-      greatest(
-        coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
-          - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
-        0
-      )
-    ), 0)::integer into reserved_quantity
-    from public.purchases reserved_purchase
-    cross join jsonb_array_elements(reserved_purchase.items) as input(item)
-    where reserved_purchase.id <> purchase_record.id
-      and reserved_purchase."sellerId" is null
+    select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
+    from public.self_service_reservations
+    where purchase_id <> purchase_record.id
+      and product_id = normalized_item.id
+      and pending_quantity > 0
       and (
-        reserved_purchase.status = 'partially-delivered'
-        or (
-          reserved_purchase.status = 'pending'
-          and nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz > now()
-        )
-      )
-      and trim(item->>'id') = normalized_item.id;
+        status = 'partially-delivered'
+        or (status = 'pending' and expires_at > now())
+      );
 
     if product_record.stock - reserved_quantity < normalized_item.quantity then
       raise exception 'Stock insuficiente para %.', product_record.name;
@@ -1716,6 +1807,13 @@ begin
   where id = purchase_record.id
   returning * into purchase_record;
 
+  perform public.sync_self_service_reservations(
+    purchase_record.id,
+    purchase_record.items,
+    purchase_record.status,
+    purchase_record."reservationExpiresAt"
+  );
+
   return purchase_record;
 end;
 $$;
@@ -1739,7 +1837,7 @@ declare
   reserved_quantity integer := 0;
 begin
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'La compra tiene un identificador inválido.';
+    raise exception 'La compra tiene un identificador invÃ¡lido.';
   end if;
 
   if p_target_status not in ('paid', 'pre-sale-confirmed', 'delivered') then
@@ -1776,7 +1874,7 @@ begin
 
     if purchase_record."sellerId" is null
       and coalesce(nullif(purchase_record."reservationExpiresAt", '')::timestamptz, now() - interval '1 second') <= now() then
-      raise exception 'La reserva de esta compra expiró. Genere un nuevo código de pago.';
+      raise exception 'La reserva de esta compra expirÃ³. Genere un nuevo cÃ³digo de pago.';
     end if;
 
     for item_record in
@@ -1788,44 +1886,34 @@ begin
       group by trim(item->>'id')
     loop
       if item_record.id is null or item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-        raise exception 'La compra contiene un producto inválido.';
+        raise exception 'La compra contiene un producto invÃ¡lido.';
       end if;
 
       if item_record.quantities_valid is not true
         or item_record.quantity is null
         or item_record.quantity < 1
         or item_record.quantity > 99 then
-        raise exception 'La compra contiene una cantidad inválida.';
+        raise exception 'La compra contiene una cantidad invÃ¡lida.';
       end if;
 
       select * into product_record
       from public.products
-      where id::text = item_record.id
+      where id = item_record.id
       for update;
 
       if not found then
         raise exception 'Producto con ID % no encontrado.', item_record.id;
       end if;
 
-      select coalesce(sum(
-        greatest(
-          coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
-            - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
-          0
-        )
-      ), 0)::integer into reserved_quantity
-      from public.purchases reserved_purchase
-      cross join jsonb_array_elements(reserved_purchase.items) as input(item)
-      where reserved_purchase.id <> purchase_record.id
-        and reserved_purchase."sellerId" is null
+      select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
+      from public.self_service_reservations
+      where purchase_id <> purchase_record.id
+        and product_id = item_record.id
+        and pending_quantity > 0
         and (
-          reserved_purchase.status = 'partially-delivered'
-          or (
-            reserved_purchase.status = 'pending'
-            and nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz > now()
-          )
-        )
-        and trim(item->>'id') = item_record.id;
+          status = 'partially-delivered'
+          or (status = 'pending' and expires_at > now())
+        );
 
       if product_record.stock - reserved_quantity < item_record.quantity then
         raise exception 'Stock insuficiente para %.', product_record.name;
@@ -1833,7 +1921,7 @@ begin
 
       update public.products
       set stock = stock - item_record.quantity
-      where id::text = item_record.id;
+      where id = item_record.id;
     end loop;
   elsif p_target_status = 'pre-sale-confirmed' then
     if purchase_record.status <> 'pre-sale' then
@@ -1849,29 +1937,29 @@ begin
       group by trim(item->>'id')
     loop
       if item_record.id is null or item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-        raise exception 'La compra contiene un producto inválido.';
+        raise exception 'La compra contiene un producto invÃ¡lido.';
       end if;
 
       if item_record.quantities_valid is not true
         or item_record.quantity is null
         or item_record.quantity < 1
         or item_record.quantity > 99 then
-        raise exception 'La compra contiene una cantidad inválida.';
+        raise exception 'La compra contiene una cantidad invÃ¡lida.';
       end if;
 
       select * into product_record
       from public.products
-      where id::text = item_record.id
+      where id = item_record.id
       for update;
 
       if not found then
         raise exception 'Producto con ID % no encontrado.', item_record.id;
       end if;
 
-      -- La confirmación de una preventa solo cambia el estado de la compra.
+      -- La confirmaciÃ³n de una preventa solo cambia el estado de la compra.
       -- El stock planificado y el contador de unidades preventidas ya se aumentaron
-      -- al registrar la preventa, y deben conservarse para saber cuántas unidades
-      -- llevar/vender el día del evento.
+      -- al registrar la preventa, y deben conservarse para saber cuÃ¡ntas unidades
+      -- llevar/vender el dÃ­a del evento.
     end loop;
   elsif p_target_status = 'delivered' then
     if purchase_record.status not in ('paid', 'pre-sale-confirmed') then
@@ -1888,6 +1976,13 @@ begin
     end
   where id = purchase_record.id
   returning * into purchase_record;
+
+  perform public.sync_self_service_reservations(
+    purchase_record.id,
+    purchase_record.items,
+    purchase_record.status,
+    purchase_record."reservationExpiresAt"
+  );
 
   return purchase_record;
 end;
@@ -1933,12 +2028,12 @@ begin
   end if;
 
   if p_purchase_id is null or trim(p_purchase_id) !~ '^[0-9A-Za-z_-]{1,80}$' then
-    raise exception 'La compra tiene un identificador inválido.';
+    raise exception 'La compra tiene un identificador invÃ¡lido.';
   end if;
 
   if auth.uid() is null then
     if lookup_token is null then
-      raise exception 'Se requiere un QR firmado vigente para registrar entregas desde una sesión local.';
+      raise exception 'Se requiere un QR firmado vigente para registrar entregas desde una sesiÃ³n local.';
     end if;
 
     token_payload := public.verify_signed_delivery_qr_token(lookup_token);
@@ -1948,7 +2043,7 @@ begin
   end if;
 
   if jsonb_typeof(coalesce(p_delivery_quantities, '{}'::jsonb)) <> 'object' then
-    raise exception 'Las cantidades de entrega no son válidas.';
+    raise exception 'Las cantidades de entrega no son vÃ¡lidas.';
   end if;
 
   select *
@@ -1980,44 +2075,34 @@ begin
       group by trim(item->>'id')
     loop
       if stock_item_record.id is null or stock_item_record.id !~ '^[0-9A-Za-z_-]{1,80}$' then
-        raise exception 'La compra contiene un producto inválido.';
+        raise exception 'La compra contiene un producto invÃ¡lido.';
       end if;
 
       if stock_item_record.quantities_valid is not true
         or stock_item_record.quantity is null
         or stock_item_record.quantity < 1
         or stock_item_record.quantity > 99 then
-        raise exception 'La compra contiene una cantidad inválida.';
+        raise exception 'La compra contiene una cantidad invÃ¡lida.';
       end if;
 
       select * into product_record
       from public.products
-      where id::text = stock_item_record.id
+      where id = stock_item_record.id
       for update;
 
       if not found then
         raise exception 'Producto con ID % no encontrado.', stock_item_record.id;
       end if;
 
-      select coalesce(sum(
-        greatest(
-          coalesce(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end, 0)
-            - coalesce(case when (item->>'deliveredQuantity') ~ '^[0-9]+$' then (item->>'deliveredQuantity')::integer else 0 end, 0),
-          0
-        )
-      ), 0)::integer into reserved_quantity
-      from public.purchases reserved_purchase
-      cross join jsonb_array_elements(reserved_purchase.items) as input(item)
-      where reserved_purchase.id <> purchase_record.id
-        and reserved_purchase."sellerId" is null
+      select coalesce(sum(pending_quantity), 0)::integer into reserved_quantity
+      from public.self_service_reservations
+      where purchase_id <> purchase_record.id
+        and product_id = stock_item_record.id
+        and pending_quantity > 0
         and (
-          reserved_purchase.status = 'partially-delivered'
-          or (
-            reserved_purchase.status = 'pending'
-            and nullif(reserved_purchase."reservationExpiresAt", '')::timestamptz > now()
-          )
-        )
-        and trim(item->>'id') = stock_item_record.id;
+          status = 'partially-delivered'
+          or (status = 'pending' and expires_at > now())
+        );
 
       if product_record.stock - reserved_quantity < stock_item_record.quantity then
         raise exception 'Stock insuficiente para %.', product_record.name;
@@ -2025,7 +2110,7 @@ begin
 
       update public.products
       set stock = stock - stock_item_record.quantity
-      where id::text = stock_item_record.id;
+      where id = stock_item_record.id;
     end loop;
 
     insert into public."auditLogs" (
@@ -2039,7 +2124,7 @@ begin
       coalesce(nullif(trim(p_user_id), ''), 'system'),
       coalesce(nullif(trim(p_user_name), ''), 'Sistema'),
       'PAYMENT_CONFIRM',
-      'Compra de autogestión ' || purchase_record.id || ' confirmada desde entrega. Stock descontado al registrar la entrega.'
+      'Compra de autogestiÃ³n ' || purchase_record.id || ' confirmada desde entrega. Stock descontado al registrar la entrega.'
     );
   end if;
 
@@ -2050,7 +2135,7 @@ begin
     requested_quantity := coalesce((p_delivery_quantities ->> (item_record->>'id'))::integer, 0);
 
     if requested_quantity < 0 then
-      raise exception 'Cantidad inválida para %.', item_record->>'name';
+      raise exception 'Cantidad invÃ¡lida para %.', item_record->>'name';
     end if;
 
     delivered_quantity := least(greatest(coalesce((item_record->>'deliveredQuantity')::integer, 0), 0), (item_record->>'quantity')::integer);
@@ -2090,6 +2175,13 @@ begin
     "reservationExpiresAt" = null
   where id = purchase_record.id
   returning * into purchase_record;
+
+  perform public.sync_self_service_reservations(
+    purchase_record.id,
+    purchase_record.items,
+    purchase_record.status,
+    purchase_record."reservationExpiresAt"
+  );
 
   insert into public."auditLogs" (
     timestamp,
