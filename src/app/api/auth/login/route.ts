@@ -155,18 +155,16 @@ export async function POST(request: NextRequest) {
 
     await setAuthCookies(response, user, session);
 
-    try {
-      await addAuditLog({
+    void addAuditLog({
         userId: user.id,
         userName: user.name,
         action: "USER_LOGIN",
         details: `Usuario ${user.name} (${user.username}) ha iniciado sesión${
           isAdminTotpRequired(user) ? " con FreeOTP" : ""
         }.`,
-      });
-    } catch {
+    }).catch(() => {
       // The login must not fail just because the audit sink is temporarily unavailable.
-    }
+    });
 
     return response;
   } catch (error) {

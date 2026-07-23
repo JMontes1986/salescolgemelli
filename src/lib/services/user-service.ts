@@ -479,7 +479,7 @@ async function getProfileForAuthUser(
     );
 
     if (existingProfile) {
-      return syncAuthProfile(authUser, fallback, existingProfile, accessToken);
+      return applyAuthOverrides(sanitizeUser(existingProfile), authUser);
     }
 
     const username =
