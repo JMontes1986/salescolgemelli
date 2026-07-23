@@ -10,7 +10,31 @@ type SupabaseRequestOptions = {
   body?: unknown;
   prefer?: string;
   accessToken?: string;
+  cacheTtlMs?: number;
 };
+
+type CacheEntry = {
+  expiresAt: number;
+  value: unknown;
+};
+
+const clientReadCache = new Map<string, CacheEntry>();
+const clientReadInflight = new Map<string, Promise<unknown>>();
+
+function getCacheKey(
+  requestUrl: string,
+  method: string,
+  body?: unknown,
+) {
+  return `${method}:${requestUrl}:${body === undefined ? "" : JSON.stringify(body)}`;
+}
+
+function clearClientReadCache() {
+  if (typeof window === "undefined") return;
+
+  clientReadCache.clear();
+  clientReadInflight.clear();
+}
 
 export function getSupabaseEnv() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -122,44 +146,86 @@ export async function supabaseRequest<T>(
     cache: "no-store",
     credentials: shouldUseInternalProxy ? "include" : "same-origin",
   };
+  const method = requestInit.method ?? "GET";
+  const cacheTtlMs = typeof window !== "undefined" ? options.cacheTtlMs ?? 0 : 0;
+  const cacheKey = cacheTtlMs > 0
+    ? getCacheKey(requestUrl, method, options.body)
+    : null;
+
+  if (cacheKey) {
+    const cached = clientReadCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T;
+    }
+
+    const inflight = clientReadInflight.get(cacheKey);
+    if (inflight) {
+      return inflight as Promise<T>;
+    }
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SUPABASE_REQUEST_TIMEOUT_MS);
   let response: Response;
 
-  try {
+  const runRequest = async () => {
     response = await fetch(requestUrl, {
       ...requestInit,
       signal: controller.signal,
     });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(
-        `Supabase request timed out after ${SUPABASE_REQUEST_TIMEOUT_MS / 1000}s: ${path}`,
-      );
+
+    if (!response.ok) {
+      const { message } = await parseSupabaseError(response);
+
+      throw new Error(`Supabase request failed (${response.status}): ${message}`);
     }
 
-    throw error;
-  } finally {
-    clearTimeout(timeout);
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const responseBody = await response.text();
+    if (!responseBody) {
+      return undefined as T;
+    }
+
+    return JSON.parse(responseBody) as T;
+  };
+
+  const requestPromise = runRequest()
+    .then((value) => {
+      if (cacheKey) {
+        clientReadCache.set(cacheKey, {
+          expiresAt: Date.now() + cacheTtlMs,
+          value,
+        });
+      } else if (typeof window !== "undefined" && method !== "GET") {
+        clearClientReadCache();
+      }
+
+      return value;
+    })
+    .catch((error) => {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          `Supabase request timed out after ${SUPABASE_REQUEST_TIMEOUT_MS / 1000}s: ${path}`,
+        );
+      }
+
+      throw error;
+    })
+    .finally(() => {
+      clearTimeout(timeout);
+      if (cacheKey) {
+        clientReadInflight.delete(cacheKey);
+      }
+    });
+
+  if (cacheKey) {
+    clientReadInflight.set(cacheKey, requestPromise);
   }
 
-  if (!response.ok) {
-    const { message } = await parseSupabaseError(response);
-
-    throw new Error(`Supabase request failed (${response.status}): ${message}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  const responseBody = await response.text();
-  if (!responseBody) {
-    return undefined as T;
-  }
-
-  return JSON.parse(responseBody) as T;
+  return requestPromise;
 }
 
 export async function supabaseAuthRequest<T>(
@@ -200,10 +266,12 @@ export async function selectRows<T>(
   table: string,
   query: SupabaseRequestOptions["query"] = {},
   accessToken?: string,
+  cacheTtlMs?: number,
 ): Promise<T[]> {
   return supabaseRequest<T[]>(table, {
     query: { select: "*", ...query },
     accessToken,
+    cacheTtlMs,
   });
 }
 
@@ -262,10 +330,12 @@ export async function upsertRow<T>(
 export async function callRpc<T>(
   functionName: string,
   body: unknown,
+  cacheTtlMs?: number,
 ): Promise<T> {
   return supabaseRequest<T>(`rpc/${functionName}`, {
     method: "POST",
     body,
+    cacheTtlMs,
   });
 }
 

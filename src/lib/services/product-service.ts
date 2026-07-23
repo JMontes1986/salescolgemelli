@@ -12,6 +12,7 @@ const availabilityValues = new Set<ProductAvailability>([...fallbackAvailability
 const missingAvailabilitySchemaMessage =
   'Falta la columna availability en la tabla products. Ejecuta supabase/schema.sql en Supabase para habilitar Venta, Preventa y Autogestion por producto.';
 const defaultProductCategory = 'general';
+const PRODUCTS_READ_CACHE_TTL_MS = 30_000;
 
 export function normalizeProductAvailability(value: unknown): ProductAvailability[] {
   const rawValues = (() => {
@@ -169,13 +170,13 @@ export async function getProducts(): Promise<Product[]> {
   let products: Product[];
 
   try {
-    products = await selectRows<Product>('products', { order: 'position.asc' });
+    products = await selectRows<Product>('products', { order: 'position.asc' }, undefined, PRODUCTS_READ_CACHE_TTL_MS);
   } catch (error) {
     if (!isMissingPositionColumn(error)) {
       throw error;
     }
 
-    products = await selectRows<Product>('products', { order: 'name.asc' });
+    products = await selectRows<Product>('products', { order: 'name.asc' }, undefined, PRODUCTS_READ_CACHE_TTL_MS);
   }
 
   return products.map(normalizeProduct).sort((a, b) => a.position - b.position);

@@ -7,6 +7,7 @@ export type { NewPurchase } from "@/lib/types";
 
 const MAX_DISTINCT_ITEMS_PER_PURCHASE = 30;
 const MAX_QUANTITY_PER_ITEM = 99;
+const SELF_SERVICE_RESERVATIONS_CACHE_TTL_MS = 8_000;
 const recordIdPattern = /^[0-9A-Za-z_-]{1,80}$/;
 const customerIdPattern = /^[0-9A-Za-z.-]{4,30}$/;
 const colombianPhonePattern = /^[0-9+()\s-]{7,20}$/;
@@ -302,7 +303,7 @@ export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: stri
   try {
     const reservedQuantities = await callRpc<Record<string, number>>('get_self_service_reserved_quantities', {
       p_exclude_purchase_id: safeExcludePurchaseId,
-    });
+    }, SELF_SERVICE_RESERVATIONS_CACHE_TTL_MS);
     return reservedQuantities ?? {};
   } catch (error) {
     if (error instanceof Error && error.message.includes('get_self_service_reserved_quantities')) {
