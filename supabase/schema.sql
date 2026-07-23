@@ -135,6 +135,9 @@ alter table public.bingo_registrations enable row level security;
 grant select on public.bingo_registrations to authenticated;
 grant select, insert, update on public.bingo_registrations to service_role;
 
+create index if not exists bingo_registrations_created_at_idx
+  on public.bingo_registrations (created_at desc);
+
 create table if not exists public."appSecrets" (
   key text primary key,
   value text not null,
@@ -160,8 +163,44 @@ create index if not exists purchases_cedula_idx
 create index if not exists purchases_self_service_reservation_idx
   on public.purchases (status, "sellerId", "reservationExpiresAt");
 
+create index if not exists purchases_self_service_pending_date_idx
+  on public.purchases ("sellerId", status, date desc)
+  where "sellerId" is null
+    and status in ('pending', 'pre-sale', 'partially-delivered');
+
+create index if not exists purchases_presales_dashboard_idx
+  on public.purchases (status, cedula, date desc)
+  where id like 'PV%'
+    and "sellerId" is not null
+    and status in ('pre-sale', 'pre-sale-confirmed');
+
+create index if not exists purchases_cedula_date_idx
+  on public.purchases (cedula, date desc);
+
+create index if not exists purchases_celular_date_idx
+  on public.purchases (celular, date desc);
+
+create index if not exists purchases_delivery_code_upper_idx
+  on public.purchases (upper("deliveryCode"))
+  where "deliveryCode" is not null;
+
+create index if not exists purchases_id_upper_idx
+  on public.purchases (upper(id));
+
 create index if not exists products_position_idx
   on public.products (position);
+
+create index if not exists products_availability_gin_idx
+  on public.products using gin (availability);
+
+create index if not exists users_name_idx
+  on public.users (name);
+
+create index if not exists users_username_lower_idx
+  on public.users (lower(username));
+
+create index if not exists users_name_lower_idx
+  on public.users (lower(name));
 
 create or replace function public.base64url_encode(p_value bytea)
 returns text
@@ -695,6 +734,18 @@ $$;
 
 revoke all on function public.close_cashbox_session(text, numeric) from public;
 grant execute on function public.close_cashbox_session(text, numeric) to authenticated;
+
+create index if not exists audit_logs_timestamp_idx
+  on public."auditLogs" (timestamp desc);
+
+create index if not exists returns_returned_at_idx
+  on public.returns ("returnedAt" desc);
+
+create index if not exists cashbox_sessions_status_opened_at_idx
+  on public."cashboxSessions" (status, "openedAt" desc);
+
+create index if not exists cashbox_sessions_user_status_idx
+  on public."cashboxSessions" ("userId", status);
 
 create table if not exists public.counters (
   id text primary key,
