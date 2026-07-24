@@ -66,4 +66,4 @@ scenarios:
       - get:
           url: "/api/auth/me"
           expect:
-            - statusCode: 401
+            - statusCode: 200

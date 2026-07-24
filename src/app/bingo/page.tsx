@@ -3,7 +3,7 @@ import { BingoLandingRealtime } from "@/components/bingo/BingoLandingRealtime";
 import { getBingoFoodProducts, getBingoLandingContent, getBingoPreSaleTablesSold } from "@/lib/bingo-data";
 import { siteConfig } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export const metadata: Metadata = {
   title: "Bingo Gemellista | Sales Col Gemelli",
@@ -31,9 +31,9 @@ export const metadata: Metadata = {
 
 export default async function BingoPage() {
   const [content, tablesSold, foodProducts] = await Promise.all([
-    getBingoLandingContent(),
-    getBingoPreSaleTablesSold(),
-    getBingoFoodProducts(),
+    getBingoLandingContent("public-cache"),
+    getBingoPreSaleTablesSold("public-cache"),
+    getBingoFoodProducts("public-cache"),
   ]);
 
   return <BingoLandingRealtime initialContent={content} initialTablesSold={tablesSold} initialFoodProducts={foodProducts} />;

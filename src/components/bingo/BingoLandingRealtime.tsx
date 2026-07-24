@@ -89,7 +89,7 @@ export function BingoLandingRealtime({
   useSupabaseRealtime({
     tables: BINGO_REALTIME_TABLES,
     onChange: refreshLandingData,
-    fallbackIntervalMs: 5_000,
+    fallbackIntervalMs: 30_000,
   });
 
   return <BingoLanding content={content} tablesSold={tablesSold} foodProducts={foodProducts} />;

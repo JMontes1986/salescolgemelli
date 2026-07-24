@@ -29,6 +29,13 @@ type DeepPartial<T> = T extends (infer U)[]
     ? { [K in keyof T]?: DeepPartial<T[K]> }
     : T;
 
+type BingoDataCacheMode = "fresh" | "public-cache";
+
+function getBingoFetchCacheInit(cacheMode: BingoDataCacheMode, revalidateSeconds: number): RequestInit {
+  return cacheMode === "public-cache"
+    ? { next: { revalidate: revalidateSeconds } }
+    : { cache: "no-store" };
+}
 const BINGO_LANDING_BLOCKED_PRODUCT_TERMS = [
   "aguardiente",
   "alcohol",
@@ -196,13 +203,13 @@ function replaceStaleLandingText(content: BingoLandingContent): BingoLandingCont
   };
 }
 
-export async function getBingoLandingContent() {
+export async function getBingoLandingContent(cacheMode: BingoDataCacheMode = "fresh") {
   try {
     const { supabaseUrl } = getSupabaseEnv();
     const serviceRoleKey = getSupabaseServiceRoleKey();
     const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/bingo_landing_content?id=eq.default&select=content`, {
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
-      cache: "no-store",
+      ...getBingoFetchCacheInit(cacheMode, 30),
     });
     if (!response.ok) return defaultBingoContent;
     const rows = (await response.json()) as { content?: DeepPartial<BingoLandingContent> }[];
@@ -251,7 +258,7 @@ function isAllowedBingoLandingProduct(product: Pick<BingoFoodProduct, "name" | "
   return !BINGO_LANDING_BLOCKED_PRODUCT_TERMS.some((term) => searchable.includes(term));
 }
 
-export async function getBingoPreSaleTablesSold() {
+export async function getBingoPreSaleTablesSold(cacheMode: BingoDataCacheMode = "fresh") {
   try {
     const { supabaseUrl } = getSupabaseEnv();
     const serviceRoleKey = getSupabaseServiceRoleKey();
@@ -262,7 +269,7 @@ export async function getBingoPreSaleTablesSold() {
     });
     const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/purchases?${params.toString()}`, {
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
-      cache: "no-store",
+      ...getBingoFetchCacheInit(cacheMode, 15),
     });
 
     if (!response.ok) return 0;
@@ -278,7 +285,7 @@ export async function getBingoPreSaleTablesSold() {
   }
 }
 
-export async function getBingoFoodProducts(): Promise<BingoFoodProduct[]> {
+export async function getBingoFoodProducts(cacheMode: BingoDataCacheMode = "fresh"): Promise<BingoFoodProduct[]> {
   try {
     const { supabaseUrl } = getSupabaseEnv();
     const serviceRoleKey = getSupabaseServiceRoleKey();
@@ -288,7 +295,7 @@ export async function getBingoFoodProducts(): Promise<BingoFoodProduct[]> {
     });
     const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/products?${params.toString()}`, {
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
-      cache: "no-store",
+      ...getBingoFetchCacheInit(cacheMode, 30),
     });
 
     if (!response.ok) return [];
