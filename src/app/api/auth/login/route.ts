@@ -17,6 +17,7 @@ import {
   consumeLoginRateLimit,
   resetLoginRateLimit,
 } from "@/lib/server/rate-limit";
+import { getRequestId, logApiDone, logApiError, logApiStart } from "@/lib/server/observability";
 
 function getClientAddress(request: NextRequest) {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -32,7 +33,13 @@ function getAttemptKey(request: NextRequest, username: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const route = "/api/auth/login";
+  const method = "POST";
+  const requestId = getRequestId(request);
+  const start = Date.now();
   let username = "";
+
+  logApiStart({ route, method, requestId });
 
   try {
     const body = (await request.json()) as {
@@ -47,6 +54,7 @@ export async function POST(request: NextRequest) {
       typeof body.totpCode === "string" ? body.totpCode.trim() : "";
 
     if (!username || !password) {
+      logApiDone({ route, method, requestId, status: 400, ms: Date.now() - start, meta: { reason: "missing_credentials" } });
       return NextResponse.json(
         { message: "Ingresa usuario y contraseña." },
         { status: 400 },
@@ -57,6 +65,7 @@ export async function POST(request: NextRequest) {
     const rateLimit = await consumeLoginRateLimit(attemptKey);
 
     if (rateLimit.limited) {
+      logApiDone({ route, method, requestId, status: 429, ms: Date.now() - start, meta: { reason: "rate_limited" } });
       return NextResponse.json(
         {
           message:
@@ -75,6 +84,7 @@ export async function POST(request: NextRequest) {
     const authenticatedUser = await authenticateUser(username, password);
 
     if (!authenticatedUser) {
+      logApiDone({ route, method, requestId, status: 401, ms: Date.now() - start, meta: { reason: "invalid_credentials" } });
       return NextResponse.json(
         { message: "El usuario o la contraseña son incorrectos." },
         { status: 401, headers: { "Cache-Control": "no-store" } },
@@ -87,6 +97,7 @@ export async function POST(request: NextRequest) {
       if (!totpCode) {
         const setupEnabled = isAdminTotpSetupEnabled();
 
+        logApiDone({ route, method, requestId, status: 202, ms: Date.now() - start, meta: { reason: "mfa_required" } });
         return NextResponse.json(
           {
             mfaRequired: true,
@@ -102,6 +113,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!verifyAdminTotpCode(user, totpCode)) {
+        logApiDone({ route, method, requestId, status: 401, ms: Date.now() - start, meta: { reason: "invalid_mfa" } });
         return NextResponse.json(
           {
             mfaRequired: true,
@@ -124,6 +136,7 @@ export async function POST(request: NextRequest) {
     );
 
     await setAuthCookies(response, user, session);
+    logApiDone({ route, method, requestId, status: 200, ms: Date.now() - start, meta: { userId: user.id, mfa: isAdminTotpRequired(user) } });
 
     void addAuditLog({
         userId: user.id,
@@ -139,17 +152,19 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     if (error instanceof AuthenticationError) {
+      const status = error.code === "auth_error" ? 503 : 401;
+      logApiError({ route, method, requestId, status, ms: Date.now() - start, error, meta: { reason: error.code } });
       return NextResponse.json(
         { message: error.message },
         {
-          status: error.code === "auth_error" ? 503 : 401,
+          status,
           headers: { "Cache-Control": "no-store" },
         },
       );
     }
 
     if (error instanceof AdminTotpConfigurationError) {
-      console.error("Admin FreeOTP configuration is missing or invalid.", error);
+      logApiError({ route, method, requestId, status: 503, ms: Date.now() - start, error, meta: { reason: "mfa_configuration" } });
 
       return NextResponse.json(
         { message: error.message },
@@ -157,7 +172,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("Login failed in auth route.", error);
+    logApiError({ route, method, requestId, status: 500, ms: Date.now() - start, error });
     return NextResponse.json(
       { message: "No se pudo completar el inicio de sesión." },
       { status: 500, headers: { "Cache-Control": "no-store" } },

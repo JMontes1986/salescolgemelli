@@ -7,6 +7,7 @@ import {
   AUTH_ACCESS_COOKIE,
   AUTH_REFRESH_COOKIE,
 } from "@/lib/auth/session-cookie";
+import { getRequestId, logApiDone, logApiStart } from "@/lib/server/observability";
 
 type RouteContext = {
   params: Promise<{
@@ -122,7 +123,14 @@ async function forwardSupabaseRequest(
 }
 
 async function handleRequest(request: NextRequest, context: RouteContext) {
+  const route = "/api/supabase/rest";
+  const method = request.method;
+  const requestId = getRequestId(request);
+  const start = Date.now();
   const { path = [] } = await context.params;
+  const proxiedPath = path.join("/");
+
+  logApiStart({ route, method, requestId, meta: { path: proxiedPath } });
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(AUTH_ACCESS_COOKIE)?.value;
   const refreshToken = cookieStore.get(AUTH_REFRESH_COOKIE)?.value;
@@ -190,6 +198,15 @@ async function handleRequest(request: NextRequest, context: RouteContext) {
   if (refreshedAuth) {
     await setAuthCookies(response, refreshedAuth.user, refreshedAuth.session);
   }
+
+  logApiDone({
+    route,
+    method,
+    requestId,
+    status: supabaseResponse.status,
+    ms: Date.now() - start,
+    meta: { path: proxiedPath, refreshedSession: Boolean(refreshedAuth) },
+  });
 
   return response;
 }
