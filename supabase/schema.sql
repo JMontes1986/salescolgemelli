@@ -242,9 +242,8 @@ returns text
 language sql
 immutable
 as $$
-  select rtrim(translate(encode(p_value, 'base64'), '+/', '-_'), '=');
+  select rtrim(translate(replace(replace(encode(p_value, 'base64'), E'\r', ''), E'\n', ''), '+/', '-_'), '=');
 $$;
-
 create or replace function public.base64url_decode(p_value text)
 returns bytea
 language plpgsql
@@ -315,7 +314,7 @@ begin
     raise exception 'La compra tiene un identificador invÃ¡lido.';
   end if;
 
-  if p_delivery_code is null or trim(p_delivery_code) !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+  if p_delivery_code is null or trim(p_delivery_code) !~ '^([0-9a-fA-F]{8}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$' then
     raise exception 'El cÃ³digo adicional del QR es invÃ¡lido.';
   end if;
 
@@ -402,9 +401,9 @@ begin
     lookup_delivery_code := nullif(btrim(coalesce(token_payload->>'deliveryCode', '')), '');
 
     if lookup_code is null
-      or lookup_code !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+      or lookup_code !~ '^[0-9A-Za-z_-]{1,80}$'
       or lookup_delivery_code is null
-      or lookup_delivery_code !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+      or lookup_delivery_code !~ '^([0-9a-fA-F]{8}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$' then
       raise exception 'El QR firmado no corresponde a una compra vÃ¡lida.';
     end if;
 
