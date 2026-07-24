@@ -453,6 +453,27 @@ export async function getPurchasesByCelular(celular: string): Promise<Purchase[]
   return sortByNewest(purchases.map(ensureReturnedFlags));
 }
 
+export async function deleteSelfServicePurchaseHistoryByCedula(cedula: string): Promise<number> {
+  const safeCedula = sanitizeCustomerIdentifier(cedula, 'La cédula');
+  const response = await fetch('/api/dashboard/self-service-history', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    cache: 'no-store',
+    body: JSON.stringify({ cedula: safeCedula }),
+  });
+
+  const responseBody = await response.json().catch(() => null) as {
+    deletedCount?: number;
+    message?: string;
+  } | null;
+
+  if (!response.ok) {
+    throw new Error(responseBody?.message || 'No se pudo eliminar el historial de autogestión.');
+  }
+
+  return responseBody?.deletedCount ?? 0;
+}
 export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
   const rpcPayload = {
     p_items: purchase.items.map(item => ({ id: item.id, quantity: item.quantity })),

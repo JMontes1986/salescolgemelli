@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Minus, Hourglass, Search, XCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPurchase, type NewPurchase, cancelPurchaseAndUpdateStock, getSelfServicePendingPurchases, getSelfServiceReservedQuantityMap } from '@/lib/services/purchase-service';
+import { addPurchase, type NewPurchase, cancelPurchaseAndUpdateStock, deleteSelfServicePurchaseHistoryByCedula, getSelfServicePendingPurchases, getSelfServiceReservedQuantityMap } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +67,8 @@ export default function SalesPage() {
   const { toast } = useToast();
   const { currentUser, isMounted } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [historyCedulaToDelete, setHistoryCedulaToDelete] = useState('');
+  const [isDeletingHistory, setIsDeletingHistory] = useState(false);
   const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
 
   const loadData = useCallback(async (showLoading = true) => {
@@ -238,6 +240,34 @@ export default function SalesPage() {
         setIsProcessing(false);
     }
   }
+
+  const handleDeleteSelfServiceHistory = async () => {
+    if (currentUser?.role !== 'admin') return;
+
+    const cedulaToDelete = historyCedulaToDelete.trim();
+    if (!cedulaToDelete) {
+      toast({ variant: "destructive", title: "Ingrese la cédula", description: "Escriba la cédula del padre de familia." });
+      return;
+    }
+
+    setIsDeletingHistory(true);
+    try {
+      const deletedCount = await deleteSelfServicePurchaseHistoryByCedula(cedulaToDelete);
+      toast({
+        title: "Historial eliminado",
+        description: deletedCount > 0
+          ? `Se eliminaron ${deletedCount} compra(s) de autogestión para la cédula ${cedulaToDelete}.`
+          : `No había compras de autogestión para la cédula ${cedulaToDelete}.`,
+      });
+      setHistoryCedulaToDelete('');
+      await loadData(false);
+    } catch (error) {
+      toast({ variant: "destructive", title: "No se pudo eliminar", description: (error as Error).message || "Revise la cédula e intente de nuevo." });
+    } finally {
+      setIsDeletingHistory(false);
+    }
+  };
+
 
   const handleCancelPurchase = async (purchase: Purchase) => {
     if (!currentUser) return;
@@ -424,6 +454,55 @@ export default function SalesPage() {
                     </ScrollArea>
                 </CardContent>
             </Card>
+
+            {currentUser?.role === 'admin' && (
+              <Card className="border-destructive/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <Trash2 className="h-5 w-5" />
+                    Eliminar historial de autogestión
+                  </CardTitle>
+                  <CardDescription>
+                    Borra todas las compras de autogestión asociadas a la cédula indicada. No elimina ventas POS registradas por caja.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Input
+                    value={historyCedulaToDelete}
+                    onChange={(event) => setHistoryCedulaToDelete(event.target.value)}
+                    placeholder="Cédula del padre de familia"
+                    inputMode="numeric"
+                    autoComplete="off"
+                  />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        disabled={isDeletingHistory || historyCedulaToDelete.trim().length < 4}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {isDeletingHistory ? 'Eliminando...' : 'Eliminar historial'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Eliminar historial de autogestión</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción borrará todas las compras de autogestión de la cédula <span className="font-mono font-bold">{historyCedulaToDelete.trim() || 'sin cédula'}</span>. También se liberarán reservas asociadas. Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteSelfServiceHistory}>
+                          Confirmar eliminación
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+            )}
         </div>
 
         {/* Cart and Checkout */}
