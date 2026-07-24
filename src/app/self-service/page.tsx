@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, type MouseEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react';
 import Link from 'next/link';
 import type { Product, Purchase } from '@/lib/types';
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
 import { addPreSalePurchase, getSelfServicePurchasesByCedula, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { Badge } from '@/components/ui/badge';
 import { MOLLY_LOGO_URL } from '@/components/icons';
 
@@ -138,6 +139,7 @@ export default function SelfServicePage() {
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
   const activeCedula = cedula.trim();
   const hasActiveCedula = activeCedula.length > 0;
+  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
 
   const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
     if (!paymentHref) {
@@ -161,7 +163,7 @@ export default function SelfServicePage() {
     try {
         const [fetchedProducts, fetchedReservedQuantities] = await Promise.all([
           getProductsByAvailability('self-service'),
-          getSelfServiceReservedQuantityMap(),
+          getSelfServiceReservedQuantityMap(undefined, 0),
         ]);
         setProducts(fetchedProducts);
         setReservedQuantities(fetchedReservedQuantities);
@@ -177,26 +179,84 @@ export default function SelfServicePage() {
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
+  const refreshPurchaseHistory = useCallback(async (cedulaToRefresh = activeCedula, showLoading = false) => {
+    const normalizedCedula = cedulaToRefresh.trim();
+    if (!normalizedCedula) return;
+
+    if (showLoading) {
+      setIsHistoryLoading(true);
+    }
+
+    try {
+      const purchases = await getSelfServicePurchasesByCedula(normalizedCedula);
+      setPurchaseHistory((prev) => {
+        const sessionPurchases = new Map(
+          prev
+            .filter((purchase) => editablePurchaseIds.has(purchase.id))
+            .map((purchase) => [purchase.id, purchase])
+        );
+
+        return purchases.map((purchase) => {
+          const sessionPurchase = sessionPurchases.get(purchase.id);
+          if (!sessionPurchase) return purchase;
+
+          return {
+            ...purchase,
+            celular: sessionPurchase.celular || purchase.celular,
+            deliveryCode: sessionPurchase.deliveryCode || purchase.deliveryCode,
+            qrPayload: sessionPurchase.qrPayload || purchase.qrPayload,
+          };
+        });
+      });
+    } catch {
+      console.warn("No se pudo actualizar el historial de autogestión.");
+    } finally {
+      if (showLoading) {
+        setIsHistoryLoading(false);
+      }
+    }
+  }, [activeCedula, editablePurchaseIds]);
+
+  const refreshSelfServiceData = useCallback(async () => {
+    await Promise.all([
+      loadProducts(false),
+      refreshPurchaseHistory(activeCedula, false),
+    ]);
+  }, [activeCedula, loadProducts, refreshPurchaseHistory]);
+
+  useSupabaseRealtime({
+    tables: realtimeTables,
+    onChange: refreshSelfServiceData,
+    fallbackIntervalMs: SELF_SERVICE_REFRESH_INTERVAL_MS,
+  });
 
   useEffect(() => {
     const initialJitter = Math.floor(Math.random() * SELF_SERVICE_REFRESH_JITTER_MS);
     let intervalId: number | null = null;
 
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshSelfServiceData();
+      }
+    };
+
     const timeoutId = window.setTimeout(() => {
-      loadProducts(false);
-      intervalId = window.setInterval(() => {
-        loadProducts(false);
-      }, SELF_SERVICE_REFRESH_INTERVAL_MS);
+      refreshIfVisible();
+      intervalId = window.setInterval(refreshIfVisible, SELF_SERVICE_REFRESH_INTERVAL_MS);
     }, initialJitter);
+
+    window.addEventListener('focus', refreshIfVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
 
     return () => {
       window.clearTimeout(timeoutId);
       if (intervalId) {
         window.clearInterval(intervalId);
       }
+      window.removeEventListener('focus', refreshIfVisible);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
     };
-  }, [loadProducts]);
-
+  }, [refreshSelfServiceData]);
   const getSelfServiceReserved = useCallback((productId: string) => {
     const reserved = reservedQuantities[productId] || 0;
     if (!editingPurchase || (editingPurchase.status !== 'pending' && editingPurchase.status !== 'pre-sale')) {
@@ -397,8 +457,6 @@ export default function SelfServicePage() {
     try {
         const normalizedCedula = sanitizeCustomerIdentifier(cedulaToActivate, 'La cédula');
         const isSwitchingCedula = normalizedCedula !== activeCedula;
-        const sessionEditableIds = isSwitchingCedula ? new Set<string>() : editablePurchaseIds;
-
         setSearchCedula(normalizedCedula);
         setCedula(normalizedCedula);
 
@@ -409,17 +467,7 @@ export default function SelfServicePage() {
           clearCart();
         }
 
-        setIsHistoryLoading(true);
-        const purchases = await getSelfServicePurchasesByCedula(normalizedCedula);
-        setPurchaseHistory(prev => {
-          const editablePurchases = new Map(
-            prev
-              .filter(purchase => sessionEditableIds.has(purchase.id))
-              .map(purchase => [purchase.id, purchase])
-          );
-
-          return purchases.map(purchase => editablePurchases.get(purchase.id) ?? purchase);
-        });
+        await refreshPurchaseHistory(normalizedCedula, true);
 
         toast({
           title: "Cédula lista",
