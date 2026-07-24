@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
+import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase";
 
 const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 5 * 60;
 const DEFAULT_RATE_LIMIT_MAX_ATTEMPTS = 600;
-const UPSTASH_REQUEST_TIMEOUT_MS = 1500;
+const SUPABASE_RATE_LIMIT_TIMEOUT_MS = 1500;
 
 type MemoryAttempt = {
   count: number;
@@ -12,6 +13,12 @@ type MemoryAttempt = {
 type RateLimitResult = {
   limited: boolean;
   retryAfter: number;
+};
+
+type SupabaseRateLimitResponse = {
+  limited?: unknown;
+  retryAfter?: unknown;
+  retry_after?: unknown;
 };
 
 const memoryAttempts = new Map<string, MemoryAttempt>();
@@ -28,17 +35,6 @@ function getRateLimitMaxAttempts() {
   return Number.isFinite(value) && value > 0
     ? Math.floor(value)
     : DEFAULT_RATE_LIMIT_MAX_ATTEMPTS;
-}
-
-function getUpstashConfig() {
-  const url = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, "");
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (!url || !token) {
-    return null;
-  }
-
-  return { url, token };
 }
 
 function hashRateLimitKey(key: string) {
@@ -71,116 +67,76 @@ function consumeMemoryAttempt(key: string): RateLimitResult {
   return { limited: false, retryAfter: 0 };
 }
 
-async function runUpstashCommand<T>(command: Array<string | number>): Promise<T> {
-  const config = getUpstashConfig();
-
-  if (!config) {
-    throw new Error("Upstash Redis REST is not configured.");
-  }
-
+async function callSupabaseRateLimitRpc<T>(
+  functionName: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  const { supabaseUrl } = getSupabaseEnv();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), UPSTASH_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), SUPABASE_RATE_LIMIT_TIMEOUT_MS);
 
   let response: Response;
 
   try {
-    response = await fetch(`${config.url}/pipeline`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        "Content-Type": "application/json",
+    response = await fetch(
+      `${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/${functionName}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        cache: "no-store",
+        signal: controller.signal,
       },
-      body: JSON.stringify([command]),
-      cache: "no-store",
-      signal: controller.signal,
-    });
+    );
   } finally {
     clearTimeout(timeout);
   }
 
   if (!response.ok) {
-    throw new Error(`Upstash Redis returned ${response.status}.`);
+    throw new Error(`Supabase rate limit RPC returned ${response.status}.`);
   }
 
-  const payload = (await response.json()) as Array<{ result?: T; error?: string }>;
-  const [firstResult] = payload;
-
-  if (!firstResult || firstResult.error) {
-    throw new Error(firstResult?.error || "Upstash Redis returned an empty response.");
-  }
-
-  return firstResult.result as T;
+  return (await response.json()) as T;
 }
 
 export async function consumeLoginRateLimit(key: string): Promise<RateLimitResult> {
-  const config = getUpstashConfig();
-
-  if (!config) {
-    return consumeMemoryAttempt(key);
-  }
-
-  const windowSeconds = getRateLimitWindowSeconds();
-  const maxAttempts = getRateLimitMaxAttempts();
-  const redisKey = `rate-limit:login:${hashRateLimitKey(key)}`;
+  const hashedKey = hashRateLimitKey(key);
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), UPSTASH_REQUEST_TIMEOUT_MS);
-    let response: Response;
-
-    try {
-      response = await fetch(`${config.url}/pipeline`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify([
-          ["INCR", redisKey],
-          ["EXPIRE", redisKey, windowSeconds],
-          ["TTL", redisKey],
-        ]),
-        cache: "no-store",
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    if (!response.ok) {
-      throw new Error(`Upstash Redis returned ${response.status}.`);
-    }
-
-    const payload = (await response.json()) as Array<{ result?: unknown; error?: string }>;
-    const count = Number(payload[0]?.result ?? 0);
-    const ttl = Number(payload[2]?.result ?? windowSeconds);
-
-    if (payload.some((item) => item.error)) {
-      throw new Error("Upstash Redis pipeline failed.");
-    }
+    const result = await callSupabaseRateLimitRpc<SupabaseRateLimitResponse>(
+      "consume_login_rate_limit",
+      {
+        p_key: hashedKey,
+        p_max_attempts: getRateLimitMaxAttempts(),
+        p_window_seconds: getRateLimitWindowSeconds(),
+      },
+    );
+    const retryAfter = Number(result.retryAfter ?? result.retry_after ?? 0);
 
     return {
-      limited: count > maxAttempts,
-      retryAfter: count > maxAttempts ? Math.max(1, ttl) : 0,
+      limited: result.limited === true,
+      retryAfter: Number.isFinite(retryAfter) ? Math.max(0, retryAfter) : 0,
     };
   } catch (error) {
     console.warn("Login rate limit fell back to local memory.", error);
-    return consumeMemoryAttempt(key);
+    return consumeMemoryAttempt(hashedKey);
   }
 }
 
 export async function resetLoginRateLimit(key: string) {
-  const config = getUpstashConfig();
-
-  memoryAttempts.delete(key);
-
-  if (!config) {
-    return;
-  }
+  const hashedKey = hashRateLimitKey(key);
+  memoryAttempts.delete(hashedKey);
 
   try {
-    await runUpstashCommand<number>(["DEL", `rate-limit:login:${hashRateLimitKey(key)}`]);
+    await callSupabaseRateLimitRpc<unknown>("reset_login_rate_limit", {
+      p_key: hashedKey,
+    });
   } catch (error) {
-    console.warn("Login rate limit reset failed in Upstash Redis.", error);
+    console.warn("Login rate limit reset failed in Supabase.", error);
   }
 }
