@@ -1,4 +1,4 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   AUTH_SESSION_COOKIE,
@@ -32,6 +32,21 @@ async function fetchServiceRole(url: URL, init: RequestInit = {}) {
   });
 }
 
+async function parseErrorMessage(responseText: string, fallback: string) {
+  let message = responseText || fallback;
+
+  try {
+    const parsed = JSON.parse(responseText) as { message?: unknown };
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
+      message = parsed.message;
+    }
+  } catch {
+    // Keep raw response text.
+  }
+
+  return message;
+}
+
 async function recordAuditLog(userId: string, userName: string, cedula: string, deletedCount: number) {
   const { supabaseUrl } = getSupabaseEnv();
   const url = new URL(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/auditLogs`);
@@ -44,7 +59,7 @@ async function recordAuditLog(userId: string, userName: string, cedula: string, 
       userId,
       userName,
       action: "TICKET_VOID",
-      details: `Administrador eliminó ${deletedCount} compra(s) del historial de autogestión de la cédula ${cedula}.`,
+      details: `Administrador eliminó ${deletedCount} compra(s) del historial PV/autogestión de la cédula ${cedula}.`,
     }),
   }).catch((error) => {
     console.warn("No se pudo registrar auditoría de eliminación de historial de autogestión.", error);
@@ -89,29 +104,46 @@ export async function DELETE(request: Request) {
 
   const { supabaseUrl } = getSupabaseEnv();
   const baseUrl = supabaseUrl.replace(/\/$/, "");
-  const url = new URL(`${baseUrl}/rest/v1/purchases`);
-  url.searchParams.set("select", purchaseSelectColumns);
-  url.searchParams.set("cedula", `eq.${cedula}`);
-  url.searchParams.set('"sellerId"', "is.null");
+  const lookupUrl = new URL(`${baseUrl}/rest/v1/purchases`);
+  lookupUrl.searchParams.set("select", purchaseSelectColumns);
+  lookupUrl.searchParams.set("cedula", `eq.${cedula}`);
+  lookupUrl.searchParams.set("id", "like.PV%");
 
-  const response = await fetchServiceRole(url, {
+  const lookupResponse = await fetchServiceRole(lookupUrl, { method: "GET" });
+  const lookupText = await lookupResponse.text();
+
+  if (!lookupResponse.ok) {
+    const message = await parseErrorMessage(lookupText, "No se pudo consultar el historial de autogestión.");
+    return NextResponse.json(
+      { message },
+      { status: lookupResponse.status, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const purchases = lookupText ? JSON.parse(lookupText) as Array<{ id?: unknown }> : [];
+  const purchaseIds = purchases
+    .filter((purchase) => typeof purchase.id === "string")
+    .map((purchase) => purchase.id as string);
+
+  if (purchaseIds.length === 0) {
+    return NextResponse.json(
+      { deletedCount: 0 },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const deleteUrl = new URL(`${baseUrl}/rest/v1/purchases`);
+  deleteUrl.searchParams.set("select", purchaseSelectColumns);
+  deleteUrl.searchParams.set("id", `in.(${purchaseIds.join(",")})`);
+
+  const response = await fetchServiceRole(deleteUrl, {
     method: "DELETE",
     headers: { Prefer: "return=representation" },
   });
-
   const responseText = await response.text();
 
   if (!response.ok) {
-    let message = responseText || "No se pudo eliminar el historial de autogestión.";
-    try {
-      const parsed = JSON.parse(responseText) as { message?: unknown };
-      if (typeof parsed.message === "string" && parsed.message.trim()) {
-        message = parsed.message;
-      }
-    } catch {
-      // Keep raw response text.
-    }
-
+    const message = await parseErrorMessage(responseText, "No se pudo eliminar el historial de autogestión.");
     return NextResponse.json(
       { message },
       { status: response.status, headers: { "Cache-Control": "no-store" } },

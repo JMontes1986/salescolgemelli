@@ -1111,6 +1111,8 @@ as $$
   from public.purchases purchase
   where trim(p_cedula) ~ '^[0-9A-Za-z.-]{4,30}$'
     and purchase.cedula = trim(p_cedula)
+    and purchase.id like 'PV%'
+    and purchase."sellerId" is null
   order by purchase.date desc
   limit 50;
 $$;
