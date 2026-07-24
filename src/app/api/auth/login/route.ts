@@ -13,16 +13,10 @@ import {
   isAdminTotpSetupEnabled,
   verifyAdminTotpCode,
 } from "@/lib/auth/admin-totp";
-
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const RATE_LIMIT_MAX_ATTEMPTS = 5;
-
-type LoginAttempt = {
-  count: number;
-  resetAt: number;
-};
-
-const loginAttempts = new Map<string, LoginAttempt>();
+import {
+  consumeLoginRateLimit,
+  resetLoginRateLimit,
+} from "@/lib/server/rate-limit";
 
 function getClientAddress(request: NextRequest) {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -35,30 +29,6 @@ function getClientAddress(request: NextRequest) {
 
 function getAttemptKey(request: NextRequest, username: string) {
   return `${getClientAddress(request)}:${username.trim().toLowerCase()}`;
-}
-
-function consumeLoginAttempt(key: string) {
-  const now = Date.now();
-  const currentAttempt = loginAttempts.get(key);
-
-  if (!currentAttempt || currentAttempt.resetAt <= now) {
-    loginAttempts.set(key, {
-      count: 1,
-      resetAt: now + RATE_LIMIT_WINDOW_MS,
-    });
-    return { limited: false, retryAfter: 0 };
-  }
-
-  if (currentAttempt.count >= RATE_LIMIT_MAX_ATTEMPTS) {
-    return {
-      limited: true,
-      retryAfter: Math.ceil((currentAttempt.resetAt - now) / 1000),
-    };
-  }
-
-  currentAttempt.count += 1;
-  loginAttempts.set(key, currentAttempt);
-  return { limited: false, retryAfter: 0 };
 }
 
 export async function POST(request: NextRequest) {
@@ -84,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const attemptKey = getAttemptKey(request, username);
-    const rateLimit = consumeLoginAttempt(attemptKey);
+    const rateLimit = await consumeLoginRateLimit(attemptKey);
 
     if (rateLimit.limited) {
       return NextResponse.json(
@@ -143,7 +113,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    loginAttempts.delete(attemptKey);
+    await resetLoginRateLimit(attemptKey);
 
     const response = NextResponse.json(
       {
