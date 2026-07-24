@@ -295,7 +295,7 @@ async function fetchDashboardPreSales(cedula?: string): Promise<Purchase[]> {
   return responseBody?.purchases ?? [];
 }
 
-export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: string): Promise<Record<string, number>> {
+export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: string, cacheTtlMs = SELF_SERVICE_RESERVATIONS_CACHE_TTL_MS): Promise<Record<string, number>> {
   const safeExcludePurchaseId = excludePurchaseId
     ? sanitizeRecordId(excludePurchaseId, 'La compra')
     : null;
@@ -303,7 +303,7 @@ export async function getSelfServiceReservedQuantityMap(excludePurchaseId?: stri
   try {
     const reservedQuantities = await callRpc<Record<string, number>>('get_self_service_reserved_quantities', {
       p_exclude_purchase_id: safeExcludePurchaseId,
-    }, SELF_SERVICE_RESERVATIONS_CACHE_TTL_MS);
+    }, cacheTtlMs);
     return reservedQuantities ?? {};
   } catch (error) {
     if (error instanceof Error && error.message.includes('get_self_service_reserved_quantities')) {

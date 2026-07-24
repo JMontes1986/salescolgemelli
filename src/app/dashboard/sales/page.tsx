@@ -77,7 +77,7 @@ export default function SalesPage() {
         const [fetchedProducts, pendingPurchases, reservedQuantities] = await Promise.all([
             getProductsByAvailability('pos'),
             getSelfServicePendingPurchases(),
-            getSelfServiceReservedQuantityMap(),
+            getSelfServiceReservedQuantityMap(undefined, 0),
         ]);
         setProducts(fetchedProducts);
         setPendingSelfServicePurchases(pendingPurchases);
@@ -98,7 +98,29 @@ export default function SalesPage() {
   useSupabaseRealtime({
     tables: realtimeTables,
     onChange: () => loadData(false),
+    fallbackIntervalMs: 3_000,
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData(false);
+      }
+    };
+
+    const intervalId = window.setInterval(refreshIfVisible, 3_000);
+    window.addEventListener('focus', refreshIfVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshIfVisible);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+    };
+  }, [loadData]);
+
   const selfServicePendingQuantities = selfServiceReservedQuantities;
 
   useEffect(() => {
