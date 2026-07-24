@@ -1,0 +1,69 @@
+config:
+  target: "https://salescolgemelli.vercel.app"
+  phases:
+    - name: "Warm up"
+      duration: 60
+      arrivalCount: 60
+    - name: "Expected 300-person event traffic"
+      duration: 300
+      arrivalCount: 300
+    - name: "Short 300-person peak"
+      duration: 120
+      arrivalCount: 300
+  defaults:
+    headers:
+      User-Agent: "Artillery ColGemelli load test"
+  http:
+    timeout: 20
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Public visitor browsing"
+    weight: 55
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+      - think: 2
+      - get:
+          url: "/self-service"
+          expect:
+            - statusCode: 200
+      - think: 3
+      - get:
+          url: "/molly-ventas.png"
+          expect:
+            - statusCode: 200
+
+  - name: "Bingo landing visitor"
+    weight: 35
+    flow:
+      - get:
+          url: "/bingo"
+          expect:
+            - statusCode: 200
+      - think: 2
+      - get:
+          url: "/api/bingo/food-products"
+          expect:
+            - statusCode: 200
+      - think: 2
+      - get:
+          url: "/api/bingo/presale-tables"
+          expect:
+            - statusCode: 200
+
+  - name: "Login page visitor"
+    weight: 10
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+      - think: 2
+      - get:
+          url: "/api/auth/me"
+          expect:
+            - statusCode: 401
