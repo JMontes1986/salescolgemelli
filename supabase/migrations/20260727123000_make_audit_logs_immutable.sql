@@ -17,7 +17,7 @@ declare
   inventory_effect text := 'Sin cambio de inventario';
 begin
   if p_entity not in ('purchase', 'return', 'cashbox', 'bingo') then
-    raise exception 'Tipo de registro no permitido.';
+    raise exception 'Tipo de registro no permitido. La auditoría es inmutable.';
   end if;
 
   if p_record_id is null or btrim(p_record_id) = '' or length(btrim(p_record_id)) > 100 then
@@ -89,11 +89,10 @@ begin
     if not found then raise exception 'La sesión de caja ya no existe.'; end if;
     deleted_label := 'Sesión de caja ' || btrim(p_record_id);
 
-  elsif p_entity = 'bingo' then
+  else
     delete from public.bingo_registrations where id::text = btrim(p_record_id);
     if not found then raise exception 'El registro del Bingo ya no existe.'; end if;
     deleted_label := 'Registro del Bingo ' || btrim(p_record_id);
-
   end if;
 
   insert into public."auditLogs" (timestamp, "userId", "userName", action, details)
@@ -116,3 +115,5 @@ $$;
 
 revoke all on function public.admin_delete_test_record(text, text, text, text) from public;
 grant execute on function public.admin_delete_test_record(text, text, text, text) to service_role;
+
+revoke delete on public."auditLogs" from anon, authenticated;

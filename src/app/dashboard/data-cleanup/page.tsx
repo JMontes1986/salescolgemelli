@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Archive,
-  ClipboardList,
   Loader2,
   RefreshCw,
   RotateCcw,
@@ -41,7 +40,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-type CleanupEntity = "purchase" | "return" | "cashbox" | "bingo" | "audit";
+type CleanupEntity = "purchase" | "return" | "cashbox" | "bingo";
 
 type CleanupRecord = {
   id: string;
@@ -82,12 +81,6 @@ const entityOptions: Array<{
     label: "Registros Bingo",
     description: "Inscripciones de familias",
     icon: Users,
-  },
-  {
-    value: "audit",
-    label: "Auditoría",
-    description: "Eventos de actividad",
-    icon: ClipboardList,
   },
 ];
 

@@ -6,7 +6,7 @@ import {
 } from "@/lib/auth/session-cookie";
 import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase";
 
-const cleanupEntities = ["purchase", "return", "cashbox", "bingo", "audit"] as const;
+const cleanupEntities = ["purchase", "return", "cashbox", "bingo"] as const;
 type CleanupEntity = (typeof cleanupEntities)[number];
 
 type CleanupRow = Record<string, unknown>;
@@ -40,11 +40,6 @@ const entityQueries: Record<
     table: "bingo_registrations",
     select: "id,created_at,full_name,document_number,phone,grade_course,student_name,attendees,tables",
     order: "created_at.desc",
-  },
-  audit: {
-    table: "auditLogs",
-    select: 'id,timestamp,"userName",action,details',
-    order: "timestamp.desc",
   },
 };
 
@@ -161,14 +156,7 @@ function mapRow(entity: CleanupEntity, row: CleanupRow) {
     };
   }
 
-  return {
-    id,
-    title: textValue(row, "action") || "Evento de auditoría",
-    subtitle: textValue(row, "details"),
-    date: textValue(row, "timestamp"),
-    badge: textValue(row, "userName"),
-    searchText: `${id} ${row.action ?? ""} ${row.userName ?? ""} ${row.details ?? ""}`,
-  };
+  throw new Error("Tipo de registro no válido.");
 }
 
 export async function GET(request: Request) {
