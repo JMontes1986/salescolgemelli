@@ -24,6 +24,7 @@ import {
   Undo2,
   ClipboardCheck,
   FilePenLine,
+  Trash2,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -54,6 +55,7 @@ export const adminNavItems: NavItem[] = [
     { href: "/dashboard/bingo", icon: FilePenLine, label: "Landing Bingo", permission: 'users' },
     { href: "/dashboard/users", icon: Users, label: "Usuarios", permission: 'users' },
     { href: "/dashboard/audit", icon: ClipboardList, label: "Auditoría", permission: 'audit' },
+    { href: "/dashboard/data-cleanup", icon: Trash2, label: "Limpieza de pruebas", permission: 'users' },
 ]
 
 export function SidebarNav({ navItems: accessibleNavItems }: { navItems: NavItem[] }) {

@@ -15,6 +15,7 @@ const dashboardRoutePermissions = [
   { prefix: "/dashboard/cashbox", permission: "cashbox" },
   { prefix: "/dashboard/redeem", permission: "redeem" },
   { prefix: "/dashboard/bingo", permission: "users" },
+  { prefix: "/dashboard/data-cleanup", permission: "users" },
   { prefix: "/dashboard/users", permission: "users" },
   { prefix: "/dashboard/audit", permission: "audit" },
   { prefix: "/dashboard/sales", permission: "sales" },
