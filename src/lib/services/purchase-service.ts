@@ -861,3 +861,33 @@ export async function deliverPurchaseItems(
 
   return deliverPurchaseItemsForLookup(safePurchaseId, deliveryQuantities, currentUser, signedToken);
 }
+export async function finalizeSelfServiceValidation(
+  purchaseId: string,
+  acceptedQuantities: Record<string, number>,
+  currentUser: User,
+): Promise<Purchase> {
+  const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
+  const safeAcceptedQuantities = Object.entries(acceptedQuantities).reduce<Record<string, number>>(
+    (acc, [productId, quantity]) => {
+      const safeProductId = sanitizeRecordId(productId, 'El producto');
+      const normalizedQuantity = Number(quantity);
+
+      if (!Number.isSafeInteger(normalizedQuantity) || normalizedQuantity < 0) {
+        throw new Error('Las cantidades aprobadas no son válidas.');
+      }
+
+      acc[safeProductId] = normalizedQuantity;
+      return acc;
+    },
+    {},
+  );
+
+  const updatedPurchase = await callRpc<Purchase>('finalize_self_service_validation', {
+    p_purchase_id: safePurchaseId,
+    p_accepted_quantities: safeAcceptedQuantities,
+    p_user_id: currentUser.id,
+    p_user_name: currentUser.name,
+  });
+
+  return ensureReturnedFlags(updatedPurchase);
+}

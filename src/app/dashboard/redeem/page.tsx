@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, Info, CheckCircle, AlertTriangle, RefreshCw, ClipboardList, PackageCheck, Minus, Plus, Camera, VideoOff } from "lucide-react";
-import { getPurchasesByCedula, getPurchasesByCelular, updatePurchase, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, getPurchaseForDeliveryLookup } from '@/lib/services/purchase-service';
+import { getPurchasesByCedula, getPurchasesByCelular, updatePurchase, confirmPendingPurchaseAndUpdateStock, getSelfServicePurchases, deliverPurchaseItems, finalizeSelfServiceValidation, getPurchaseForDeliveryLookup } from '@/lib/services/purchase-service';
 import type { Purchase } from '@/lib/types';
 import { toast as showToast, useToast } from '@/hooks/use-toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -115,6 +115,7 @@ function RedeemPageComponent() {
     const [searchPerformed, setSearchPerformed] = useState(false);
     const [purchaseQrTokens, setPurchaseQrTokens] = useState<Record<string, string>>({});
     const [deliveryQuantities, setDeliveryQuantities] = useState<Record<string, Record<string, number>>>({});
+    const [validationPurchase, setValidationPurchase] = useState<Purchase | null>(null);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [isScannerStarting, setIsScannerStarting] = useState(false);
     const [scannerError, setScannerError] = useState('');
@@ -577,6 +578,48 @@ function RedeemPageComponent() {
         }
     };
 
+    const handleFinalizeSelfServiceValidation = async (purchase: Purchase) => {
+        if (!currentUser) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo identificar al usuario actual.' });
+            return;
+        }
+
+        const acceptedQuantities = deliveryQuantities[purchase.id] || {};
+        const pendingTotal = purchase.items.reduce(
+            (total, item) => total + Math.max(item.quantity - (item.deliveredQuantity || 0), 0),
+            0,
+        );
+        const acceptedTotal = Object.values(acceptedQuantities).reduce((total, quantity) => total + quantity, 0);
+        const releasedTotal = Math.max(pendingTotal - acceptedTotal, 0);
+
+        setIsUpdating(true);
+        try {
+            const updatedPurchase = await finalizeSelfServiceValidation(
+                purchase.id,
+                acceptedQuantities,
+                currentUser,
+            );
+            setSearchResults(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
+            setRecentPurchases(prev => prev.map(item => item.id === purchase.id ? updatedPurchase : item));
+            setDeliveryQuantities(prev => ({ ...prev, [purchase.id]: {} }));
+            setValidationPurchase(null);
+            toast({
+                title: acceptedTotal > 0 ? 'Validación finalizada' : 'Autogestión cancelada',
+                description: acceptedTotal > 0
+                    ? `Se entregaron ${acceptedTotal} unidad(es) y se liberaron ${releasedTotal} unidad(es) al stock.`
+                    : `Se liberaron las ${releasedTotal} unidad(es) pendientes al stock.`,
+            });
+        } catch (error) {
+            console.warn('No se pudo finalizar la validación de autogestión.');
+            toast({
+                variant: 'destructive',
+                title: 'Error de validación',
+                description: (error as Error).message || 'No se pudo finalizar la validación.',
+            });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
     const renderDeliveryButton = (purchase: Purchase) => {
         const selectedTotal = Object.values(deliveryQuantities[purchase.id] || {}).reduce((total, quantity) => total + quantity, 0);
         const pendingTotal = purchase.items.reduce((total, item) => total + Math.max(item.quantity - (item.deliveredQuantity || 0), 0), 0);
@@ -603,6 +646,29 @@ function RedeemPageComponent() {
             );
         }
 
+        if (!purchase.sellerId) {
+            const releasedTotal = Math.max(pendingTotal - selectedTotal, 0);
+            return (
+                <div className="grid w-full gap-2">
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                        Las unidades que no seleccione se retirarán de la compra y quedarán disponibles nuevamente en el stock.
+                    </div>
+                    <Button type="button" variant="outline" onClick={() => selectAllPendingForDelivery(purchase)} disabled={isUpdating}>
+                        Aprobar todo lo pendiente ({pendingTotal})
+                    </Button>
+                    <Button
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        onClick={() => setValidationPurchase(purchase)}
+                        disabled={isUpdating}
+                    >
+                        <PackageCheck className="mr-2 h-4 w-4" />
+                        {selectedTotal > 0
+                            ? `Finalizar: ${selectedTotal} aprobada(s), ${releasedTotal} liberada(s)`
+                            : `Cancelar y liberar las ${releasedTotal} unidad(es)`}
+                    </Button>
+                </div>
+            );
+        }
         return (
             <div className="grid w-full gap-2">
                 <Button type="button" variant="outline" onClick={() => selectAllPendingForDelivery(purchase)} disabled={isUpdating}>
@@ -659,6 +725,16 @@ function RedeemPageComponent() {
         }
     }
 
+    const validationPendingTotal = validationPurchase
+        ? validationPurchase.items.reduce(
+            (total, item) => total + Math.max(item.quantity - (item.deliveredQuantity || 0), 0),
+            0,
+        )
+        : 0;
+    const validationAcceptedTotal = validationPurchase
+        ? Object.values(deliveryQuantities[validationPurchase.id] || {}).reduce((total, quantity) => total + quantity, 0)
+        : 0;
+    const validationReleasedTotal = Math.max(validationPendingTotal - validationAcceptedTotal, 0);
 
     return (
         <div>
@@ -941,6 +1017,51 @@ function RedeemPageComponent() {
                     </CardContent>
                 </Card>
             </div>
+            <Dialog
+                open={Boolean(validationPurchase)}
+                onOpenChange={open => {
+                    if (!open && !isUpdating) setValidationPurchase(null);
+                }}
+            >
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Finalizar validación de autogestión</DialogTitle>
+                        <DialogDescription>
+                            Esta acción cierra la validación. Las unidades no aprobadas se eliminarán de la compra y dejarán de quedar reservadas.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-md border bg-green-50 p-3 text-green-900 dark:bg-green-950/30 dark:text-green-100">
+                                <p className="text-xs font-semibold uppercase">Se entregan</p>
+                                <p className="text-2xl font-bold">{validationAcceptedTotal}</p>
+                            </div>
+                            <div className="rounded-md border bg-amber-50 p-3 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+                                <p className="text-xs font-semibold uppercase">Vuelven al stock</p>
+                                <p className="text-2xl font-bold">{validationReleasedTotal}</p>
+                            </div>
+                        </div>
+                        {validationAcceptedTotal === 0 && (
+                            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                                No seleccionó ningún artículo. La autogestión quedará cancelada y todo lo pendiente será liberado.
+                            </p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setValidationPurchase(null)} disabled={isUpdating}>
+                            Volver
+                        </Button>
+                        <Button
+                            type="button"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => validationPurchase && handleFinalizeSelfServiceValidation(validationPurchase)}
+                            disabled={isUpdating || !validationPurchase}
+                        >
+                            {isUpdating ? 'Finalizando...' : 'Confirmar y liberar stock'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <Dialog open={isScannerOpen} onOpenChange={handleScannerOpenChange}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
