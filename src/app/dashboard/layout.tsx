@@ -61,7 +61,7 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header navItems={accessibleNavItems} />
-      <main className="mx-auto flex w-full max-w-[1500px] flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+      <main className="mx-auto flex w-full min-w-0 max-w-[1500px] flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8 [&>*]:min-w-0 [&>*]:w-full">{children}</main>
       <SecurityAiAssistant />
     </div>
   );

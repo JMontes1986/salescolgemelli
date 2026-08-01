@@ -151,6 +151,20 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  html {
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
   }
 }
 

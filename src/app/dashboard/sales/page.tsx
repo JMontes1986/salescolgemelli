@@ -307,21 +307,21 @@ export default function SalesPage() {
   const formattedPayment = new Intl.NumberFormat('es-CO').format(customerPayment);
 
   return (
-    <div>
+    <div className="w-full min-w-0 overflow-x-hidden">
       <PageHeader
         title="Punto de Venta"
         description="Seleccione productos y registre una nueva venta."
       />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-8">
         
         {/* Product and Ticket List */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-5 sm:space-y-6">
             <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                     <CardTitle>Productos Disponibles</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[60vh]">
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    <ScrollArea className="h-[52dvh] min-h-80 sm:h-[60vh]">
                          {isLoading ? (
                             <p className="text-muted-foreground p-3">Cargando productos...</p>
                          ) : (
@@ -335,27 +335,27 @@ export default function SalesPage() {
                                       const availableStock = Math.max(product.stock - selfServiceReserved, 0);
                                       const isSoldOut = availableStock <= 0;
                                       return (
-                                        <div key={product.id} className={cn("flex items-center justify-between p-3 bg-muted/50 rounded-lg", isSoldOut && "opacity-50")}>
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 bg-secondary rounded-md flex-shrink-0 relative">
+                                        <div key={product.id} className={cn("grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg bg-muted/50 p-3 sm:flex sm:items-center sm:justify-between", isSoldOut && "opacity-50")}>
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-secondary sm:h-10 sm:w-10">
                                                    <Image 
                                                         src={product.imageUrl}
                                                         alt={product.name}
                                                         width={200}
                                                         height={200}
-                                                        className="object-cover rounded-md"
+                                                        className="h-full w-full rounded-md object-cover"
                                                     />
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold">{product.name}</p>
+                                                <div className="w-full min-w-0 overflow-x-hidden">
+                                                    <p className="break-words font-semibold leading-tight">{product.name}</p>
                                                     <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:justify-end">
                                                 {isSoldOut ? (
                                                     <Badge variant="destructive">Agotado</Badge>
                                                 ) : (
-                                                    <div className='flex items-center gap-2'>
+                                                    <div className='flex flex-wrap items-center gap-1.5'>
                                                         <Badge variant="outline">Stock: {product.stock}</Badge>
                                                         {selfServicePending > 0 && (
                                                             <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServicePending}</Badge>
@@ -363,7 +363,7 @@ export default function SalesPage() {
                                                         <Badge variant={availableStock > 0 ? "secondary" : "destructive"}>Disp.: {availableStock}</Badge>
                                                     </div>
                                                 )}
-                                                <Button onClick={() => addToCart(product)} disabled={isSoldOut}>
+                                                <Button className="ml-auto min-h-11 flex-1 active:scale-[0.98] sm:min-h-9 sm:flex-none" onClick={() => addToCart(product)} disabled={isSoldOut}>
                                                     Agregar
                                                 </Button>
                                             </div>
@@ -378,7 +378,7 @@ export default function SalesPage() {
             </Card>
             
             <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center gap-2">
                         <Hourglass />
                         Compras de Autogestión Pendientes
@@ -387,7 +387,7 @@ export default function SalesPage() {
                         Estas compras fueron iniciadas en el portal y están pendientes de pago en caja.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
                     <ScrollArea className="h-48">
                          {isLoading ? (
                             <p className="text-muted-foreground p-3">Cargando...</p>
@@ -457,7 +457,7 @@ export default function SalesPage() {
 
             {currentUser?.role === 'admin' && (
               <Card className="border-destructive/30">
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="flex items-center gap-2 text-destructive">
                     <Trash2 className="h-5 w-5" />
                     Eliminar historial de autogestión
@@ -506,24 +506,53 @@ export default function SalesPage() {
         </div>
 
         {/* Cart and Checkout */}
-        <div>
-          <Card className="bg-blue-950 text-white lg:sticky top-20">
-            <CardHeader>
+        <div className="w-full min-w-0 overflow-x-hidden">
+          <Card className="overflow-hidden bg-blue-950 text-white lg:sticky lg:top-20">
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle>Carrito de Compras</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
                 <ScrollArea className="h-64 mb-4">
                     {cart.length === 0 ? (
                         <p className="text-center text-blue-300">El carrito está vacío</p>
                     ) : (
-                        <Table>
+                        <>
+                          <div className="space-y-2 sm:hidden">
+                            {cart.map((item) => (
+                              <div key={item.id} className="rounded-lg border border-blue-800 bg-blue-900/50 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="break-words font-semibold leading-tight text-white">{item.name}</p>
+                                    <p className="mt-1 font-semibold text-green-400">{formatCurrency(item.price * item.quantity)}</p>
+                                  </div>
+                                  <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 text-red-400 hover:bg-red-500/20 hover:text-red-300" aria-label={`Eliminar ${item.name} del carrito`} onClick={() => removeFromCart(item.id)}>
+                                    <Trash2 className="h-5 w-5" />
+                                  </Button>
+                                </div>
+                                <div className="mt-3 grid grid-cols-[2.75rem_minmax(3.5rem,1fr)_2.75rem] items-center gap-2">
+                                  <Button size="icon" variant="outline" className="h-11 w-11 border-blue-700 bg-blue-800 hover:bg-blue-700" aria-label={`Restar una unidad de ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                                    <Minus className="h-5 w-5" />
+                                  </Button>
+                                  <Input type="text" inputMode="numeric" aria-label={`Cantidad de ${item.name}`} value={item.quantity} onChange={(event) => {
+                                    const numericValue = event.target.value.replace(/[^0-9]/g, "");
+                                    updateQuantity(item.id, numericValue === "" ? 0 : parseInt(numericValue, 10));
+                                  }} className="h-11 w-full border-blue-700 bg-blue-900 text-center text-lg font-semibold" />
+                                  <Button size="icon" variant="outline" className="h-11 w-11 border-blue-700 bg-blue-800 hover:bg-blue-700" aria-label={`Agregar una unidad de ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                                    <Plus className="h-5 w-5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="hidden sm:block">
+                            <Table>
                             <TableBody>
                                 {cart.map(item => (
                                     <TableRow key={item.id} className="border-blue-800 hover:bg-blue-900">
                                         <TableCell className="text-white font-medium">{item.name}</TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                                            <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:justify-end">
+                                                <Button size="icon" variant="outline" className="h-9 w-9 border-blue-700 bg-blue-800 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
                                                     <Minus className="h-4 w-4" />
                                                 </Button>
                                                 <Input
@@ -537,9 +566,9 @@ export default function SalesPage() {
                                                         const newQuantity = numericValue === '' ? 0 : parseInt(numericValue, 10);
                                                         updateQuantity(item.id, newQuantity);
                                                     }}
-                                                    className="w-12 h-6 text-center bg-blue-900 border-blue-700"
+                                                    className="h-9 w-14 border-blue-700 bg-blue-900 text-center"
                                                 />
-                                                <Button size="icon" variant="outline" className="h-6 w-6 bg-blue-800 border-blue-700 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                                                <Button size="icon" variant="outline" className="h-9 w-9 border-blue-700 bg-blue-800 hover:bg-blue-700" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -554,6 +583,8 @@ export default function SalesPage() {
                                 ))}
                             </TableBody>
                         </Table>
+                          </div>
+                        </>
                     )}
                 </ScrollArea>
 
@@ -575,12 +606,12 @@ export default function SalesPage() {
                         <span>SUBTOTAL</span>
                         <span>{formatCurrency(subtotal)}</span>
                     </div>
-                     <div className="flex justify-between items-center">
+                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <label htmlFor="customer-payment" className="font-semibold">CLIENTE</label>
                         <Input 
                             id="customer-payment"
                             type="text"
-                            className="w-32 bg-blue-900 border-blue-700 text-right font-bold text-xl"
+                            className="h-12 w-full border-blue-700 bg-blue-900 text-right text-xl font-bold sm:w-36"
                             placeholder="0"
                             value={customerPayment === 0 ? '' : formattedPayment}
                             onChange={handlePaymentChange}
@@ -592,7 +623,7 @@ export default function SalesPage() {
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="flex gap-2">
+            <CardFooter className="flex flex-col gap-2 px-3 pb-4 sm:flex-row sm:px-6 sm:pb-6">
                  <Button 
                     className="w-full text-lg h-12 bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
                     onClick={handlePurchase}
