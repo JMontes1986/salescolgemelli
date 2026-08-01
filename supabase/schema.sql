@@ -1078,7 +1078,7 @@ drop function if exists public.get_self_service_purchases_by_customer(text);
 drop function if exists public.get_self_service_purchases_by_customer(text, text);
 drop function if exists public.get_self_service_purchases_by_cedula(text);
 
-create or replace function public.get_self_service_purchases_by_cedula(
+create function public.get_self_service_purchases_by_cedula(
   p_cedula text
 )
 returns table (
@@ -1095,7 +1095,8 @@ returns table (
   "qrPayload" text,
   "reservationExpiresAt" text,
   "modifiedAt" text,
-  "modificationCount" integer
+  "modificationCount" integer,
+  "purchaseSource" text
 )
 language sql
 security definer
@@ -1115,12 +1116,15 @@ as $$
     null::text as "qrPayload",
     purchase."reservationExpiresAt",
     purchase."modifiedAt",
-    purchase."modificationCount"
+    purchase."modificationCount",
+    case
+      when purchase."sellerId" is null then 'self-service'
+      when purchase.id like 'CG%' then 'pos'
+      else 'presale'
+    end::text as "purchaseSource"
   from public.purchases purchase
   where trim(p_cedula) ~ '^[0-9A-Za-z.-]{4,30}$'
     and purchase.cedula = trim(p_cedula)
-    and purchase.id like 'PV%'
-    and purchase."sellerId" is null
   order by purchase.date desc
   limit 50;
 $$;

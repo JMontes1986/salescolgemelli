@@ -151,6 +151,7 @@ export type Purchase = {
   reservationExpiresAt?: string;
   modifiedAt?: string;
   modificationCount?: number;
+  purchaseSource?: 'self-service' | 'pos' | 'presale';
 };
 
 // Type for creating a new purchase

@@ -101,6 +101,17 @@ const getPaymentLinkTarget = (href: string) => (
 const getPaymentLinkRel = (href: string) => (
   getPaymentLinkTarget(href) ? 'noopener noreferrer' : undefined
 );
+const getPurchaseSource = (purchase: Purchase) => (
+  purchase.purchaseSource
+    ?? (purchase.id.startsWith('CG') ? 'pos' : purchase.sellerId ? 'presale' : 'self-service')
+);
+
+const getPurchaseSourceLabel = (purchase: Purchase) => {
+  const source = getPurchaseSource(purchase);
+  if (source === 'pos') return 'Compra realizada en caja';
+  if (source === 'presale') return 'Preventa';
+  return 'Compra de autogestión';
+};
 
 const toServerCartItems = (items: CartItem[]) => (
   items.map(({ id, quantity }) => ({
@@ -923,15 +934,19 @@ export default function SelfServicePage() {
                 <div className="space-y-3">
                   {purchaseHistory.map((purchase) => {
                     const hasSessionActions = canShowSessionActions(purchase);
+                    const purchaseSource = getPurchaseSource(purchase);
 
                     return (
                       <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0 space-y-3">
                           <div className="space-y-1">
-                            <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código de pago</p>
+                            <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código de compra</p>
                             <p className="font-mono text-base font-bold">{purchase.id}</p>
                             <p className="text-sm font-semibold text-[#5f686a]">{purchase.date}</p>
+                            <Badge variant="outline" className="mt-1 w-fit border-[#0eb9c3]/35 bg-white text-[#126d74]">
+                              {getPurchaseSourceLabel(purchase)}
+                            </Badge>
                           </div>
                           <PurchaseModifiedIndicator purchase={purchase} audience="parent" showDetails />
                           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -939,7 +954,11 @@ export default function SelfServicePage() {
                               <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/18 bg-white p-3">
                                 <p className="font-bold leading-tight text-[#232328]">{item.name}</p>
                                 <p className="text-sm font-semibold text-[#5f686a]">Cantidad: {item.quantity}</p>
-                                <p className="text-xs font-semibold text-[#126d74]">Entregado: {item.deliveredQuantity || 0} | Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
+                                {purchaseSource === 'pos' ? (
+                                  <p className="text-xs font-semibold text-emerald-700">Comprado y pagado en caja</p>
+                                ) : (
+                                  <p className="text-xs font-semibold text-[#126d74]">Entregado: {item.deliveredQuantity || 0} | Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
+                                )}
                                 <p className="text-sm font-black text-[#b23178]">{formatCurrency(item.price * item.quantity)}</p>
                               </div>
                             ))}
@@ -960,8 +979,12 @@ export default function SelfServicePage() {
                             </div>
                           ) : (
                             <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
-                              <p className="text-xs font-black uppercase text-[#126d74]">Historial por cédula</p>
-                              <p className="mt-1 text-sm font-semibold text-[#5f686a]">Compra registrada anteriormente.</p>
+                              <p className="text-xs font-black uppercase text-[#126d74]">
+                                {purchaseSource === 'pos' ? 'Compra en punto de venta' : 'Historial por cédula'}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-[#5f686a]">
+                                {purchaseSource === 'pos' ? 'Registrada en caja con esta cédula.' : 'Compra registrada anteriormente.'}
+                              </p>
                             </div>
                           )}
                           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
