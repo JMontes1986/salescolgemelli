@@ -36,6 +36,7 @@ import type { AuditLog, AuditLogAction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getAuditLogs } from "@/lib/services/audit-service";
 import { useToast } from "@/hooks/use-toast";
+import { SelfServiceEditAuditDetails } from "@/components/self-service-edit-audit-details";
 
 type AuditFilter = "all" | "access" | "money" | "self-service" | "inventory";
 type AiStatus = "idle" | "loading" | "ready" | "error" | "disabled";
@@ -465,7 +466,9 @@ export default function AuditPage() {
                           {actionLabels[log.action] ?? log.action}
                       </Badge>
                     </TableCell>
-                    <TableCell>{log.details}</TableCell>
+                    <TableCell>
+                      <SelfServiceEditAuditDetails details={log.details} />
+                    </TableCell>
                   </TableRow>
                 ))
               )}

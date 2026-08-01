@@ -2,6 +2,7 @@ import { callRpc, insertRow, insertRowMinimal, selectRows, selectSingle, updateB
 import type { Purchase, NewPurchase, Product, CartItem, User, ProductAvailability } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 import { normalizeProductAvailability } from "./product-service";
+import { createSelfServiceEditAuditDetails } from "@/lib/self-service-edit-audit";
 
 export type { NewPurchase } from "@/lib/types";
 
@@ -648,13 +649,6 @@ export async function updatePendingPurchase(
         p_celular: sanitizeCustomerPhone(options.customerCelular),
       }));
 
-      await addAuditLog({
-        userId: updatedPurchase.cedula,
-        userName: `Cliente (Autogestión)`,
-        action: 'PURCHASE_EDIT',
-        details: `Cliente modificó la compra pendiente de autogestión ${safePurchaseId}. Total nuevo: ${updatedPurchase.total}. Unidades: ${countPurchaseUnits(updatedPurchase.items)}.`,
-      });
-
       return updatedPurchase;
     } catch (error) {
       if (error instanceof Error && error.message.includes('update_self_service_pending_purchase')) {
@@ -751,7 +745,13 @@ export async function updatePendingPurchase(
     userName: isSelfService ? `Cliente (Autogestión)` : (originalPurchase.sellerName ?? 'Sistema'),
     action: 'PURCHASE_EDIT',
     details: isSelfService
-      ? `Cliente modificó la compra pendiente de autogestión ${safePurchaseId}. Total nuevo: ${verifiedCart.total}. Unidades: ${countPurchaseUnits(itemsToSave)}.`
+      ? createSelfServiceEditAuditDetails({
+          purchaseId: safePurchaseId,
+          beforeTotal: originalPurchase.total,
+          afterTotal: verifiedCart.total,
+          beforeItems: originalItems,
+          afterItems: itemsToSave,
+        })
       : `Preventa ${safePurchaseId} modificada. Total nuevo: ${verifiedCart.total}. Unidades: ${countPurchaseUnits(itemsToSave)}.`,
   });
 
