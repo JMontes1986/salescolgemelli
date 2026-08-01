@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { addAuditLog } from '@/lib/services/audit-service';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PurchaseModifiedIndicator } from '@/components/purchase-modified-indicator';
 
 const statusTranslations: Record<Purchase['status'], string> = {
     pending: 'Pendiente',
@@ -708,6 +709,7 @@ function RedeemPageComponent() {
                                                         <Badge className={cn("capitalize", statusColors[purchase.status])}>
                                                             {statusTranslations[purchase.status]}
                                                         </Badge>
+                                                        <PurchaseModifiedIndicator purchase={purchase} />
                                                     </div>
                                                     <p className="text-sm text-muted-foreground">{purchase.date}</p>
                                                     <p className="line-clamp-2 text-sm">
@@ -846,6 +848,12 @@ function RedeemPageComponent() {
                                                 </div>
                                             </CardHeader>
                                             <CardContent>
+                                                <PurchaseModifiedIndicator
+                                                    purchase={purchase}
+                                                    audience="staff"
+                                                    className="mb-4"
+                                                    showDetails
+                                                />
                                                 {isSeller && purchase.status === 'pending' && (
                                                     <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
                                                         <div className="flex items-start gap-3">

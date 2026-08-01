@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { addAuditLog } from '@/lib/services/audit-service';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import { PurchaseModifiedIndicator } from '@/components/purchase-modified-indicator';
 
 
 type CartItem = {
@@ -406,8 +407,12 @@ export default function SalesPage() {
                                 <TableBody>
                                     {pendingSelfServicePurchases.map((purchase) => (
                                         <TableRow key={purchase.id}>
-                                            <TableCell className="font-mono">
-                                                {purchase.id}
+                                            <TableCell>
+                                                <div className="font-mono">{purchase.id}</div>
+                                                <PurchaseModifiedIndicator
+                                                  purchase={purchase}
+                                                  className="mt-2 w-fit font-sans"
+                                                />
                                             </TableCell>
                                             <TableCell>
                                                 {purchase.cedula}

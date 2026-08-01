@@ -149,6 +149,8 @@ export type Purchase = {
   deliveryCode?: string;
   qrPayload?: string;
   reservationExpiresAt?: string;
+  modifiedAt?: string;
+  modificationCount?: number;
 };
 
 // Type for creating a new purchase

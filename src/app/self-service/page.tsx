@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { Badge } from '@/components/ui/badge';
 import { MOLLY_LOGO_URL } from '@/components/icons';
+import { PurchaseModifiedIndicator } from '@/components/purchase-modified-indicator';
 
 
 
@@ -932,6 +933,7 @@ export default function SelfServicePage() {
                             <p className="font-mono text-base font-bold">{purchase.id}</p>
                             <p className="text-sm font-semibold text-[#5f686a]">{purchase.date}</p>
                           </div>
+                          <PurchaseModifiedIndicator purchase={purchase} audience="parent" showDetails />
                           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                             {purchase.items.map((item) => (
                               <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/18 bg-white p-3">
@@ -1058,6 +1060,9 @@ export default function SelfServicePage() {
             </DialogDesc>
           </DialogHeader>
           <div className="py-4 space-y-4">
+            {editingPurchase && lastPurchase && (
+              <PurchaseModifiedIndicator purchase={lastPurchase} audience="parent" showDetails />
+            )}
             <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-md border border-yellow-200 dark:border-yellow-800">
                 <p className="text-base font-semibold">
                     Su compra está pendiente. Puede pagar en caja o por DaviPlata/Bre-B; después presente este código para confirmar y recibir sus productos.

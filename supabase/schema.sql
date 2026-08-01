@@ -92,12 +92,16 @@ create table if not exists public.purchases (
   status text not null,
   "deliveryCode" text,
   "qrPayload" text,
-  "reservationExpiresAt" text
+  "reservationExpiresAt" text,
+  "modifiedAt" text,
+  "modificationCount" integer not null default 0
 );
 
 alter table public.purchases add column if not exists "deliveryCode" text;
 alter table public.purchases add column if not exists "qrPayload" text;
 alter table public.purchases add column if not exists "reservationExpiresAt" text;
+alter table public.purchases add column if not exists "modifiedAt" text;
+alter table public.purchases add column if not exists "modificationCount" integer not null default 0;
 
 update public.purchases
 set "reservationExpiresAt" = (now() + interval '2 hours')::text
@@ -1089,7 +1093,9 @@ returns table (
   status text,
   "deliveryCode" text,
   "qrPayload" text,
-  "reservationExpiresAt" text
+  "reservationExpiresAt" text,
+  "modifiedAt" text,
+  "modificationCount" integer
 )
 language sql
 security definer
@@ -1107,7 +1113,9 @@ as $$
     purchase.status,
     null::text as "deliveryCode",
     null::text as "qrPayload",
-    purchase."reservationExpiresAt"
+    purchase."reservationExpiresAt",
+    purchase."modifiedAt",
+    purchase."modificationCount"
   from public.purchases purchase
   where trim(p_cedula) ~ '^[0-9A-Za-z.-]{4,30}$'
     and purchase.cedula = trim(p_cedula)
@@ -1919,7 +1927,9 @@ begin
     date = now()::text,
     total = purchase_total,
     items = verified_items,
-    "reservationExpiresAt" = (now() + interval '2 hours')::text
+    "reservationExpiresAt" = (now() + interval '2 hours')::text,
+    "modifiedAt" = now()::text,
+    "modificationCount" = coalesce("modificationCount", 0) + 1
   where id = purchase_record.id
   returning * into purchase_record;
 

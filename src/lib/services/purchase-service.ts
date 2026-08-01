@@ -65,7 +65,7 @@ function withDeliveryAccess(purchase: Purchase): Purchase {
   };
 }
 
-const purchaseSelectColumns = 'id,date,total,items,cedula,celular,"sellerId","sellerName",status,"deliveryCode","qrPayload","reservationExpiresAt"';
+const purchaseSelectColumns = 'id,date,total,items,cedula,celular,"sellerId","sellerName",status,"deliveryCode","qrPayload","reservationExpiresAt","modifiedAt","modificationCount"';
 
 export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
   return purchases
@@ -726,17 +726,24 @@ export async function updatePendingPurchase(
   }));
 
   const itemsToSave = verifiedCart.items.map(item => ({ ...item, returned: false, deliveredQuantity: 0 }));
+  const modifiedAt = isSelfService ? new Date().toISOString() : originalPurchase.modifiedAt;
+  const modificationCount = isSelfService
+    ? (originalPurchase.modificationCount ?? 0) + 1
+    : originalPurchase.modificationCount;
   const updatedPurchase: Purchase = {
     ...originalPurchase,
     items: itemsToSave,
     total: verifiedCart.total,
     date: getCurrentDateLabel(),
+    modifiedAt,
+    modificationCount,
   };
 
   await updateById<Purchase>('purchases', safePurchaseId, {
     items: itemsToSave,
     total: verifiedCart.total,
     date: updatedPurchase.date,
+    ...(isSelfService ? { modifiedAt, modificationCount } : {}),
   });
 
   await addAuditLog({
