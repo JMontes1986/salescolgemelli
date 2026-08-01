@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+
+const RETURNS_REALTIME_TABLES = ['products', 'returns'] as const;
 
 export default function ReturnsPage() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -42,29 +45,35 @@ export default function ReturnsPage() {
     const { toast } = useToast();
     const { currentUser } = useAuth();
 
-    useEffect(() => {
-        async function loadInitialData() {
-            setIsLoading(true);
-            try {
-                const [fetchedProducts, fetchedReturns] = await Promise.all([
-                    getProducts(),
-                    getReturns()
-                ]);
-                setProducts(fetchedProducts);
-                setReturnsHistory(fetchedReturns);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error de Carga',
-                    description: 'No se pudieron cargar los datos iniciales.'
-                });
-            } finally {
-                setIsLoading(false);
-            }
+    const loadData = useCallback(async (showLoading = true) => {
+        if (showLoading) setIsLoading(true);
+        try {
+            const [fetchedProducts, fetchedReturns] = await Promise.all([
+                getProducts(),
+                getReturns(),
+            ]);
+            setProducts(fetchedProducts);
+            setReturnsHistory(fetchedReturns);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error de Carga',
+                description: 'No se pudieron cargar los datos iniciales.',
+            });
+        } finally {
+            if (showLoading) setIsLoading(false);
         }
-        loadInitialData();
-    }, []);
+    }, [toast]);
+
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
+
+    useSupabaseRealtime({
+        tables: RETURNS_REALTIME_TABLES,
+        onChange: () => loadData(false),
+    });
 
     const handleReturn = async (e: React.FormEvent) => {
         e.preventDefault();

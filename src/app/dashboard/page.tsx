@@ -44,6 +44,9 @@ import { getReturns } from "@/lib/services/return-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+
+const DASHBOARD_REALTIME_TABLES = ['products', 'purchases', 'returns'] as const;
 
 const statusTranslations: Record<Purchase['status'], string> = {
     pending: 'Pendiente',
@@ -153,8 +156,8 @@ export default function Dashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const [fetchedPurchases, fetchedProducts, fetchedReturns] = await Promise.all([
         getPurchases(),
@@ -168,13 +171,18 @@ export default function Dashboard() {
       console.error("Error fetching data:", error);
       toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar los datos del panel." });
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useSupabaseRealtime({
+    tables: DASHBOARD_REALTIME_TABLES,
+    onChange: () => loadData(false),
+  });
 
   const paidPurchases = purchases.filter((p) => p.status === "paid" || p.status === "delivered");
   const totalRevenue = paidPurchases.reduce((sum, p) => sum + p.total, 0);
@@ -381,7 +389,7 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
           description="Resumen operativo para ventas, autogestión, devoluciones y rendimiento del equipo."
         >
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={loadData} disabled={isLoading}>
+            <Button variant="outline" onClick={() => loadData()} disabled={isLoading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
               {isLoading ? "Actualizando..." : "Actualizar"}
             </Button>

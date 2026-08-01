@@ -40,6 +40,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+
+const CASHBOX_REALTIME_TABLES = ['cashboxSessions', 'purchases'] as const;
 
 export default function CashboxPage() {
     const [openingBalance, setOpeningBalance] = useState("");
@@ -80,6 +83,12 @@ export default function CashboxPage() {
     useEffect(() => {
         loadCashboxData();
     }, [loadCashboxData]);
+
+    useSupabaseRealtime({
+        tables: CASHBOX_REALTIME_TABLES,
+        onChange: loadCashboxData,
+        enabled: isMounted && Boolean(currentUser),
+    });
     
     const handleBalanceChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/[^0-9]/g, '');

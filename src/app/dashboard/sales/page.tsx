@@ -70,7 +70,7 @@ export default function SalesPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [historyCedulaToDelete, setHistoryCedulaToDelete] = useState('');
   const [isDeletingHistory, setIsDeletingHistory] = useState(false);
-  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
+  const realtimeTables = useMemo(() => ['products', 'purchases', 'self_service_reservations'] as const, []);
 
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) {

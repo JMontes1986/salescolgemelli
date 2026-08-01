@@ -3,7 +3,17 @@
 import { useEffect, useRef } from 'react';
 import { getSupabaseEnv } from '@/lib/supabase';
 
-type RealtimeTable = 'products' | 'purchases' | 'cashboxSessions' | 'returns' | 'auditLogs' | 'users' | 'bingo_landing_content';
+export type RealtimeTable =
+  | 'products'
+  | 'purchases'
+  | 'self_service_reservations'
+  | 'cashboxSessions'
+  | 'returns'
+  | 'auditLogs'
+  | 'users'
+  | 'bingo_registrations'
+  | 'bingo_landing_views'
+  | 'bingo_landing_content';
 
 type RealtimeStatus = 'connected' | 'fallback' | 'disconnected';
 
@@ -17,8 +27,9 @@ type UseSupabaseRealtimeOptions = {
 };
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
+const JOIN_TIMEOUT_MS = 5_000;
 const DEFAULT_FALLBACK_INTERVAL_MS = 10_000;
-const DEFAULT_DEBOUNCE_MS = 350;
+const DEFAULT_DEBOUNCE_MS = 250;
 
 function buildRealtimeUrl() {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
@@ -37,11 +48,12 @@ function buildJoinPayload(tables: readonly RealtimeTable[]) {
     config: {
       broadcast: { self: false },
       presence: { key: '' },
-      postgres_changes: tables.map((table) => ({
-        event: '*',
+      postgres_changes: [{
+        event: 'INSERT',
         schema: 'public',
-        table,
-      })),
+        table: 'app_realtime_events',
+        filter: `topic=in.(${tables.join(',')})`,
+      }],
     },
     access_token: supabaseAnonKey,
   };
@@ -76,6 +88,8 @@ export function useSupabaseRealtime({
     let heartbeatInterval: number | null = null;
     let fallbackInterval: number | null = null;
     let reconnectTimer: number | null = null;
+    let joinTimer: number | null = null;
+    let joinRef: string | null = null;
     let ref = 1;
     let isDisposed = false;
     let hasRealtimeConnected = false;
@@ -109,8 +123,10 @@ export function useSupabaseRealtime({
     };
 
     const send = (topic: string, event: string, payload: unknown) => {
-      if (!socket || socket.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify({ topic, event, payload, ref: String(ref++) }));
+      if (!socket || socket.readyState !== WebSocket.OPEN) return null;
+      const messageRef = String(ref++);
+      socket.send(JSON.stringify({ topic, event, payload, ref: messageRef }));
+      return messageRef;
     };
 
     const connect = () => {
@@ -126,28 +142,33 @@ export function useSupabaseRealtime({
       }
 
       socket.onopen = () => {
-        send('realtime:public', 'phx_join', buildJoinPayload(tables));
+        joinRef = send('realtime:public:platform-events', 'phx_join', buildJoinPayload(tables));
+        joinTimer = window.setTimeout(() => {
+          if (!hasRealtimeConnected) startFallback();
+        }, JOIN_TIMEOUT_MS);
         heartbeatInterval = window.setInterval(() => {
           send('phoenix', 'heartbeat', {});
         }, HEARTBEAT_INTERVAL_MS);
       };
 
       socket.onmessage = (event) => {
-        let message: { event?: string; payload?: unknown } | null = null;
+        let message: { event?: string; payload?: unknown; ref?: string } | null = null;
 
         try {
-          message = JSON.parse(event.data) as { event?: string; payload?: unknown };
+          message = JSON.parse(event.data) as { event?: string; payload?: unknown; ref?: string };
         } catch {
           return;
         }
 
-        if (message.event === 'phx_reply') {
+        if (message.event === 'phx_reply' && message.ref === joinRef) {
           const payload = message.payload as { status?: string } | undefined;
           if (payload?.status === 'ok') {
             hasRealtimeConnected = true;
+            if (joinTimer) window.clearTimeout(joinTimer);
+            joinTimer = null;
             stopFallback();
             setStatus('connected');
-          } else if (!hasRealtimeConnected) {
+          } else {
             startFallback();
           }
           return;
@@ -159,16 +180,15 @@ export function useSupabaseRealtime({
       };
 
       socket.onerror = () => {
-        if (!hasRealtimeConnected) {
-          startFallback();
-        }
+        startFallback();
       };
 
       socket.onclose = () => {
-        if (heartbeatInterval) {
-          window.clearInterval(heartbeatInterval);
-          heartbeatInterval = null;
-        }
+        hasRealtimeConnected = false;
+        if (heartbeatInterval) window.clearInterval(heartbeatInterval);
+        if (joinTimer) window.clearTimeout(joinTimer);
+        heartbeatInterval = null;
+        joinTimer = null;
 
         if (isDisposed) {
           setStatus('disconnected');
@@ -177,11 +197,11 @@ export function useSupabaseRealtime({
 
         setStatus('disconnected');
         startFallback();
-
         reconnectTimer = window.setTimeout(connect, fallbackIntervalMs);
       };
     };
 
+    startFallback();
     connect();
 
     return () => {
@@ -194,8 +214,9 @@ export function useSupabaseRealtime({
       if (heartbeatInterval) window.clearInterval(heartbeatInterval);
       if (fallbackInterval) window.clearInterval(fallbackInterval);
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (joinTimer) window.clearTimeout(joinTimer);
       if (socket && socket.readyState === WebSocket.OPEN) {
-        send('realtime:public', 'phx_leave', {});
+        send('realtime:public:platform-events', 'phx_leave', {});
       }
       socket?.close();
     };

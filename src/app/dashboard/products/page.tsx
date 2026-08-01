@@ -524,7 +524,7 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasSeeded, setHasSeeded] = useState(false);
   const { toast } = useToast();
-  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
+  const realtimeTables = useMemo(() => ['products', 'purchases', 'self_service_reservations'] as const, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),

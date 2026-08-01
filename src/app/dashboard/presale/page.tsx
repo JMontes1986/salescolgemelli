@@ -52,6 +52,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Logo } from '@/components/icons';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+
+const PRESALE_REALTIME_TABLES = ['products', 'purchases'] as const;
 
 type CartItem = {
   id: string;
@@ -143,6 +146,11 @@ export default function PreSalePage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useSupabaseRealtime({
+    tables: PRESALE_REALTIME_TABLES,
+    onChange: loadData,
+  });
 
   const addToCart = (item: Product) => {
     setCart((prevCart) => {

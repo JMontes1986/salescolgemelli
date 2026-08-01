@@ -124,7 +124,7 @@ function RedeemPageComponent() {
     const scannerFrameRef = useRef<number | null>(null);
     const { toast } = useToast();
     const resultsCardRef = useRef<HTMLDivElement | null>(null);
-    const realtimeTables = React.useMemo(() => ['products', 'purchases'] as const, []);
+    const realtimeTables = React.useMemo(() => ['products', 'purchases', 'self_service_reservations'] as const, []);
 
     const loadRecentPurchases = useCallback(async (showLoading = true) => {
         if (isSeller) {

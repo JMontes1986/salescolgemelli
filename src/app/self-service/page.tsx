@@ -151,7 +151,7 @@ export default function SelfServicePage() {
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
   const activeCedula = cedula.trim();
   const hasActiveCedula = activeCedula.length > 0;
-  const realtimeTables = useMemo(() => ['products', 'purchases'] as const, []);
+  const realtimeTables = useMemo(() => ['products', 'purchases', 'self_service_reservations'] as const, []);
 
   const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
     if (!paymentHref) {

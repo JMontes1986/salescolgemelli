@@ -16,6 +16,9 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { defaultBingoContent, type BingoLandingContent } from "@/lib/bingo-data";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+
+const BINGO_DASHBOARD_REALTIME_TABLES = ['bingo_landing_content', 'bingo_registrations', 'bingo_landing_views'] as const;
 
 type EditableValue = string | number | boolean | null | EditableObject | EditableValue[];
 type EditableObject = { [key: string]: EditableValue };
@@ -409,6 +412,13 @@ export default function BingoContentAdminPage() {
     void loadRegistrations();
     void loadViewStats();
   }, []);
+
+  useSupabaseRealtime({
+    tables: BINGO_DASHBOARD_REALTIME_TABLES,
+    onChange: async () => {
+      await Promise.all([loadRegistrations(), loadViewStats()]);
+    },
+  });
 
   const exportRegistrationsCsv = () => {
     if (registrations.length === 0) {

@@ -5,7 +5,7 @@ import { BingoLanding } from "./BingoLanding";
 import { defaultBingoContent, type BingoFoodProduct, type BingoLandingContent } from "@/lib/bingo-data";
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 
-const BINGO_REALTIME_TABLES = ["bingo_landing_content", "purchases", "products"] as const;
+const BINGO_REALTIME_TABLES = ["bingo_landing_content", "bingo_landing_views", "bingo_registrations", "purchases", "products"] as const;
 
 async function fetchBingoLandingContent() {
   const response = await fetch("/api/dashboard/bingo-content", { cache: "no-store" });

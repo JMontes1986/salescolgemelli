@@ -37,6 +37,9 @@ import { cn } from "@/lib/utils";
 import { getAuditLogs } from "@/lib/services/audit-service";
 import { useToast } from "@/hooks/use-toast";
 import { SelfServiceEditAuditDetails } from "@/components/self-service-edit-audit-details";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+
+const AUDIT_REALTIME_TABLES = ['auditLogs'] as const;
 
 type AuditFilter = "all" | "access" | "money" | "self-service" | "inventory";
 type AiStatus = "idle" | "loading" | "ready" | "error" | "disabled";
@@ -183,6 +186,11 @@ export default function AuditPage() {
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
+
+  useSupabaseRealtime({
+    tables: AUDIT_REALTIME_TABLES,
+    onChange: loadLogs,
+  });
 
   const stats = useMemo(() => {
     const todayLogs = auditLogs.filter((log) => isSameLocalDay(log.timestamp));

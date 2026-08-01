@@ -39,6 +39,9 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+
+const CLEANUP_REALTIME_TABLES = ['products', 'purchases', 'returns', 'cashboxSessions', 'bingo_registrations'] as const;
 
 type CleanupEntity = "purchase" | "return" | "cashbox" | "bingo";
 
@@ -146,6 +149,11 @@ export default function DataCleanupPage() {
   useEffect(() => {
     void loadRecords();
   }, [loadRecords]);
+
+  useSupabaseRealtime({
+    tables: CLEANUP_REALTIME_TABLES,
+    onChange: loadRecords,
+  });
 
   const filteredRecords = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("es");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import {
   deleteUser,
 } from "@/lib/services/user-service";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import { PermissionGate } from "@/components/permission-gate";
 import { Pencil, PlusCircle, ShieldCheck, Trash2 } from "lucide-react";
 import {
@@ -61,6 +62,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+const USERS_REALTIME_TABLES = ['users'] as const;
 
 const roleNames: Record<UserRole, string> = {
   admin: "Administrador",
@@ -432,25 +435,31 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  useEffect(() => {
-    async function loadUsers() {
-      setIsLoading(true);
-      try {
-        const fetchedUsers = await getUsers();
-        setUsers(fetchedUsers);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se pudieron cargar los usuarios.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+  const loadUsers = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    try {
+      const fetchedUsers = await getUsers();
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudieron cargar los usuarios.",
+      });
+    } finally {
+      if (showLoading) setIsLoading(false);
     }
-    loadUsers();
-  }, [toast]); // Empty dependency array ensures this runs only once on mount
+  }, [toast]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  useSupabaseRealtime({
+    tables: USERS_REALTIME_TABLES,
+    onChange: () => loadUsers(false),
+  });
 
   const handleUserAdded = (newUser: User) => {
     setUsers((prevUsers) => [...prevUsers, newUser]);
