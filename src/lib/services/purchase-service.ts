@@ -43,29 +43,6 @@ function ensureReturnedFlags(purchase: Purchase): Purchase {
   };
 }
 
-function generateDeliveryCode() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
-  }
-
-  return Math.random().toString(36).slice(2, 10).toUpperCase();
-}
-
-function buildDeliveryQrPayload(purchaseId: string, deliveryCode: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || '';
-  const path = `/dashboard/redeem?code=${encodeURIComponent(purchaseId)}&delivery=${encodeURIComponent(deliveryCode)}`;
-  return baseUrl ? `${baseUrl}${path}` : path;
-}
-
-function withDeliveryAccess(purchase: Purchase): Purchase {
-  const deliveryCode = purchase.deliveryCode || generateDeliveryCode();
-  return {
-    ...purchase,
-    deliveryCode,
-    qrPayload: purchase.qrPayload || buildDeliveryQrPayload(purchase.id, deliveryCode),
-  };
-}
-
 const purchaseSelectColumns = 'id,date,total,items,cedula,celular,"sellerId","sellerName",status,"deliveryCode","qrPayload","reservationExpiresAt","modifiedAt","modificationCount"';
 
 export function getSelfServiceReservedQuantities(purchases: Purchase[]): Record<string, number> {
@@ -476,38 +453,27 @@ export async function deleteSelfServicePurchaseHistoryByCedula(cedula: string): 
   return responseBody?.deletedCount ?? 0;
 }
 export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
-  const rpcPayload = {
-    p_items: purchase.items.map(item => ({ id: item.id, quantity: item.quantity })),
-    p_cedula: purchase.cedula,
-    p_celular: purchase.celular,
-    p_seller_id: purchase.sellerId,
-    p_seller_name: purchase.sellerName,
-    p_date: getCurrentDateLabel(),
-    p_status: purchase.status === 'delivered' ? 'delivered' : 'paid',
-  };
+  const response = await fetch('/api/dashboard/sales', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    cache: 'no-store',
+    body: JSON.stringify({
+      items: purchase.items.map(item => ({ id: item.id, quantity: item.quantity })),
+      cedula: purchase.cedula.trim(),
+      status: purchase.status === 'delivered' ? 'delivered' : 'paid',
+    }),
+  });
+  const responseBody = await response.json().catch(() => null) as {
+    purchase?: Purchase;
+    message?: string;
+  } | null;
 
-  try {
-    const savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_pos_purchase_with_stock', rpcPayload));
-    const purchaseWithDelivery = withDeliveryAccess(savedPurchase);
-    await updateById<Purchase>('purchases', purchaseWithDelivery.id, {
-      deliveryCode: purchaseWithDelivery.deliveryCode,
-      qrPayload: purchaseWithDelivery.qrPayload,
-      items: purchaseWithDelivery.items,
-    });
-    await addAuditLog({
-      userId: purchaseWithDelivery.sellerId ?? 'system',
-      userName: purchaseWithDelivery.sellerName ?? 'Sistema',
-      action: 'TICKET_SELL',
-      details: `Venta POS ${purchaseWithDelivery.id} registrada por ${purchaseWithDelivery.total}. Unidades: ${countPurchaseUnits(purchaseWithDelivery.items)}. Cliente: ${purchaseWithDelivery.cedula || 'N/A'}.`,
-    });
-    return purchaseWithDelivery;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('create_pos_purchase_with_stock')) {
-      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para descontar stock al registrar ventas de forma segura.');
-    }
-
-    throw error;
+  if (!response.ok || !responseBody?.purchase) {
+    throw new Error(responseBody?.message || 'No se pudo registrar la venta.');
   }
+
+  return ensureReturnedFlags(responseBody.purchase);
 }
 
 export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchase> {

@@ -222,7 +222,7 @@ export default function SalesPage() {
         date: new Date().toLocaleString('es-CO'),
         total: subtotal,
         items: cart,
-        cedula: customerCedula.trim() || 'N/A', // Optional POS customer profile association
+        cedula: customerCedula.trim(), // Optional POS customer profile association
         celular: 'N/A',
         sellerId: currentUser?.id,
         sellerName: currentUser?.name,
