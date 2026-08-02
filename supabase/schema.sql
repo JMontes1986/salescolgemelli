@@ -104,7 +104,7 @@ alter table public.purchases add column if not exists "modifiedAt" text;
 alter table public.purchases add column if not exists "modificationCount" integer not null default 0;
 
 update public.purchases
-set "reservationExpiresAt" = (now() + interval '2 hours')::text
+set "reservationExpiresAt" = (now() + interval '6 hours')::text
 where "sellerId" is null
   and status = 'pending'
   and "reservationExpiresAt" is null;
@@ -1863,7 +1863,7 @@ begin
     'pending',
     delivery_code,
     public.build_signed_delivery_qr_payload(generated_id, delivery_code),
-    (now() + interval '2 hours')::text
+    (now() + interval '6 hours')::text
   ) returning * into saved_purchase;
 
   perform public.sync_self_service_reservations(
@@ -2001,7 +2001,7 @@ begin
     date = now()::text,
     total = purchase_total,
     items = verified_items,
-    "reservationExpiresAt" = (now() + interval '2 hours')::text,
+    "reservationExpiresAt" = (now() + interval '6 hours')::text,
     "modifiedAt" = now()::text,
     "modificationCount" = coalesce("modificationCount", 0) + 1
   where id = purchase_record.id

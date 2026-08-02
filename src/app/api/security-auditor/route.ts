@@ -36,7 +36,7 @@ const SELF_SERVICE_SECURITY_EVIDENCE = [
   "- La función get_self_service_purchases_by_customer existe solo como compatibilidad SQL, pero el execute fue revocado para anon/authenticated.",
   "- get_purchase_for_delivery_lookup puede ejecutarse desde anon/authenticated, pero cuando recibe QR valida token HMAC con expiración; si recibe código manual, devuelve una compra solo para el flujo de entrega y no debe usarse como historial público.",
   "- Las entregas anónimas requieren QR firmado vigente en deliver_purchase_items_for_lookup; usuarios autenticados requieren permiso redeem y sesión reciente.",
-  "- Las reservas de autogestión usan reservationExpiresAt con timeout de 2 horas; el cálculo de disponibilidad y las RPC de compra descuentan solo reservas pendientes no vencidas (reservationExpiresAt > now()).",
+  "- Las reservas de autogestión usan reservationExpiresAt con timeout de 6 horas; el cálculo de disponibilidad y las RPC de compra descuentan solo reservas pendientes no vencidas (reservationExpiresAt > now()).",
   "- Riesgo residual real: como todo formulario público, autogestión puede recibir abuso automatizado o reservas falsas; la mitigación ideal es rate limiting/CAPTCHA o validación de pago fuera de Supabase RLS.",
   "- No hay tablas orders, order_items ni payment_logs en este esquema; el flujo actual usa purchases con items jsonb.",
 ].join("\n");

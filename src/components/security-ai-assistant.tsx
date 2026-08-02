@@ -33,7 +33,7 @@ const SELF_SERVICE_SECURITY_EVIDENCE = [
   "- purchases revocó INSERT para anon; anon solo puede ejecutar create_self_service_purchase.",
   "- El QR de entrega usa token HMAC con expiración y validación en get_purchase_for_delivery_lookup.",
   "- El QR/enlace de pago DaviPlata no incluye el monto como parámetro; el total visible viene de la compra confirmada por Supabase.",
-  "- Las reservas de autogestión usan reservationExpiresAt con timeout de 2 horas; el cálculo de disponibilidad y las RPC de compra descuentan solo reservas pendientes no vencidas (reservationExpiresAt > now()).",
+  "- Las reservas de autogestión usan reservationExpiresAt con timeout de 6 horas; el cálculo de disponibilidad y las RPC de compra descuentan solo reservas pendientes no vencidas (reservationExpiresAt > now()).",
   "- No hay tablas orders, order_items ni payment_logs en este esquema; el flujo actual usa purchases con items jsonb.",
 ].join("\n");
 
