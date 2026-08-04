@@ -58,24 +58,35 @@ export function BingoPreviewLanding({ showSelfServiceNotice = false }: { showSel
       </section>
 
       <section id="informacion" className="px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
-        <div className="mx-auto grid max-w-[1400px] gap-12 border-t border-[#24231f]/20 pt-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#80691f]">Informaci&#243;n del evento</p>
-            <h2 className="mt-5 max-w-xl text-4xl font-black leading-none tracking-[-0.045em] sm:text-5xl">Primero la informaci&#243;n, despu&#233;s la inscripci&#243;n.</h2>
-          </div>
-          <div className="grid gap-8 sm:grid-cols-2">
-            <article className="border-t border-[#24231f]/25 pt-5">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#80691f]">En este espacio</p>
-              <p className="mt-4 text-base font-semibold leading-7 text-[#555147]">Publicaremos los datos confirmados del encuentro, la programaci&#243;n y las indicaciones para participar.</p>
-            </article>
-            <article className="border-t border-[#24231f]/25 pt-5 sm:mt-16">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#80691f]">Sin compras por ahora</p>
-              <p className="mt-4 text-base font-semibold leading-7 text-[#555147]">La landing es informativa. No hay productos, pagos ni valores publicados mientras se prepara la siguiente etapa.</p>
-            </article>
-            <article className="border-t border-[#24231f]/25 pt-5 sm:col-span-2 sm:max-w-xl">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#80691f]">Organizaci&#243;n</p>
-              <p className="mt-4 text-base font-semibold leading-7 text-[#555147]">Colegio Franciscano Agust&#237;n Gemelli, Manizales. La informaci&#243;n oficial tambi&#233;n se comunicar&#225; por los canales institucionales.</p>
-            </article>
+        <div className="mx-auto max-w-[1400px] border-t border-[#24231f]/20 pt-8">
+          <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-[#80691f]">El Bingo en cifras</p>
+              <h2 className="mt-5 max-w-xl text-4xl font-black leading-none tracking-[-0.045em] sm:text-5xl">Una noche que reuni&#243; a toda nuestra comunidad.</h2>
+              <p className="mt-6 max-w-lg text-base font-semibold leading-7 text-[#656055]">Las ventas, los juegos, los premios y la zona gastron&#243;mica hicieron de nuestro Bingo Gemellista 2026 una jornada para recordar.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <article className="grid min-h-64 gap-8 rounded-[2rem] bg-[#24231f] p-7 text-white shadow-[0_24px_50px_-36px_rgba(36,35,31,0.7)] sm:col-span-2 sm:grid-cols-[0.7fr_1.3fr] sm:items-end sm:p-9">
+                <p className="text-7xl font-black leading-none tracking-[-0.07em] text-[#d7b44a] sm:text-8xl">+300</p>
+                <div className="border-t border-white/20 pt-5">
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-[#d7b44a]">Personas asistentes</p>
+                  <p className="mt-3 max-w-md text-lg font-semibold leading-7 text-white/72">Familias, estudiantes, colaboradores y amigos compartieron juntos nuestro Bingo Gemellista.</p>
+                </div>
+              </article>
+
+              <article className="border-t border-[#24231f]/25 px-1 pt-6">
+                <p className="text-5xl font-black tracking-[-0.06em] text-[#24231f]">62</p>
+                <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-[#80691f]">Fotograf&#237;as oficiales</p>
+                <p className="mt-3 text-sm font-semibold leading-6 text-[#656055]">Momentos que quedaron guardados en el &#225;lbum institucional.</p>
+              </article>
+
+              <article className="border-t border-[#24231f]/25 px-1 pt-6 sm:mt-12">
+                <p className="text-3xl font-black tracking-[-0.04em] text-[#24231f]">Una gran jornada</p>
+                <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-[#80691f]">Ventas, premios y gastronom&#237;a</p>
+                <p className="mt-3 text-sm font-semibold leading-6 text-[#656055]">Cada compra y cada encuentro ayudaron a darle vida a la celebraci&#243;n.</p>
+              </article>
+            </div>
           </div>
         </div>
       </section>
