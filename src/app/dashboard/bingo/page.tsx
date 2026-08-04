@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -334,6 +335,8 @@ export default function BingoContentAdminPage() {
   const [content, setContent] = useState<BingoLandingContent>(() => cloneValue(defaultBingoContent));
   const [status, setStatus] = useState("Cargando contenido editable...");
   const [saving, setSaving] = useState(false);
+  const [contentLoaded, setContentLoaded] = useState(false);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [activeSection, setActiveSection] = useState<EditorSectionKey>("hero");
   const [registrations, setRegistrations] = useState<BingoRegistration[]>([]);
   const [registrationsStatus, setRegistrationsStatus] = useState("Cargando registros...");
@@ -362,7 +365,8 @@ export default function BingoContentAdminPage() {
         setContent(cloneValue(data.content ?? defaultBingoContent));
         setStatus(data.source === "database" ? "Contenido cargado desde Supabase." : "Contenido base cargado. Guarda para publicarlo en Supabase.");
       })
-      .catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar el contenido."));
+      .catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar el contenido."))
+      .finally(() => setContentLoaded(true));
   }, []);
 
   const loadRegistrations = async () => {
@@ -485,6 +489,44 @@ export default function BingoContentAdminPage() {
     }
   };
 
+  const updateSelfServiceAvailability = async (enabled: boolean) => {
+    const previousValue = Boolean(content.selfServiceEnabled);
+    setContent((current) => ({ ...current, selfServiceEnabled: enabled }));
+    setAvailabilitySaving(true);
+    setStatus(enabled ? "Habilitando Autogestion..." : "Publicando la landing informativa...");
+
+    try {
+      const response = await fetch("/api/dashboard/bingo-content", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selfServiceEnabled: enabled }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message ?? "No se pudo cambiar el estado de Autogestion.");
+      }
+
+      setStatus(
+        enabled
+          ? "Autogestion habilitada. /self-service muestra nuevamente la tienda."
+          : "Autogestion deshabilitada. /self-service muestra la landing informativa.",
+      );
+    } catch (error) {
+      setContent((current) => ({
+        ...current,
+        selfServiceEnabled: previousValue,
+      }));
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cambiar el estado de Autogestion.",
+      );
+    } finally {
+      setAvailabilitySaving(false);
+    }
+  };
+
   const handleChange = (path: (string | number)[], value: EditableValue) => {
     setContent((current) => updateAtPath(current as EditableValue, path, value) as BingoLandingContent);
   };
@@ -552,6 +594,50 @@ export default function BingoContentAdminPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <section className="grid gap-5 border-y border-border py-5 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                Publicacion de Autogestion
+              </p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-foreground">
+                {content.selfServiceEnabled
+                  ? "Autogestion habilitada"
+                  : "Landing informativa activa"}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Decide que ven las familias en /self-service. El cambio se guarda
+                inmediatamente y no elimina productos, compras ni configuraciones.
+              </p>
+            </div>
+            <div className="min-w-72 rounded-2xl border bg-muted/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="flex items-center justify-between gap-5">
+                <Label htmlFor="self-service-availability" className="text-sm font-bold">
+                  Mostrar Autogestion
+                </Label>
+                <Switch
+                  id="self-service-availability"
+                  checked={Boolean(content.selfServiceEnabled)}
+                  onCheckedChange={(checked) => void updateSelfServiceAvailability(checked)}
+                  disabled={!contentLoaded || availabilitySaving}
+                  aria-describedby="self-service-availability-status"
+                />
+              </div>
+              <p
+                id="self-service-availability-status"
+                aria-live="polite"
+                className="mt-3 text-xs font-medium leading-5 text-muted-foreground"
+              >
+                {!contentLoaded
+                  ? "Cargando estado..."
+                  : availabilitySaving
+                    ? "Guardando cambio..."
+                    : content.selfServiceEnabled
+                      ? "Las familias ven la Autogestion completa."
+                      : "Las familias ven la nueva landing del Bingo."}
+              </p>
+            </div>
+          </section>
+
           <div className="grid gap-3 rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground md:grid-cols-[1fr_auto] md:items-center">
             <div>
               <p><strong>Ruta publica:</strong> /bingo</p>

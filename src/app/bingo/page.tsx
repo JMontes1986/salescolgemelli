@@ -1,40 +1,22 @@
 import type { Metadata } from "next";
-import { BingoLandingRealtime } from "@/components/bingo/BingoLandingRealtime";
-import { getBingoFoodProducts, getBingoLandingContent, getBingoPreSaleTablesSold } from "@/lib/bingo-data";
+import { BingoPreviewLanding } from "@/components/bingo/BingoPreviewLanding";
 import { siteConfig } from "@/lib/site";
 
-export const revalidate = 30;
-
 export const metadata: Metadata = {
-  title: "Bingo Gemellista | Sales Col Gemelli",
-  description: "Landing oficial del Bingo Gemellista integrada al sitio Sales Col Gemelli.",
-  alternates: {
-    canonical: `${siteConfig.url}${siteConfig.bingoPath}`,
-  },
+  title: "Bingo Gemellista | Colegio Gemelli",
+  description: "Informaci\u00f3n y memoria visual del Bingo Gemellista.",
+  alternates: { canonical: `${siteConfig.url}${siteConfig.bingoPath}` },
   openGraph: {
     title: "Bingo Gemellista",
-    description: "Participa en el Bingo Gemellista desde el sitio oficial de Sales Col Gemelli.",
+    description: "Encuentro de la familia gemellista. Pr\u00f3ximamente publicaremos la informaci\u00f3n para participar.",
     url: `${siteConfig.url}${siteConfig.bingoPath}`,
-    siteName: "Sales Col Gemelli",
+    siteName: "Colegio Gemelli",
     type: "website",
     locale: "es_CO",
-    images: [
-      {
-        url: `${siteConfig.url}/images/bingo/bingo-card.svg`,
-        width: 1200,
-        height: 800,
-        alt: "Bingo Gemellista",
-      },
-    ],
+    images: [{ url: `${siteConfig.url}/images/bingo/gallery/28334.jpg`, width: 685, height: 917, alt: "Bingo Gemellista 2026" }],
   },
 };
 
-export default async function BingoPage() {
-  const [content, tablesSold, foodProducts] = await Promise.all([
-    getBingoLandingContent("public-cache"),
-    getBingoPreSaleTablesSold("public-cache"),
-    getBingoFoodProducts("public-cache"),
-  ]);
-
-  return <BingoLandingRealtime initialContent={content} initialTablesSold={tablesSold} initialFoodProducts={foodProducts} />;
+export default function BingoPage() {
+  return <BingoPreviewLanding />;
 }
