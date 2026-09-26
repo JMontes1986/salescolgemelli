@@ -22,19 +22,21 @@ where role = 'seller'
 
 alter table public.users enable row level security;
 
-grant select on public.users to anon, authenticated;
+revoke all on public.users from anon;
+grant select on public.users to authenticated;
 grant insert, update, delete on public.users to authenticated;
 
 drop policy if exists "public_users_select" on public.users;
+drop policy if exists "authenticated_users_select" on public.users;
 drop policy if exists "dashboard_users_insert" on public.users;
 drop policy if exists "dashboard_users_update" on public.users;
 drop policy if exists "dashboard_users_delete" on public.users;
 
-create policy "public_users_select"
+create policy "authenticated_users_select"
   on public.users
   for select
-  to anon, authenticated
-  using (true);
+  to authenticated
+  using (auth.uid() is not null);
 
 create policy "dashboard_users_insert"
   on public.users
