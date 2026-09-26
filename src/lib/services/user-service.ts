@@ -73,8 +73,9 @@ export type UpdateUserInput = {
 
 export type AuthenticatedUser = {
   user: User;
-  session: SupabaseAuthSession;
+  session?: SupabaseAuthSession;
   authUser?: SupabaseAuthUser;
+  authMode: "supabase" | "legacy-local";
 };
 
 export type AuthenticationErrorCode =
@@ -511,7 +512,7 @@ export async function authenticateUser(
     session.access_token,
   );
 
-  return { user, session, authUser };
+  return { user, session, authUser, authMode: "supabase" };
 }
 
 export async function getAuthenticatedUser(
@@ -545,7 +546,7 @@ export async function refreshAuthenticatedSession(
     undefined,
     session.access_token,
   );
-  return { user, session, authUser: response.user };
+  return { user, session, authUser: response.user, authMode: "supabase" };
 }
 
 export async function signOutAuthenticatedUser(
