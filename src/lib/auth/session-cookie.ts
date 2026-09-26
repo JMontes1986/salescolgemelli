@@ -4,7 +4,12 @@ export const AUTH_ACCESS_COOKIE = "sg_access_token";
 export const AUTH_REFRESH_COOKIE = "sg_refresh_token";
 export const AUTH_SESSION_COOKIE = "sg_app_session";
 
+const AUTH_SESSION_VERSION =
+  process.env.AUTH_SESSION_VERSION?.trim() || "2";
+const MIN_SIGNING_SECRET_LENGTH = 32;
+
 export type AuthSessionPayload = {
+  version: string;
   user: User;
   expiresAt: number;
 };
@@ -13,12 +18,16 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 function getSigningSecret() {
-  return (
-    process.env.AUTH_COOKIE_SECRET ??
-    process.env.NEXT_SERVER_AUTH_SECRET ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    "development-only-auth-cookie-secret"
-  );
+  const secret =
+    process.env.AUTH_COOKIE_SECRET ?? process.env.NEXT_SERVER_AUTH_SECRET;
+
+  if (!secret || secret.length < MIN_SIGNING_SECRET_LENGTH) {
+    throw new Error(
+      "AUTH_COOKIE_SECRET debe estar configurado con al menos 32 caracteres. La aplicación no usará secretos públicos ni valores de desarrollo como fallback.",
+    );
+  }
+
+  return secret;
 }
 
 function toBase64Url(bytes: Uint8Array) {
@@ -65,8 +74,31 @@ async function signValue(value: string) {
   return toBase64Url(new Uint8Array(signature));
 }
 
-export async function createAuthSessionCookie(payload: AuthSessionPayload) {
-  const encodedPayload = toBase64Url(encoder.encode(JSON.stringify(payload)));
+async function verifyValue(value: string, signature: string) {
+  try {
+    const key = await getSigningKey();
+    return await crypto.subtle.verify(
+      "HMAC",
+      key,
+      fromBase64Url(signature),
+      encoder.encode(value),
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function createAuthSessionCookie(
+  payload: Omit<AuthSessionPayload, "version">,
+) {
+  const encodedPayload = toBase64Url(
+    encoder.encode(
+      JSON.stringify({
+        ...payload,
+        version: AUTH_SESSION_VERSION,
+      }),
+    ),
+  );
   const signature = await signValue(encodedPayload);
   return `${encodedPayload}.${signature}`;
 }
@@ -84,9 +116,7 @@ export async function verifyAuthSessionCookie(
     return null;
   }
 
-  const expectedSignature = await signValue(encodedPayload);
-
-  if (signature !== expectedSignature) {
+  if (!(await verifyValue(encodedPayload, signature))) {
     return null;
   }
 
@@ -96,6 +126,7 @@ export async function verifyAuthSessionCookie(
     ) as AuthSessionPayload;
 
     if (
+      payload.version !== AUTH_SESSION_VERSION ||
       !payload.user?.id ||
       !payload.user.role ||
       !Array.isArray(payload.user.permissions) ||
