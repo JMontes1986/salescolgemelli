@@ -10,6 +10,7 @@ import {
 import type { User, NewUser, ModulePermission, UserRole } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 import { getPermissionsForRole } from "@/lib/roles";
+import { authenticateLegacyLocalUser } from "@/lib/server/local-auth";
 
 type AuthUserMetadata = {
   name?: string;
@@ -55,10 +56,6 @@ export type SupabaseAuthSession = {
   token_type?: string;
 };
 
-const localSessionPrefix = "local:";
-const localRefreshTokenPrefix = "local-refresh:";
-const localSessionDurationSeconds = 60 * 60 * 8;
-
 type SupabaseAuthResponse = Partial<SupabaseAuthSession> & {
   user: SupabaseAuthUser;
 };
@@ -77,8 +74,9 @@ export type UpdateUserInput = {
 
 export type AuthenticatedUser = {
   user: User;
-  session: SupabaseAuthSession;
+  session?: SupabaseAuthSession;
   authUser?: SupabaseAuthUser;
+  authMode: "supabase" | "legacy-local";
 };
 
 export type AuthenticationErrorCode =
@@ -124,49 +122,6 @@ function sanitizeUser<T extends User>(user: T): User {
       ? safeUser.permissions
       : getPermissionsForRole(safeUser.role),
   };
-}
-
-function getLocalSession(userId: string): SupabaseAuthSession {
-  const expiresAt = Math.floor(Date.now() / 1000) + localSessionDurationSeconds;
-  const payload = JSON.stringify({ userId, expiresAt });
-  const encodedPayload = globalThis.btoa(payload);
-
-  return {
-    access_token: `${localSessionPrefix}${encodedPayload}`,
-    refresh_token: `${localRefreshTokenPrefix}${userId}`,
-    expires_at: expiresAt,
-    expires_in: localSessionDurationSeconds,
-    token_type: "local",
-  };
-}
-
-function readLocalSession(
-  accessToken: string,
-): { userId: string; expiresAt: number } | null {
-  if (!accessToken.startsWith(localSessionPrefix)) {
-    return null;
-  }
-
-  try {
-    const encodedPayload = accessToken.slice(localSessionPrefix.length);
-    const payload = globalThis.atob(encodedPayload);
-    const parsed = JSON.parse(payload) as {
-      userId?: string;
-      expiresAt?: number;
-    };
-
-    if (
-      !parsed.userId ||
-      !parsed.expiresAt ||
-      parsed.expiresAt <= Math.floor(Date.now() / 1000)
-    ) {
-      return null;
-    }
-
-    return { userId: parsed.userId, expiresAt: parsed.expiresAt };
-  } catch {
-    return null;
-  }
 }
 
 async function hashPassword(password?: string): Promise<string> {
@@ -518,21 +473,8 @@ export async function authenticateUser(
 ): Promise<AuthenticatedUser | null> {
   const normalizedUsername = username.trim();
 
-  if (!normalizedUsername.includes("@")) {
-    const localUser = await authenticateLocalUser(
-      normalizedUsername,
-      password_provided,
-    );
-
-    if (localUser) {
-      return localUser;
-    }
-  }
-
-  let response: SupabaseAuthResponse;
-
   try {
-    response = await supabaseAuthRequest<SupabaseAuthResponse>("token", {
+    const response = await supabaseAuthRequest<SupabaseAuthResponse>("token", {
       method: "POST",
       query: { grant_type: "password" },
       body: {
@@ -540,68 +482,56 @@ export async function authenticateUser(
         password: password_provided,
       },
     });
+
+    const session = getAuthSession(response);
+
+    if (!session) {
+      return null;
+    }
+
+    const authUser = response.user;
+    const shouldUseUsername =
+      authUser.user_metadata?.role !== "admin" &&
+      authUser.user_metadata?.role !== "auditor";
+    const fallbackUsername = shouldUseUsername
+      ? normalizedUsername
+      : (authUser.email ?? normalizedUsername);
+
+    const user = await getProfileForAuthUser(
+      response.user,
+      { username: fallbackUsername },
+      session.access_token,
+    );
+
+    return { user, session, authUser, authMode: "supabase" };
   } catch (error) {
     const authenticationError = getAuthenticationError(error);
 
-    if (authenticationError) {
-      if (normalizedUsername.includes("@")) {
-        let localUser: AuthenticatedUser | null = null;
+    if (
+      authenticationError?.code === "invalid_credentials" ||
+      authenticationError?.code === "email_not_confirmed"
+    ) {
+      const localUser = await authenticateLegacyLocalUser(
+        normalizedUsername,
+        password_provided,
+      );
 
-        try {
-          localUser = await authenticateLocalUser(
-            normalizedUsername,
-            password_provided,
-          );
-        } catch (localAuthError) {
-          console.warn(
-            isMissingUsersTableError(localAuthError)
-              ? "No se pudo intentar autenticacion local porque falta public.users en Supabase."
-              : "No se pudo intentar autenticacion local; se devolvera el error original de Supabase Auth.",
-            localAuthError,
-          );
-        }
-
-        if (localUser) {
-          return localUser;
-        }
+      if (localUser) {
+        return { user: localUser, authMode: "legacy-local" };
       }
+    }
 
+    if (authenticationError) {
       throw authenticationError;
     }
 
     throw error;
   }
-
-  const session = getAuthSession(response);
-
-  if (!session) {
-    return null;
-  }
-
-  const authUser = response.user;
-  const shouldUseUsername =
-    authUser.user_metadata?.role !== "admin" &&
-    authUser.user_metadata?.role !== "auditor";
-  const fallbackUsername = shouldUseUsername
-    ? username.trim()
-    : (authUser.email ?? username.trim());
-
-  const user = await getProfileForAuthUser(response.user, {
-    username: fallbackUsername,
-  }, session.access_token);
-
-  return { user, session, authUser };
 }
 
 export async function getAuthenticatedUser(
   accessToken: string,
 ): Promise<User | null> {
-  const localSession = readLocalSession(accessToken);
-
-  if (localSession) {
-    return getUserById(localSession.userId);
-  }
-
   const authUser = await supabaseAuthRequest<SupabaseAuthUser>("user", {
     accessToken,
   });
@@ -611,17 +541,6 @@ export async function getAuthenticatedUser(
 export async function refreshAuthenticatedSession(
   refreshToken: string,
 ): Promise<AuthenticatedUser | null> {
-  if (refreshToken.startsWith(localRefreshTokenPrefix)) {
-    const userId = refreshToken.slice(localRefreshTokenPrefix.length);
-    const user = await getUserById(userId);
-
-    if (!user) {
-      return null;
-    }
-
-    return { user, session: getLocalSession(user.id) };
-  }
-
   const response = await supabaseAuthRequest<SupabaseAuthResponse>("token", {
     method: "POST",
     query: { grant_type: "refresh_token" },
@@ -641,16 +560,12 @@ export async function refreshAuthenticatedSession(
     undefined,
     session.access_token,
   );
-  return { user, session, authUser: response.user };
+  return { user, session, authUser: response.user, authMode: "supabase" };
 }
 
 export async function signOutAuthenticatedUser(
   accessToken: string,
 ): Promise<void> {
-  if (accessToken.startsWith(localSessionPrefix)) {
-    return;
-  }
-
   await supabaseAuthRequest<void>("logout", {
     method: "POST",
     accessToken,
@@ -672,45 +587,6 @@ export async function getUserById(id: string): Promise<User | null> {
     id: `eq.${id}`,
   });
   return user ? sanitizeUser(user) : null;
-}
-
-async function authenticateLocalUser(
-  username: string,
-  password: string,
-): Promise<AuthenticatedUser | null> {
-  const storedUser = await getLocalUserForLogin(username);
-
-  if (
-    !storedUser ||
-    storedUser.role === "admin" ||
-    storedUser.role === "auditor"
-  ) {
-    return null;
-  }
-
-  const storedPasswordHash = getStoredPasswordHash(storedUser);
-
-  if (!storedPasswordHash) {
-    throw new AuthenticationError(
-      "local_password_missing",
-      "El usuario existe en Gestion de Usuarios, pero no tiene una contrasena local guardada. Edita el usuario y asigna una contrasena nueva.",
-    );
-  }
-
-  const providedPasswordHash = await hashPassword(password);
-
-  if (storedPasswordHash !== providedPasswordHash) {
-    return null;
-  }
-
-  const user = sanitizeUser({
-    ...storedUser,
-    permissions: storedUser.permissions?.length
-      ? storedUser.permissions
-      : getPermissionsForRole(storedUser.role),
-  });
-
-  return { user, session: getLocalSession(storedUser.id) };
 }
 
 export async function addUser(user: NewUser): Promise<User> {
