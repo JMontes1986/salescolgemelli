@@ -10,7 +10,6 @@ import {
 import type { User, NewUser, ModulePermission, UserRole } from "@/lib/types";
 import { addAuditLog } from "./audit-service";
 import { getPermissionsForRole } from "@/lib/roles";
-import { authenticateLegacyLocalUser } from "@/lib/server/local-auth";
 
 type AuthUserMetadata = {
   name?: string;
@@ -74,9 +73,8 @@ export type UpdateUserInput = {
 
 export type AuthenticatedUser = {
   user: User;
-  session?: SupabaseAuthSession;
+  session: SupabaseAuthSession;
   authUser?: SupabaseAuthUser;
-  authMode: "supabase" | "legacy-local";
 };
 
 export type AuthenticationErrorCode =
@@ -472,9 +470,10 @@ export async function authenticateUser(
   password_provided: string,
 ): Promise<AuthenticatedUser | null> {
   const normalizedUsername = username.trim();
+  let response: SupabaseAuthResponse;
 
   try {
-    const response = await supabaseAuthRequest<SupabaseAuthResponse>("token", {
+    response = await supabaseAuthRequest<SupabaseAuthResponse>("token", {
       method: "POST",
       query: { grant_type: "password" },
       body: {
@@ -482,44 +481,8 @@ export async function authenticateUser(
         password: password_provided,
       },
     });
-
-    const session = getAuthSession(response);
-
-    if (!session) {
-      return null;
-    }
-
-    const authUser = response.user;
-    const shouldUseUsername =
-      authUser.user_metadata?.role !== "admin" &&
-      authUser.user_metadata?.role !== "auditor";
-    const fallbackUsername = shouldUseUsername
-      ? normalizedUsername
-      : (authUser.email ?? normalizedUsername);
-
-    const user = await getProfileForAuthUser(
-      response.user,
-      { username: fallbackUsername },
-      session.access_token,
-    );
-
-    return { user, session, authUser, authMode: "supabase" };
   } catch (error) {
     const authenticationError = getAuthenticationError(error);
-
-    if (
-      authenticationError?.code === "invalid_credentials" ||
-      authenticationError?.code === "email_not_confirmed"
-    ) {
-      const localUser = await authenticateLegacyLocalUser(
-        normalizedUsername,
-        password_provided,
-      );
-
-      if (localUser) {
-        return { user: localUser, authMode: "legacy-local" };
-      }
-    }
 
     if (authenticationError) {
       throw authenticationError;
@@ -527,6 +490,28 @@ export async function authenticateUser(
 
     throw error;
   }
+
+  const session = getAuthSession(response);
+
+  if (!session) {
+    return null;
+  }
+
+  const authUser = response.user;
+  const shouldUseUsername =
+    authUser.user_metadata?.role !== "admin" &&
+    authUser.user_metadata?.role !== "auditor";
+  const fallbackUsername = shouldUseUsername
+    ? normalizedUsername
+    : (authUser.email ?? normalizedUsername);
+
+  const user = await getProfileForAuthUser(
+    response.user,
+    { username: fallbackUsername },
+    session.access_token,
+  );
+
+  return { user, session, authUser };
 }
 
 export async function getAuthenticatedUser(
@@ -560,7 +545,7 @@ export async function refreshAuthenticatedSession(
     undefined,
     session.access_token,
   );
-  return { user, session, authUser: response.user, authMode: "supabase" };
+  return { user, session, authUser: response.user };
 }
 
 export async function signOutAuthenticatedUser(
