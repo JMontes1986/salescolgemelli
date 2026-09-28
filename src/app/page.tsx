@@ -4,17 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpenCheck, KeyRound, LogIn, Ticket, UserCog } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpenCheck,
+  KeyRound,
+  LayoutDashboard,
+  LogIn,
+  ShieldCheck,
+  ShoppingBasket,
+  Ticket,
+  UserCog,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addUser } from "@/lib/services/user-service";
 import { useAuth } from "@/hooks/use-auth";
@@ -258,29 +260,75 @@ export default function LoginPage() {
   };
 
   return (
-    <main
-      className="flex min-h-screen items-center justify-center bg-background p-4"
-      key={key}
-    >
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex items-center justify-center">
-            <Logo />
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#f5f4ef] px-4 py-8 text-[#202522] dark:bg-[#121815] dark:text-[#f4f6f3] sm:px-6 lg:px-8" key={key}>
+      <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(23,107,87,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(23,107,87,0.055)_1px,transparent_1px)] [background-size:48px_48px] dark:opacity-20" />
+      <div className="relative mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl overflow-hidden rounded-[1.75rem] border border-[#d8ddd7] bg-white shadow-[0_32px_80px_-48px_rgba(32,37,34,0.42)] dark:border-white/10 dark:bg-[#1b221e] lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="relative flex flex-col justify-between overflow-hidden bg-[#174f43] p-6 text-white sm:p-10 lg:p-12">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/10" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full border border-white/10" />
+
+          <div className="relative">
+            <div className="inline-flex rounded-2xl bg-white px-4 py-2 shadow-sm">
+              <Logo className="h-14 w-auto object-contain" />
+            </div>
+            <p className="mt-10 text-sm font-semibold tracking-wide text-white/[0.72]">Colegio Franciscano Agustín Gemelli</p>
+            <h1 className="mt-3 max-w-xl text-[clamp(2.25rem,5vw,4.25rem)] font-bold leading-[0.98] tracking-[-0.045em]">
+              Ventas escolares, claras de principio a fin.
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-white/[0.78] sm:text-lg">
+              Un solo lugar para comprar, registrar ventas y consultar pedidos sin perderse entre procesos.
+            </p>
+
+            <div className="mt-8 space-y-3 border-t border-white/[0.16] pt-6">
+              <div className="flex items-start gap-3">
+                <ShoppingBasket className="mt-0.5 h-5 w-5 shrink-0 text-[#b8d7cc]" />
+                <div>
+                  <p className="font-semibold">Autogestión para familias</p>
+                  <p className="mt-0.5 text-sm leading-6 text-white/[0.66]">Elija productos, confirme el celular y reciba su código de pago.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <LayoutDashboard className="mt-0.5 h-5 w-5 shrink-0 text-[#b8d7cc]" />
+                <div>
+                  <p className="font-semibold">Operación para el equipo</p>
+                  <p className="mt-0.5 text-sm leading-6 text-white/[0.66]">Ventas, inventario, caja y entregas con información centralizada.</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
-          <CardDescription>
-            Ingrese a su cuenta para acceder al panel de ventas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form id="login-form" onSubmit={handleLogin} className="space-y-4">
+
+          <div className="relative mt-10 flex flex-col gap-3 sm:flex-row">
+            <Button asChild className="h-12 justify-between rounded-xl bg-white px-5 font-semibold text-[#174f43] hover:bg-[#edf4f1] active:translate-y-px">
+              <Link href="/self-service">
+                Ir a Autogestión
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="h-12 rounded-xl border border-white/20 px-5 font-semibold text-white hover:bg-white/10 hover:text-white">
+              <Link href="/self-service/tutorial">Ver cómo comprar</Link>
+            </Button>
+          </div>
+        </section>
+
+        <section className="flex items-center p-5 sm:p-10 lg:p-12">
+          <div className="mx-auto w-full max-w-md">
+            <div className="mb-8">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e5f0eb] text-[#176b57] dark:bg-[#176b57]/25 dark:text-[#9ed0bf]">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <p className="text-sm font-semibold text-[#176b57] dark:text-[#9ed0bf]">Acceso del equipo</p>
+              <h2 className="mt-1 text-3xl font-bold tracking-[-0.035em]">Iniciar sesión</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">Ingrese sus credenciales para administrar ventas, productos y entregas.</p>
+            </div>
+
+          <form id="login-form" onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="username">Usuario o correo electrónico</Label>
+              <Label htmlFor="username" className="text-sm font-semibold">Usuario o correo electrónico</Label>
               <Input
                 id="username"
                 name="username"
                 type="text"
-                placeholder="usuario123 o admin@colegio.edu"
+                placeholder="Escriba su usuario"
                 required
                 value={username}
                 onChange={(e) => {
@@ -292,7 +340,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label htmlFor="password" className="text-sm font-semibold">Contraseña</Label>
               <Input
                 id="password"
                 name="password"
@@ -308,7 +356,7 @@ export default function LoginPage() {
               />
             </div>
             {mfaRequired && (
-              <div className="space-y-4 rounded-md border border-border bg-muted/30 p-4">
+              <div className="space-y-4 rounded-2xl border border-[#d8ddd7] bg-[#f7f8f5] p-4 dark:border-white/10 dark:bg-white/5">
                 <p className="text-sm text-muted-foreground">
                   Abre FreeOTP e ingresa el código de 6 dígitos del
                   administrador.
@@ -383,10 +431,10 @@ export default function LoginPage() {
               </div>
             )}
           </form>
-        </CardContent>
-        <CardFooter className="flex flex-col">
+
+          <div className="mt-6">
           <Button
-            className="w-full"
+            className="h-12 w-full rounded-xl bg-[#176b57] font-semibold text-white hover:bg-[#125746] active:translate-y-px"
             type="submit"
             form="login-form"
             disabled={isLoading}
@@ -403,24 +451,24 @@ export default function LoginPage() {
                 : "Ingresar"}
           </Button>
           <CreateUserForm onUserCreated={handleUserCreation} />
-          <div className="mt-4 w-full border-t pt-4">
-            <p className="mb-3 text-center text-xs font-medium text-muted-foreground">
-              Tutoriales antes de ingresar
+          <div className="mt-6 w-full border-t border-[#dde1db] pt-5 dark:border-white/10">
+            <p className="mb-3 text-xs font-semibold text-muted-foreground">
+              Accesos de consulta
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Button asChild variant="outline" className="justify-start sm:col-span-2">
+              <Button asChild variant="outline" className="h-11 justify-start rounded-xl sm:col-span-2">
                 <Link href="/bingo">
                   <Ticket className="mr-2 h-4 w-4" />
                   Bingo Gemellista
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="justify-start">
+              <Button asChild variant="outline" className="h-11 justify-start rounded-xl">
                 <Link href="/tutorial-cajas">
                   <BookOpenCheck className="mr-2 h-4 w-4" />
                   Tutorial cajas
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="justify-start">
+              <Button asChild variant="outline" className="h-11 justify-start rounded-xl">
                 <Link href="/self-service/tutorial">
                   <UserCog className="mr-2 h-4 w-4" />
                   Tutorial padres
@@ -428,8 +476,10 @@ export default function LoginPage() {
               </Button>
             </div>
           </div>
-        </CardFooter>
-      </Card>
+          </div>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

@@ -455,122 +455,78 @@ export default function SelfServicePage() {
   );
 
   return (
-    <div className="self-service-theme min-h-screen overflow-hidden bg-[#f6f7f2] pb-32 pt-14 text-[#232328] transition-colors duration-300 sm:pt-4 lg:pb-10">
-      <div className="self-service-bg pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_12%,rgba(14,185,195,0.20),transparent_30%),radial-gradient(circle_at_86%_16%,rgba(236,198,67,0.18),transparent_28%),radial-gradient(circle_at_50%_88%,rgba(178,49,120,0.10),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f6f7f2_54%,#edf3f2_100%)]" />
-      <div className="self-service-grid pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(rgba(14,185,195,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(178,49,120,0.09)_1px,transparent_1px)] bg-[size:58px_58px] opacity-60 [transform:perspective(480px)_rotateX(58deg)] [transform-origin:bottom]" />
+    <div className="self-service-theme min-h-[100dvh] overflow-hidden bg-[#f5f4ef] pb-32 pt-14 text-[#202522] transition-colors duration-300 sm:pt-4 lg:pb-10">
+      <div className="self-service-bg pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_88%_8%,rgba(23,107,87,0.10),transparent_28%),linear-gradient(180deg,#fbfbf8_0%,#f5f4ef_60%,#edf0eb_100%)]" />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 py-4 sm:px-6 lg:px-8">
-        <header className="relative overflow-hidden rounded-[2rem] border-2 border-[#0eb9c3]/35 bg-white/88 px-4 py-5 shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur sm:px-6">
-          <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[#ecc643]/24 blur-3xl" />
-          <div className="absolute -bottom-24 left-8 h-48 w-48 rounded-full bg-[#0eb9c3]/18 blur-3xl" />
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[#0eb9c3]/50 bg-[#0eb9c3]/12 px-3 py-1 text-xs font-black uppercase tracking-[0.35em] text-[#126d74]">Autogestión</span>
-                <span className="rounded-full border border-[#d2528d]/50 bg-[#b23178]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.25em] text-[#8d2460]">Bingo Gemellista</span>
+        <header className="relative overflow-hidden rounded-[1.75rem] bg-[#174f43] px-5 py-6 text-white shadow-[0_26px_70px_-44px_rgba(23,79,67,0.75)] sm:px-8 sm:py-8">
+          <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full border border-white/10" />
+          <div className="pointer-events-none absolute right-8 top-8 h-28 w-28 rounded-full border border-white/10" />
+
+          <div className="relative flex items-center justify-between gap-4 border-b border-white/[0.15] pb-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-14 items-center justify-center rounded-xl bg-white p-1.5">
+                <Image src={MOLLY_LOGO_URL} alt="Molly Ventas" width={96} height={96} className="h-full w-full object-contain" priority />
               </div>
-              <h1 className="max-w-3xl text-4xl font-black uppercase leading-none tracking-tight text-[#232328] sm:text-6xl">
-                Compra rápida 80&apos;s / 90&apos;s
+              <div>
+                <p className="text-sm font-semibold">Ventas ColGemelli</p>
+                <p className="text-xs text-white/[0.65]">Colegio Franciscano Agustín Gemelli</p>
+              </div>
+            </div>
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">Autogestión</span>
+          </div>
+
+          <div className="relative mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-end">
+            <div>
+              <p className="text-sm font-semibold text-[#b8d7cc]">Compra sin iniciar sesión</p>
+              <h1 className="mt-2 max-w-3xl text-[clamp(2.5rem,6vw,5.1rem)] font-bold leading-[0.96] tracking-[-0.05em]">
+                Arme su pedido de forma sencilla.
               </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-white/[0.74] sm:text-lg">
+                Elija los productos, revise el resumen y genere su código. Solo necesita un número de celular para continuar.
+              </p>
             </div>
-            <div className="relative flex min-h-24 min-w-24 shrink-0 rotate-2 items-center justify-center rounded-2xl border-2 border-[#d2528d]/75 bg-white p-3 shadow-[8px_8px_0_rgba(14,185,195,0.32)] sm:min-h-28 sm:min-w-32 lg:min-h-32 lg:min-w-36">
-              <div className="absolute -left-3 -top-3 rounded-full bg-[#ecc643] px-2 py-1 text-xs font-black uppercase text-[#232328]">VIP</div>
-              <Image
-                src={MOLLY_LOGO_URL}
-                alt="Logo de Molly Ventas"
-                width={180}
-                height={180}
-                className="h-20 w-auto object-contain sm:h-24 lg:h-28"
-                priority
-              />
-            </div>
+
+            <ol className="overflow-hidden rounded-2xl border border-white/[0.15] bg-white/[0.07]">
+              <li className="grid grid-cols-[36px_1fr] gap-3 border-b border-white/[0.12] p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#174f43]">1</span>
+                <div><p className="font-semibold">Elija</p><p className="text-sm leading-5 text-white/[0.65]">Agregue los productos que necesita.</p></div>
+              </li>
+              <li className="grid grid-cols-[36px_1fr] gap-3 border-b border-white/[0.12] p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#174f43]">2</span>
+                <div><p className="font-semibold">Confirme</p><p className="text-sm leading-5 text-white/[0.65]">Revise cantidades y registre su celular.</p></div>
+              </li>
+              <li className="grid grid-cols-[36px_1fr] gap-3 p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#174f43]">3</span>
+                <div><p className="font-semibold">Pague y reciba</p><p className="text-sm leading-5 text-white/[0.65]">Use el código en caja o pague por DaviPlata.</p></div>
+              </li>
+            </ol>
+          </div>
+
+          <div className="relative mt-7 flex flex-col gap-3 border-t border-white/[0.15] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-white/[0.68]">¿Es su primera compra? Consulte la guía completa antes de empezar.</p>
+            <Button asChild variant="ghost" className="h-11 justify-start rounded-xl border border-white/20 px-4 font-semibold text-white hover:bg-white/10 hover:text-white sm:justify-center">
+              <Link href="/self-service/tutorial">
+                <PlayCircle className="h-5 w-5" />
+                Ver guía de compra
+              </Link>
+            </Button>
           </div>
         </header>
 
-
-        <Card className="border-2 border-[#0eb9c3]/35 bg-white/92 text-[#232328] shadow-[0_18px_38px_rgba(35,35,40,0.10)] backdrop-blur">
-          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div className="flex items-center gap-4">
-              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#0eb9c3]/40 bg-white p-1 shadow-sm">
-                <Image
-                  src={MOLLY_LOGO_URL}
-                  alt="Logo de Molly Ventas"
-                  width={96}
-                  height={96}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#126d74]">Tutorial de autogestión</p>
-                <h2 className="text-xl font-black uppercase text-[#232328]">Antes de comprar, revise cómo funciona Molly Ventas</h2>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Los papás pueden ver los pasos completos para elegir productos, ingresar el celular, generar el código y pagar con seguridad.</p>
-              </div>
-            </div>
-            <Button
-              asChild
-              variant="outline"
-              className="h-12 shrink-0 rounded-2xl border-[#d2528d]/50 bg-white px-5 font-black uppercase text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]"
-            >
-              <Link href="/self-service/tutorial">
-                <PlayCircle className="h-5 w-5" />
-                Ver tutorial completo
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
         {editingPurchase && (
-          <div className="rounded-2xl border-2 border-[#ecc643]/80 bg-[#fff7cf]/80 px-4 py-3 text-sm font-bold text-[#5d4b10] shadow-[0_18px_36px_rgba(35,35,40,0.10)] backdrop-blur">
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-950/35 dark:text-amber-100">
             Está modificando la compra {editingPurchase.id}. Revise el pedido y guarde los cambios.
           </div>
         )}
-
-        <Card className="border-2 border-[#d2528d]/30 bg-white/92 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.10)] backdrop-blur">
-          <CardHeader className="gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.25em] text-[#8d2460]">
-                <ShoppingCart className="h-5 w-5" />
-                Compra en tres pasos
-              </div>
-              <CardTitle className="text-2xl font-black uppercase tracking-tight text-[#232328] sm:text-3xl">
-                ¿Cómo comprar por autogestión?
-              </CardTitle>
-              <CardDescription className="text-base font-semibold text-[#4b4b52]">
-                Elija los productos libremente. Solo al confirmar el pedido le pediremos un número de celular para generar el código de pago.
-              </CardDescription>
-            </div>
-            <div className="rounded-2xl border border-[#0eb9c3]/35 bg-[#edfafa] px-4 py-3 text-sm font-bold text-[#126d74]">
-              No necesita cédula
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-4">
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0eb9c3] text-lg font-black text-[#0f1720]">1</div>
-                <h3 className="font-black uppercase text-[#232328]">Elija productos</h3>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Agregue al carrito todo lo que quiera comprar.</p>
-              </div>
-              <div className="rounded-2xl border border-[#d2528d]/25 bg-[#fff5fa] p-4">
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#b23178] text-lg font-black text-white">2</div>
-                <h3 className="font-black uppercase text-[#232328]">Ingrese el celular</h3>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Al finalizar, escriba solo su número de contacto.</p>
-              </div>
-              <div className="rounded-2xl border border-[#ecc643]/35 bg-[#fff9df] p-4">
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecc643] text-lg font-black text-[#232328]">3</div>
-                <h3 className="font-black uppercase text-[#232328]">Pague y reciba</h3>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Presente el código en caja o pague por DaviPlata. Abajo verá el estado.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tight text-[#232328]">Productos disponibles</h2>
-                <p className="text-sm font-semibold text-[#5f686a]">Toque un producto para agregarlo al pedido.</p>
+                <h2 className="text-2xl font-bold tracking-[-0.025em] text-[#202522]">Productos disponibles</h2>
+                <p className="text-sm text-[#68706a]">Seleccione un producto para agregarlo al pedido.</p>
               </div>
-              <Badge variant="secondary" className="shrink-0 border border-[#0eb9c3]/45 bg-white/80 px-3 py-1 text-sm font-black uppercase text-[#126d74] hover:bg-[#edfafa]">
+              <Badge variant="secondary" className="shrink-0 border border-[#cbd7d1] bg-white px-3 py-1 text-sm font-semibold text-[#176b57] hover:bg-white">
                 {products.length} opciones
               </Badge>
             </div>
@@ -578,7 +534,7 @@ export default function SelfServicePage() {
           {isLoading ? (
               <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-40 animate-pulse rounded-2xl border-2 border-[#0eb9c3]/22 bg-white/70 sm:h-48 sm:rounded-3xl" />
+                  <div key={item} className="h-40 animate-pulse rounded-2xl border border-[#dde1db] bg-white/70 sm:h-48" />
                 ))}
               </div>
           ) : products.length > 0 ? (
@@ -591,13 +547,13 @@ export default function SelfServicePage() {
                 const quantityInCart = cartItem ? cartItem.quantity : 0;
                 const hasReachedLimit = quantityInCart >= availableStock;
                 const productImageUrl = product.imageUrl?.trim()
-                  || `https://placehold.co/600x400/e0f2fe/1e3a8a?text=${encodeURIComponent(product.name)}`;
+                  || `https://placehold.co/600x400/e5f0eb/174f43?text=${encodeURIComponent(product.name)}`;
 
                 return (
                     <Card
                       key={product.id}
                       className={cn(
-                        "group overflow-hidden rounded-2xl border-2 border-[#0eb9c3]/22 bg-white/88 text-[#232328] shadow-[0_10px_22px_rgba(35,35,40,0.10)] transition hover:-translate-y-1 hover:border-[#d2528d]/60 hover:shadow-[0_20px_42px_rgba(35,35,40,0.14)] active:scale-[0.99] sm:rounded-3xl sm:shadow-[0_16px_34px_rgba(35,35,40,0.10)]",
+                        "group overflow-hidden rounded-2xl border border-[#dde1db] bg-white text-[#202522] shadow-[0_16px_36px_-30px_rgba(32,37,34,0.55)] transition duration-200 hover:-translate-y-0.5 hover:border-[#9db9ae] hover:shadow-[0_24px_44px_-30px_rgba(23,79,67,0.42)] active:translate-y-px",
                         isSoldOut && "opacity-60"
                       )}
                     >
@@ -608,7 +564,7 @@ export default function SelfServicePage() {
                         disabled={isSoldOut || hasReachedLimit}
                         aria-label={`Agregar ${product.name}`}
                       >
-                        <div className="relative aspect-[16/10] overflow-hidden bg-[#e8eeee]">
+                        <div className="relative aspect-[16/10] overflow-hidden bg-[#eef1ed]">
                           <Image
                             src={productImageUrl}
                             alt={product.name}
@@ -620,7 +576,7 @@ export default function SelfServicePage() {
                         </div>
                         <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1 sm:left-3 sm:top-3 sm:gap-2">
                           {quantityInCart > 0 && (
-                              <Badge className="bg-[#0eb9c3] px-2 py-0.5 text-[10px] font-black text-[#0f1720] hover:bg-[#0eb9c3] sm:px-3 sm:py-1 sm:text-sm">
+                              <Badge className="bg-[#176b57] px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-[#176b57] sm:px-3 sm:py-1 sm:text-sm">
                                 {quantityInCart} en pedido
                               </Badge>
                           )}
@@ -629,7 +585,7 @@ export default function SelfServicePage() {
                           )}
                         </div>
                         {isSoldOut && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+                          <div className="absolute inset-0 flex items-center justify-center bg-[#202522]/60">
                             <Badge variant="destructive" className="px-3 py-1 text-xs sm:px-4 sm:py-2 sm:text-base">Agotado</Badge>
                           </div>
                         )}
@@ -637,13 +593,12 @@ export default function SelfServicePage() {
 
                       <CardContent className="space-y-2 p-2.5 sm:space-y-3 sm:p-4">
                         <div className="min-h-[58px] space-y-1 sm:min-h-[72px]">
-                          <h3 className="text-sm font-black uppercase leading-snug tracking-wide text-[#232328] sm:text-lg">{product.name}</h3>
+                          <h3 className="text-sm font-bold leading-snug text-[#202522] sm:text-lg">{product.name}</h3>
                           <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                            <span className="text-lg font-black text-[#b23178] sm:text-2xl">{formatCurrency(product.price)}</span>
-                            <span className="text-[10px] font-bold leading-tight text-[#5f686a] sm:text-right sm:text-xs">
-                              Stock {product.stock}
-                              {selfServiceReserved > 0 && ` | Autogestión ${selfServiceReserved}`}
-                              {` | Disp. ${availableStock}`}
+                            <span className="text-lg font-bold text-[#176b57] sm:text-2xl">{formatCurrency(product.price)}</span>
+                            <span className="text-[10px] font-medium leading-tight text-[#68706a] sm:text-right sm:text-xs">
+                              {availableStock} disponible{availableStock === 1 ? '' : 's'}
+                              {selfServiceReserved > 0 && ` · ${selfServiceReserved} reservado${selfServiceReserved === 1 ? '' : 's'}`}
                             </span>
                           </div>
                         </div>
@@ -653,18 +608,18 @@ export default function SelfServicePage() {
                             <Button
                               size="icon"
                               variant="outline"
-                              className="h-10 w-10 rounded-xl bg-[#b23178] text-white hover:bg-[#d2528d] sm:h-12 sm:w-12 sm:rounded-2xl"
+                              className="h-10 w-10 rounded-xl border-[#b9c8c1] bg-white text-[#176b57] hover:bg-[#e5f0eb] sm:h-12 sm:w-12"
                               onClick={() => updateQuantity(product.id, quantityInCart - 1)}
                               aria-label={`Quitar una unidad de ${product.name}`}
                             >
                               <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
-                            <div className="flex h-10 items-center justify-center rounded-xl border border-[#d2528d]/45 bg-[#b23178]/10 text-base font-black text-[#232328] sm:h-12 sm:rounded-2xl sm:text-lg">
+                            <div className="flex h-10 items-center justify-center rounded-xl border border-[#cbd7d1] bg-[#f4f7f5] text-base font-bold text-[#202522] sm:h-12 sm:text-lg">
                               {quantityInCart}
                             </div>
                             <Button
                               size="icon"
-                              className="h-10 w-10 rounded-xl bg-[#b23178] text-white hover:bg-[#d2528d] sm:h-12 sm:w-12 sm:rounded-2xl"
+                              className="h-10 w-10 rounded-xl bg-[#176b57] text-white hover:bg-[#125746] sm:h-12 sm:w-12"
                               onClick={() => updateQuantity(product.id, quantityInCart + 1)}
                               disabled={hasReachedLimit}
                               aria-label={`Agregar una unidad de ${product.name}`}
@@ -674,7 +629,7 @@ export default function SelfServicePage() {
                           </div>
                         ) : (
                           <Button
-                            className="h-10 w-full rounded-xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-xs font-black uppercase text-[#101016] shadow-[0_10px_22px_rgba(6,7,10,0.20)] hover:opacity-95 sm:h-12 sm:rounded-2xl sm:text-base sm:shadow-[0_14px_32px_rgba(6,7,10,0.24)]"
+                            className="h-10 w-full rounded-xl bg-[#176b57] text-xs font-semibold text-white shadow-none hover:bg-[#125746] active:translate-y-px sm:h-12 sm:text-sm"
                             onClick={() => addToCart(product)}
                             disabled={isSoldOut || hasReachedLimit}
                           >
@@ -688,41 +643,41 @@ export default function SelfServicePage() {
               })}
             </div>
           ) : (
-              <div className="rounded-3xl border-2 border-dashed border-[#0eb9c3]/35 bg-white/72 p-8 text-center font-semibold text-[#5f686a]">
-                No hay productos disponibles para autoservicio en este momento.
+              <div className="rounded-2xl border border-dashed border-[#b9c8c1] bg-white/70 p-8 text-center text-[#68706a]">
+                No hay productos disponibles en Autogestión por el momento.
               </div>
           )}
           </section>
 
           <aside className="space-y-4 lg:sticky lg:top-5">
-          <Card className="border-2 border-[#d2528d]/28 bg-white/90 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.12)] backdrop-blur">
+          <Card className="border border-[#cfd6d1] bg-white text-[#202522] shadow-[0_24px_56px_-36px_rgba(32,37,34,0.52)]">
             <CardHeader>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="text-xl font-black uppercase tracking-wide text-[#232328]">{editingPurchase ? 'Modificar pedido' : 'Tu pedido'}</CardTitle>
-                    <CardDescription className="text-[#5f686a]">
+                    <CardTitle className="text-xl font-bold tracking-[-0.02em] text-[#202522]">{editingPurchase ? 'Modificar pedido' : 'Su pedido'}</CardTitle>
+                    <CardDescription className="text-[#68706a]">
                       {cartItemCount > 0 ? `${cartItemCount} producto${cartItemCount === 1 ? '' : 's'} seleccionado${cartItemCount === 1 ? '' : 's'}` : 'El carrito está vacío'}
                     </CardDescription>
                   </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0eb9c3] text-lg font-black text-[#0f1720]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e5f0eb] text-lg font-bold text-[#176b57]">
                     {cartItemCount}
                   </div>
                 </div>
-                {editingPurchase && <CardDescription className="text-[#5f686a]">Código: {editingPurchase.id}</CardDescription>}
+                {editingPurchase && <CardDescription className="font-mono text-[#68706a]">Código: {editingPurchase.id}</CardDescription>}
             </CardHeader>
               <CardContent className="space-y-4">
                 {cart.length === 0 ? (
-                  <div className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center text-sm font-semibold text-[#5f686a]">
-                    Agregue productos para generar su código de pago.
+                  <div className="rounded-2xl border border-dashed border-[#b9c8c1] bg-[#f7f8f5] p-6 text-center text-sm text-[#68706a]">
+                    Su pedido está vacío. Agregue un producto para comenzar.
                   </div>
                 ) : (
                   <div className="space-y-3">
                       {cart.map(item => (
-                      <div key={item.id} className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-3">
+                      <div key={item.id} className="rounded-2xl border border-[#dde1db] bg-[#f7f8f5] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-bold leading-tight">{item.name}</p>
-                            <p className="text-sm font-semibold text-[#5f686a]">{formatCurrency(item.price)} c/u</p>
+                            <p className="text-sm text-[#68706a]">{formatCurrency(item.price)} por unidad</p>
                           </div>
                           <p className="shrink-0 text-right font-black">{formatCurrency(item.price * item.quantity)}</p>
                         </div>
@@ -731,17 +686,17 @@ export default function SelfServicePage() {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-11 w-11 rounded-2xl border-[#0eb9c3]/45 bg-white text-[#126d74] hover:bg-[#edfafa]"
+                                className="h-11 w-11 rounded-xl border-[#cbd7d1] bg-white text-[#176b57] hover:bg-[#e5f0eb]"
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                 aria-label={`Quitar una unidad de ${item.name}`}
                               >
                                 <Minus className="h-5 w-5" />
                               </Button>
-                            <span className="text-center text-lg font-black">{item.quantity}</span>
+                            <span className="text-center text-lg font-bold">{item.quantity}</span>
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-11 w-11 rounded-2xl border-[#0eb9c3]/45 bg-white text-[#126d74] hover:bg-[#edfafa]"
+                                className="h-11 w-11 rounded-xl border-[#cbd7d1] bg-white text-[#176b57] hover:bg-[#e5f0eb]"
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 aria-label={`Agregar una unidad de ${item.name}`}
                               >
@@ -751,7 +706,7 @@ export default function SelfServicePage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-11 w-11 rounded-2xl text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]"
+                              className="h-11 w-11 rounded-xl text-[#b42318] hover:bg-red-50 hover:text-[#912018]"
                               onClick={() => removeFromCart(item.id)}
                               aria-label={`Eliminar ${item.name}`}
                             >
@@ -762,26 +717,26 @@ export default function SelfServicePage() {
                       ))}
                   </div>
                 )}
-                <div className="rounded-2xl border border-[#ecc643]/50 bg-[#ecc643]/14 p-4">
-                  <div className="flex justify-between text-sm font-bold uppercase tracking-wide text-amber-50/80">
+                <div className="rounded-2xl border border-[#cbd7d1] bg-[#e5f0eb] p-4">
+                  <div className="flex justify-between text-sm font-medium text-[#4f6e63]">
                     <span>Total a pagar</span>
                     <span>{cartItemCount} producto{cartItemCount === 1 ? '' : 's'}</span>
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-3">
-                    <span className="text-2xl font-black text-[#232328]">TOTAL</span>
-                    <span className="text-3xl font-black text-[#8d2460]">{formatCurrency(subtotal)}</span>
+                    <span className="text-xl font-bold text-[#202522]">Total</span>
+                    <span className="text-3xl font-bold text-[#176b57]">{formatCurrency(subtotal)}</span>
                   </div>
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
               <Button 
-                  className="h-14 w-full rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-base font-black uppercase text-[#101016] shadow-[0_16px_34px_rgba(6,7,10,0.28)] hover:opacity-95 sm:text-lg"
+                  className="h-14 w-full rounded-xl bg-[#176b57] text-base font-semibold text-white shadow-none hover:bg-[#125746] active:translate-y-px"
                 onClick={handleInitiatePayment}
                 disabled={cart.length === 0 || isProcessing}
               >
                 {isProcessing ? 'Procesando...' : (editingPurchase ? 'Guardar Cambios' : 'Generar Código de Pago')}
               </Button>
-                <Button variant="outline" className="h-12 w-full rounded-2xl border-[#d2528d]/45 bg-white text-base font-bold text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={clearCart} disabled={cart.length === 0 && !editingPurchase}>
+                <Button variant="outline" className="h-12 w-full rounded-xl border-[#cbd7d1] bg-white text-base font-semibold text-[#4f5751] hover:bg-[#f1f3ef] hover:text-[#202522]" onClick={clearCart} disabled={cart.length === 0 && !editingPurchase}>
                 {editingPurchase ? 'Cancelar Edición' : 'Vaciar'}
               </Button>
             </CardFooter>
@@ -790,14 +745,14 @@ export default function SelfServicePage() {
         </div>
 
         <section className="mt-2">
-        <Card className="border-2 border-[#0eb9c3]/25 bg-white/88 text-[#232328] shadow-[0_22px_48px_rgba(35,35,40,0.10)] backdrop-blur">
+        <Card className="border border-[#dde1db] bg-white text-[#202522] shadow-[0_22px_52px_-38px_rgba(32,37,34,0.48)]">
           <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-wide text-[#232328]">
+              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.02em] text-[#202522]">
                 <QrCode className="h-5 w-5" />
                 Compras de esta sesión
               </CardTitle>
-              <CardDescription className="text-[#5f686a]">
+              <CardDescription className="text-[#68706a]">
                 Aquí aparecen los pedidos generados en este dispositivo mientras la página permanezca abierta.
               </CardDescription>
             </div>
@@ -810,36 +765,36 @@ export default function SelfServicePage() {
                     const purchaseSource = getPurchaseSource(purchase);
 
                     return (
-                      <div key={purchase.id} className="rounded-2xl border border-[#0eb9c3]/22 bg-[#f7fbfb] p-4">
+                      <div key={purchase.id} className="rounded-2xl border border-[#dde1db] bg-[#f7f8f5] p-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0 space-y-3">
                           <div className="space-y-1">
-                            <p className="text-xs font-black uppercase tracking-wide text-[#126d74]">Código de compra</p>
+                            <p className="text-xs font-semibold text-[#176b57]">Código de compra</p>
                             <p className="font-mono text-base font-bold">{purchase.id}</p>
-                            <p className="text-sm font-semibold text-[#5f686a]">{purchase.date}</p>
-                            <Badge variant="outline" className="mt-1 w-fit border-[#0eb9c3]/35 bg-white text-[#126d74]">
+                            <p className="text-sm text-[#68706a]">{purchase.date}</p>
+                            <Badge variant="outline" className="mt-1 w-fit border-[#cbd7d1] bg-white text-[#176b57]">
                               {getPurchaseSourceLabel(purchase)}
                             </Badge>
                           </div>
                           <PurchaseModifiedIndicator purchase={purchase} audience="parent" showDetails />
                           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                             {purchase.items.map((item) => (
-                              <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#0eb9c3]/18 bg-white p-3">
-                                <p className="font-bold leading-tight text-[#232328]">{item.name}</p>
-                                <p className="text-sm font-semibold text-[#5f686a]">Cantidad: {item.quantity}</p>
+                              <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#dde1db] bg-white p-3">
+                                <p className="font-bold leading-tight text-[#202522]">{item.name}</p>
+                                <p className="text-sm text-[#68706a]">Cantidad: {item.quantity}</p>
                                 {purchaseSource === 'pos' ? (
                                   <p className="text-xs font-semibold text-emerald-700">Comprado y pagado en caja</p>
                                 ) : (
-                                  <p className="text-xs font-semibold text-[#126d74]">Entregado: {item.deliveredQuantity || 0} | Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
+                                  <p className="text-xs font-semibold text-[#176b57]">Entregado: {item.deliveredQuantity || 0} · Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
                                 )}
-                                <p className="text-sm font-black text-[#b23178]">{formatCurrency(item.price * item.quantity)}</p>
+                                <p className="text-sm font-bold text-[#176b57]">{formatCurrency(item.price * item.quantity)}</p>
                               </div>
                             ))}
                           </div>
                         </div>
                         <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
                           {hasSessionActions ? (
-                            <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
+                            <div className="rounded-2xl border border-[#cbd7d1] bg-white p-3 text-center shadow-sm">
                               <img
                                 src={buildDeliveryQrImageUrl(purchase)}
                                 alt={`QR de entrega ${purchase.id}`}
@@ -847,15 +802,15 @@ export default function SelfServicePage() {
                                 height={116}
                                 className="mx-auto h-28 w-28"
                               />
-                              <p className="mt-2 text-xs font-black uppercase text-[#126d74]">Código adicional</p>
-                              <p className="font-mono text-lg font-black text-[#b23178]">{purchase.deliveryCode || 'Pendiente'}</p>
+                              <p className="mt-2 text-xs font-semibold text-[#176b57]">Código adicional</p>
+                              <p className="font-mono text-lg font-bold text-[#176b57]">{purchase.deliveryCode || 'Pendiente'}</p>
                             </div>
                           ) : (
-                            <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
-                              <p className="text-xs font-black uppercase text-[#126d74]">
+                            <div className="rounded-2xl border border-[#cbd7d1] bg-white p-3 text-center shadow-sm">
+                              <p className="text-xs font-semibold text-[#176b57]">
                                 {purchaseSource === 'pos' ? 'Compra en punto de venta' : 'Compra anterior'}
                               </p>
-                              <p className="mt-1 text-sm font-semibold text-[#5f686a]">
+                              <p className="mt-1 text-sm text-[#68706a]">
                                 {purchaseSource === 'pos' ? 'Registrada en caja.' : 'Compra registrada anteriormente.'}
                               </p>
                             </div>
@@ -866,7 +821,7 @@ export default function SelfServicePage() {
                             </Badge>
                             <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
                             {hasSessionActions && (purchase.status === 'pending' || purchase.status === 'pre-sale') && (
-                              <Button variant="outline" className="h-11 rounded-2xl border-[#d2528d]/45 bg-white text-[#b23178] hover:bg-[#b23178]/10 hover:text-[#8d2460]" onClick={() => handleEditPurchase(purchase)}>
+                              <Button variant="outline" className="h-11 rounded-xl border-[#cbd7d1] bg-white text-[#176b57] hover:bg-[#e5f0eb] hover:text-[#174f43]" onClick={() => handleEditPurchase(purchase)}>
                                 <Pencil className="h-4 w-4" />
                                 Modificar
                               </Button>
@@ -879,21 +834,21 @@ export default function SelfServicePage() {
                   })}
               </div>
             ) : (
-                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Cuando genere un pedido, podrá consultar aquí su código y estado.</p>
+                <p className="rounded-2xl border border-dashed border-[#b9c8c1] bg-[#f7f8f5] p-6 text-center text-[#68706a]">Cuando genere un pedido, podrá consultar aquí su código y estado.</p>
             )}
           </CardContent>
         </Card>
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#0eb9c3]/35 bg-white/94 p-3 shadow-[0_-12px_32px_rgba(35,35,40,0.14)] backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#cbd7d1] bg-white/95 p-3 shadow-[0_-12px_32px_rgba(32,37,34,0.12)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-[1fr_auto] items-center gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-[#5f686a]">{cartItemCount} producto{cartItemCount === 1 ? '' : 's'} en el pedido</p>
-            <p className="text-xl font-black text-[#b23178]">{formatCurrency(subtotal)}</p>
+            <p className="text-xs font-medium text-[#68706a]">{cartItemCount} producto{cartItemCount === 1 ? '' : 's'} en el pedido</p>
+            <p className="text-xl font-bold text-[#176b57]">{formatCurrency(subtotal)}</p>
           </div>
           <Button
-            className="h-14 rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] px-5 text-sm font-black uppercase text-[#101016]"
+            className="h-14 rounded-xl bg-[#176b57] px-5 text-sm font-semibold text-white hover:bg-[#125746]"
             onClick={handleInitiatePayment}
             disabled={cart.length === 0 || isProcessing}
           >
