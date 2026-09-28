@@ -4,7 +4,7 @@ import {
   authenticateUser,
 } from "@/lib/services/user-service";
 import { addAuditLog } from "@/lib/services/audit-service";
-import { setAuthCookies } from "@/lib/auth/response-cookies";
+import { setAuthCookies, setLocalAuthCookie } from "@/lib/auth/response-cookies";
 import { getDefaultDashboardPath } from "@/lib/auth/route-access";
 import {
   AdminTotpConfigurationError,
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { user, session } = authenticatedUser;
+    const { user, session, authMode } = authenticatedUser;
 
     if (isAdminTotpRequired(user)) {
       if (!totpCode) {
@@ -135,7 +135,16 @@ export async function POST(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
 
-    await setAuthCookies(response, user, session);
+    if (authMode === "legacy-local") {
+      await setLocalAuthCookie(response, user);
+    } else if (session) {
+      await setAuthCookies(response, user, session);
+    } else {
+      throw new AuthenticationError(
+        "auth_error",
+        "Supabase Auth no devolvió una sesión válida.",
+      );
+    }
     logApiDone({ route, method, requestId, status: 200, ms: Date.now() - start, meta: { userId: user.id, mfa: isAdminTotpRequired(user) } });
 
     void addAuditLog({

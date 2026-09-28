@@ -10,12 +10,19 @@ import {
 } from "@/lib/auth/session-cookie";
 
 const REFRESH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const LOCAL_APP_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 
 export function getSessionExpiresAt(session: SupabaseAuthSession) {
   return (
     session.expires_at ??
     Math.floor(Date.now() / 1000) + (session.expires_in ?? 60 * 60 * 8)
   );
+}
+
+function clearSupabaseTokenCookies(response: NextResponse) {
+  const expiredCookieOptions = getAuthCookieOptions(0);
+  response.cookies.set(AUTH_ACCESS_COOKIE, "", expiredCookieOptions);
+  response.cookies.set(AUTH_REFRESH_COOKIE, "", expiredCookieOptions);
 }
 
 export async function setAuthCookies(
@@ -41,6 +48,22 @@ export async function setAuthCookies(
     AUTH_SESSION_COOKIE,
     signedSession,
     getAuthCookieOptions(maxAge),
+  );
+}
+
+export async function setLocalAuthCookie(
+  response: NextResponse,
+  user: User,
+) {
+  const expiresAt =
+    Math.floor(Date.now() / 1000) + LOCAL_APP_SESSION_MAX_AGE_SECONDS;
+  const signedSession = await createAuthSessionCookie({ user, expiresAt });
+
+  clearSupabaseTokenCookies(response);
+  response.cookies.set(
+    AUTH_SESSION_COOKIE,
+    signedSession,
+    getAuthCookieOptions(LOCAL_APP_SESSION_MAX_AGE_SECONDS),
   );
 }
 

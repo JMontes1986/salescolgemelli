@@ -1,3 +1,29 @@
+-- ============================================================================
+-- SALES COLGEMELLI - BOOTSTRAP COMPLETO PARA NUEVA BASE SUPABASE
+-- Generado desde la rama: security/phase1-auth-session-hardening
+-- Fecha de consolidacion: 2026-09-28
+--
+-- USO:
+--   Ejecutar ESTE archivo una sola vez sobre un proyecto Supabase NUEVO.
+--   No ejecutar despues las migraciones historicas una por una, porque el
+--   schema consolidado ya contiene su estado final y se producirian
+--   redefiniciones/regresiones de funciones o politicas.
+--
+-- FUENTES CONSOLIDADAS:
+--   - supabase/schema.sql (estado final principal)
+--   - todas las migraciones de supabase/migrations
+--   - scripts SQL auxiliares de supabase/
+--
+-- COMPLEMENTOS QUE NO ESTABAN PRESENTES EN schema.sql Y SE AGREGAN AL FINAL:
+--   - admin_delete_test_record + inmutabilidad DELETE de auditLogs
+--   - trigger mark_self_service_purchase_modified
+--   - trigger audit_self_service_purchase_edit
+--   - bingo_landing_content y su politica service_role
+--
+-- NOTA DE SEGURIDAD:
+--   public.users queda cerrado a anon segun la migracion de seguridad vigente.
+-- ============================================================================
+
 create extension if not exists "pgcrypto";
 
 grant usage on schema public to anon, authenticated;
@@ -2959,4 +2985,241 @@ grant select, insert on public.bingo_landing_view_events to service_role;
 create index if not exists bingo_landing_view_events_viewed_at_idx
   on public.bingo_landing_view_events (viewed_at desc);
 
+notify pgrst, 'reload schema';
+
+-- ============================================================================
+-- COMPLEMENTO CONSOLIDADO: AUDITORIA INMUTABLE / LIMPIEZA ADMIN
+-- ============================================================================
+create or replace function public.admin_delete_test_record(
+  p_entity text,
+  p_record_id text,
+  p_user_id text,
+  p_user_name text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  purchase_record public.purchases%rowtype;
+  return_record public.returns%rowtype;
+  item_record record;
+  deleted_label text;
+  inventory_effect text := 'Sin cambio de inventario';
+begin
+  if p_entity not in ('purchase', 'return', 'cashbox', 'bingo') then
+    raise exception 'Tipo de registro no permitido. La auditoría es inmutable.';
+  end if;
+
+  if p_record_id is null or btrim(p_record_id) = '' or length(btrim(p_record_id)) > 100 then
+    raise exception 'El identificador del registro no es válido.';
+  end if;
+
+  if p_entity = 'purchase' then
+    select * into purchase_record
+    from public.purchases
+    where id = btrim(p_record_id)
+    for update;
+
+    if not found then
+      raise exception 'La compra ya no existe.';
+    end if;
+
+    for item_record in
+      select
+        btrim(item->>'id') as product_id,
+        sum(case when (item->>'quantity') ~ '^[0-9]+$' then (item->>'quantity')::integer else 0 end)::integer as quantity
+      from jsonb_array_elements(purchase_record.items) as input(item)
+      group by btrim(item->>'id')
+    loop
+      if item_record.product_id ~ '^[0-9a-fA-F-]{36}$' and item_record.quantity > 0 then
+        if purchase_record.id like 'PV%' and purchase_record."sellerId" is not null then
+          update public.products
+          set
+            stock = greatest(stock - item_record.quantity, 0),
+            "preSaleSold" = greatest(coalesce("preSaleSold", 0) - item_record.quantity, 0)
+          where id = item_record.product_id::uuid;
+          inventory_effect := 'Se revirtió el inventario planificado de la preventa';
+        elsif purchase_record.status in ('paid', 'delivered', 'partially-delivered') then
+          update public.products
+          set stock = stock + item_record.quantity
+          where id = item_record.product_id::uuid;
+          inventory_effect := 'Se devolvieron al inventario las unidades descontadas';
+        end if;
+      end if;
+    end loop;
+
+    deleted_label := 'Compra ' || purchase_record.id || ' (' || purchase_record.status || ')';
+    delete from public.purchases where id = purchase_record.id;
+
+  elsif p_entity = 'return' then
+    select * into return_record
+    from public.returns
+    where id::text = btrim(p_record_id)
+    for update;
+
+    if not found then
+      raise exception 'La devolución ya no existe.';
+    end if;
+
+    update public.products
+    set stock = stock - return_record.quantity
+    where id::text = return_record."productId"
+      and stock >= return_record.quantity;
+
+    if not found then
+      raise exception 'No se puede revertir la devolución porque el inventario actual es menor que la cantidad devuelta.';
+    end if;
+
+    deleted_label := 'Devolución de ' || return_record."productName" || ' x' || return_record.quantity;
+    inventory_effect := 'Se descontaron del inventario las unidades de la devolución anulada';
+    delete from public.returns where id = return_record.id;
+
+  elsif p_entity = 'cashbox' then
+    delete from public."cashboxSessions" where id::text = btrim(p_record_id);
+    if not found then raise exception 'La sesión de caja ya no existe.'; end if;
+    deleted_label := 'Sesión de caja ' || btrim(p_record_id);
+
+  else
+    delete from public.bingo_registrations where id::text = btrim(p_record_id);
+    if not found then raise exception 'El registro del Bingo ya no existe.'; end if;
+    deleted_label := 'Registro del Bingo ' || btrim(p_record_id);
+  end if;
+
+  insert into public."auditLogs" (timestamp, "userId", "userName", action, details)
+  values (
+    now()::text,
+    coalesce(nullif(btrim(p_user_id), ''), 'system'),
+    coalesce(nullif(btrim(p_user_name), ''), 'Administrador'),
+    'TICKET_VOID',
+    'LIMPIEZA DE PRUEBAS: ' || deleted_label || ' eliminado. ' || inventory_effect || '.'
+  );
+
+  return jsonb_build_object(
+    'id', btrim(p_record_id),
+    'entity', p_entity,
+    'label', deleted_label,
+    'inventoryEffect', inventory_effect
+  );
+end;
+$$;
+
+revoke all on function public.admin_delete_test_record(text, text, text, text) from public;
+grant execute on function public.admin_delete_test_record(text, text, text, text) to service_role;
+
+revoke delete on public."auditLogs" from anon, authenticated;
+
+-- ============================================================================
+-- COMPLEMENTO CONSOLIDADO: SEGUIMIENTO DE EDICIONES DE AUTOGESTION
+-- ============================================================================
+alter table public.purchases
+  add column if not exists "modifiedAt" text;
+
+alter table public.purchases
+  add column if not exists "modificationCount" integer not null default 0;
+
+create or replace function public.mark_self_service_purchase_modified()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old."sellerId" is null
+    and new."sellerId" is null
+    and old.status = 'pending'
+    and new.status = 'pending'
+    and new.items is distinct from old.items
+    and new."reservationExpiresAt" is distinct from old."reservationExpiresAt" then
+    new."modifiedAt" := now()::text;
+    new."modificationCount" := coalesce(old."modificationCount", 0) + 1;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists mark_self_service_purchase_modified
+  on public.purchases;
+
+create trigger mark_self_service_purchase_modified
+before update of items, "reservationExpiresAt" on public.purchases
+for each row
+execute function public.mark_self_service_purchase_modified();
+
+-- ============================================================================
+-- COMPLEMENTO CONSOLIDADO: AUDITORIA DE EDICIONES DE AUTOGESTION
+-- ============================================================================
+create or replace function public.audit_self_service_purchase_edit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old."sellerId" is null
+    and new."sellerId" is null
+    and old.status = 'pending'
+    and new.status = 'pending'
+    and new.items is distinct from old.items
+    and new."reservationExpiresAt" is distinct from old."reservationExpiresAt" then
+    insert into public."auditLogs" (
+      timestamp,
+      "userId",
+      "userName",
+      action,
+      details
+    ) values (
+      now()::text,
+      old.cedula,
+      'Cliente (Autogestión)',
+      'PURCHASE_EDIT',
+      'SELF_SERVICE_EDIT_V1:' || jsonb_build_object(
+        'purchaseId', old.id,
+        'beforeTotal', old.total,
+        'afterTotal', new.total,
+        'beforeItems', old.items,
+        'afterItems', new.items
+      )::text
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists audit_self_service_purchase_edit
+  on public.purchases;
+
+create trigger audit_self_service_purchase_edit
+after update of items, "reservationExpiresAt" on public.purchases
+for each row
+execute function public.audit_self_service_purchase_edit();
+
+-- ============================================================================
+-- COMPLEMENTO CONSOLIDADO: CONTENIDO EDITABLE LANDING BINGO
+-- ============================================================================
+-- Editable content for the public Bingo landing page.
+create table if not exists public.bingo_landing_content (
+  id text primary key default 'default',
+  content jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.bingo_landing_content enable row level security;
+
+drop policy if exists "service_role_bingo_landing_content_all" on public.bingo_landing_content;
+
+create policy "service_role_bingo_landing_content_all"
+  on public.bingo_landing_content
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+grant select, insert, update on public.bingo_landing_content to service_role;
+
+notify pgrst, 'reload schema';
+
+-- Refrescar cache de PostgREST al terminar.
 notify pgrst, 'reload schema';
