@@ -458,53 +458,50 @@ export default function SelfServicePage() {
     <div className="self-service-theme min-h-[100dvh] overflow-hidden bg-[#f5f4ef] pb-32 pt-14 text-[#202522] transition-colors duration-300 sm:pt-4 lg:pb-10">
       <div className="self-service-bg pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_88%_8%,rgba(23,107,87,0.10),transparent_28%),linear-gradient(180deg,#fbfbf8_0%,#f5f4ef_60%,#edf0eb_100%)]" />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 py-4 sm:px-6 lg:px-8">
-        <header className="relative overflow-hidden rounded-[1.75rem] bg-[#174f43] px-5 py-6 text-white shadow-[0_26px_70px_-44px_rgba(23,79,67,0.75)] sm:px-8 sm:py-8">
-          <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full border border-white/10" />
-          <div className="pointer-events-none absolute right-8 top-8 h-28 w-28 rounded-full border border-white/10" />
-
-          <div className="relative flex items-center justify-between gap-4 border-b border-white/[0.15] pb-5">
+        <header className="relative overflow-hidden rounded-[1.5rem] bg-[#073b72] px-5 py-5 text-white shadow-[0_24px_60px_-42px_rgba(7,59,114,0.8)] sm:px-7">
+          <div className="flex items-center justify-between gap-4 border-b border-[#f2c84b]/35 pb-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-14 items-center justify-center rounded-xl bg-white p-1.5">
+              <div className="flex h-10 w-11 items-center justify-center rounded-[0.7rem] bg-white p-1.5">
                 <Image src={MOLLY_LOGO_URL} alt="Molly Ventas" width={96} height={96} className="h-full w-full object-contain" priority />
               </div>
               <div>
                 <p className="text-sm font-semibold">Ventas ColGemelli</p>
-                <p className="text-xs text-white/[0.65]">Colegio Franciscano Agustín Gemelli</p>
+                <p className="text-xs text-white/70">Colegio Franciscano Agustín Gemelli</p>
               </div>
             </div>
-            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">Autogestión</span>
+            <span className="rounded-full border border-[#f2c84b]/80 bg-[#f2c84b]/10 px-3 py-1.5 text-xs font-semibold text-[#ffe07a]">Autogestión</span>
           </div>
 
-          <div className="relative mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-end">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center">
             <div>
-              <p className="text-sm font-semibold text-[#b8d7cc]">Compra sin iniciar sesión</p>
-              <h1 className="mt-2 max-w-3xl text-[clamp(2.5rem,6vw,5.1rem)] font-bold leading-[0.96] tracking-[-0.05em]">
+              <p className="text-sm font-semibold text-[#f2c84b]">Compra sin iniciar sesión</p>
+              <h1 className="mt-1.5 max-w-3xl text-[clamp(2.25rem,4.5vw,3.5rem)] font-bold leading-[0.98] tracking-[-0.045em]">
                 Arme su pedido de forma sencilla.
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-white/[0.74] sm:text-lg">
+              <p className="mt-2.5 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">
                 Elija los productos, revise el resumen y genere su código. Solo necesita un número de celular para continuar.
               </p>
             </div>
 
-            <ol className="overflow-hidden rounded-2xl border border-white/[0.15] bg-white/[0.07]">
-              <li className="grid grid-cols-[36px_1fr] gap-3 border-b border-white/[0.12] p-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#174f43]">1</span>
-                <div><p className="font-semibold">Elija</p><p className="text-sm leading-5 text-white/[0.65]">Agregue los productos que necesita.</p></div>
+            <ol className="overflow-hidden rounded-[1rem] border border-[#f2c84b]/55 bg-[#0d4d8b] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <li className="grid grid-cols-[32px_1fr] gap-3 border-b border-white/15 px-4 py-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2c84b] font-bold text-[#073b72]">1</span>
+                <div><p className="font-semibold">Elija</p><p className="text-sm leading-5 text-white/70">Agregue los productos que necesita.</p></div>
               </li>
-              <li className="grid grid-cols-[36px_1fr] gap-3 border-b border-white/[0.12] p-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#174f43]">2</span>
-                <div><p className="font-semibold">Confirme</p><p className="text-sm leading-5 text-white/[0.65]">Revise cantidades y registre su celular.</p></div>
+              <li className="grid grid-cols-[32px_1fr] gap-3 border-b border-white/15 px-4 py-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2c84b] font-bold text-[#073b72]">2</span>
+                <div><p className="font-semibold">Confirme</p><p className="text-sm leading-5 text-white/70">Revise cantidades y registre su celular.</p></div>
               </li>
-              <li className="grid grid-cols-[36px_1fr] gap-3 p-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#174f43]">3</span>
-                <div><p className="font-semibold">Pague y reciba</p><p className="text-sm leading-5 text-white/[0.65]">Use el código en caja o pague por DaviPlata.</p></div>
+              <li className="grid grid-cols-[32px_1fr] gap-3 px-4 py-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2c84b] font-bold text-[#073b72]">3</span>
+                <div><p className="font-semibold">Pague y reciba</p><p className="text-sm leading-5 text-white/70">Use el código en caja o pague por DaviPlata.</p></div>
               </li>
             </ol>
           </div>
 
-          <div className="relative mt-7 flex flex-col gap-3 border-t border-white/[0.15] pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-white/[0.68]">¿Es su primera compra? Consulte la guía completa antes de empezar.</p>
-            <Button asChild variant="ghost" className="h-11 justify-start rounded-xl border border-white/20 px-4 font-semibold text-white hover:bg-white/10 hover:text-white sm:justify-center">
+          <div className="mt-4 flex flex-col gap-3 border-t border-[#f2c84b]/35 pt-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-white/70">¿Es su primera compra? Consulte la guía completa antes de empezar.</p>
+            <Button asChild variant="ghost" className="h-11 justify-start rounded-xl border border-[#f2c84b]/70 px-4 font-semibold text-[#ffe07a] hover:bg-[#f2c84b] hover:text-[#073b72] sm:justify-center">
               <Link href="/self-service/tutorial">
                 <PlayCircle className="h-5 w-5" />
                 Ver guía de compra
