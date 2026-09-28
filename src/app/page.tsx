@@ -37,59 +37,21 @@ type AdminMfaSetup = {
   qrDataUrl: string;
 };
 
-const MFA_SETUP_ACK_PREFIX = "salescolgemelli:mfa-setup-ack:";
 const FREEOTP_ANDROID_URL =
   "https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp";
 const FREEOTP_IOS_URL =
   "https://apps.apple.com/us/app/freeotp-authenticator/id872559395";
-const FREEOTP_QR_SIZE = 180;
-
-function getQrCodeUrl(value: string) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${FREEOTP_QR_SIZE}x${FREEOTP_QR_SIZE}&data=${encodeURIComponent(
-    value,
-  )}`;
-}
 
 const FREEOTP_DOWNLOAD_OPTIONS = [
   {
     platform: "Android",
     href: FREEOTP_ANDROID_URL,
-    qrUrl: getQrCodeUrl(FREEOTP_ANDROID_URL),
   },
   {
     platform: "iOS",
     href: FREEOTP_IOS_URL,
-    qrUrl: getQrCodeUrl(FREEOTP_IOS_URL),
   },
 ];
-
-function getMfaSetupAckKey(username: string) {
-  return `${MFA_SETUP_ACK_PREFIX}${username.trim().toLowerCase()}`;
-}
-
-function hasAcknowledgedMfaSetup(username: string) {
-  if (typeof window === "undefined" || !username.trim()) {
-    return false;
-  }
-
-  try {
-    return window.localStorage.getItem(getMfaSetupAckKey(username)) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function acknowledgeMfaSetup(username: string) {
-  if (typeof window === "undefined" || !username.trim()) {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(getMfaSetupAckKey(username), "true");
-  } catch {
-    // If storage is blocked, the current login attempt can still continue.
-  }
-}
 
 function CreateUserForm({ onUserCreated }: { onUserCreated: () => void }) {
   const { toast } = useToast();
@@ -243,11 +205,9 @@ export default function LoginPage() {
       };
 
       if (body.mfaRequired) {
-        const setupAcknowledged = hasAcknowledgedMfaSetup(username);
-
         setMfaRequired(true);
         setMfaSetupEnabled(Boolean(body.setupEnabled));
-        setMfaSetup(body.setup && !setupAcknowledged ? body.setup : null);
+        setMfaSetup(body.setup ?? null);
         setTotpCode("");
 
         if (!response.ok) {
@@ -274,7 +234,6 @@ export default function LoginPage() {
       }
 
       login(body.user);
-      acknowledgeMfaSetup(username);
       resetMfa();
       toast({
         title: "Inicio de sesión exitoso",
@@ -375,9 +334,13 @@ export default function LoginPage() {
                   </div>
                 )}
                 {!mfaSetup && !mfaSetupEnabled && (
-                  <div className="space-y-3 rounded-md border border-border bg-background px-3 py-3">
-                    <p className="text-sm font-medium text-foreground">
-                      Descarga FreeOTP escaneando el QR de tu dispositivo:
+                  <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950">
+                    <p className="text-sm font-medium">
+                      El QR para vincular una cuenta nueva no está habilitado.
+                    </p>
+                    <p className="text-xs">
+                      Los siguientes enlaces solo instalan FreeOTP; no generan
+                      un código nuevo para este administrador.
                     </p>
                     <div className="grid grid-cols-2 gap-3">
                       {FREEOTP_DOWNLOAD_OPTIONS.map((option) => (
@@ -386,17 +349,10 @@ export default function LoginPage() {
                           href={option.href}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-md border border-border bg-white p-3 text-center transition hover:border-primary/60 hover:shadow-sm"
+                          className="rounded-md border border-amber-300 bg-white px-3 py-2 text-center text-sm font-semibold text-foreground transition hover:border-primary/60 hover:shadow-sm"
                           aria-label={`Descargar FreeOTP para ${option.platform}`}
                         >
-                          <img
-                            src={option.qrUrl}
-                            alt={`QR para descargar FreeOTP en ${option.platform}`}
-                            className="mx-auto h-28 w-28"
-                          />
-                          <span className="mt-2 block text-sm font-semibold text-foreground">
-                            {option.platform}
-                          </span>
+                          Descargar para {option.platform}
                         </a>
                       ))}
                     </div>

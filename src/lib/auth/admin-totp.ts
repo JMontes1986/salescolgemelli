@@ -18,7 +18,7 @@ export type AdminTotpSetup = {
 export class AdminTotpConfigurationError extends Error {
   constructor() {
     super(
-      "Falta configurar AUTH_COOKIE_SECRET o NEXT_SERVER_AUTH_SECRET con un valor privado de al menos 32 caracteres para activar FreeOTP.",
+      "Falta configurar ADMIN_TOTP_SECRET (o el secreto de autenticación legado) con un valor privado de al menos 32 caracteres para activar FreeOTP.",
     );
     this.name = "AdminTotpConfigurationError";
   }
@@ -26,7 +26,9 @@ export class AdminTotpConfigurationError extends Error {
 
 function getTotpRootSecret() {
   const secret =
-    process.env.AUTH_COOKIE_SECRET ?? process.env.NEXT_SERVER_AUTH_SECRET;
+    process.env.ADMIN_TOTP_SECRET ??
+    process.env.AUTH_COOKIE_SECRET ??
+    process.env.NEXT_SERVER_AUTH_SECRET;
 
   if (!secret || secret.length < 32) {
     throw new AdminTotpConfigurationError();
@@ -37,7 +39,7 @@ function getTotpRootSecret() {
 
 export function isAdminTotpSetupEnabled() {
   return (
-    process.env.ADMIN_FREEOTP_SETUP_ENABLED === "true" ||
+    process.env.ADMIN_FREEOTP_SETUP_ENABLED?.trim().toLowerCase() === "true" ||
     process.env.NODE_ENV !== "production"
   );
 }

@@ -94,9 +94,9 @@ export async function POST(request: NextRequest) {
     const { user, session } = authenticatedUser;
 
     if (isAdminTotpRequired(user)) {
-      if (!totpCode) {
-        const setupEnabled = isAdminTotpSetupEnabled();
+      const setupEnabled = isAdminTotpSetupEnabled();
 
+      if (!totpCode) {
         logApiDone({ route, method, requestId, status: 202, ms: Date.now() - start, meta: { reason: "mfa_required" } });
         return NextResponse.json(
           {
@@ -113,12 +113,18 @@ export async function POST(request: NextRequest) {
       }
 
       if (!verifyAdminTotpCode(user, totpCode)) {
+        const setup = setupEnabled ? await getAdminTotpSetup(user) : undefined;
+
         logApiDone({ route, method, requestId, status: 401, ms: Date.now() - start, meta: { reason: "invalid_mfa" } });
         return NextResponse.json(
           {
             mfaRequired: true,
+            setupEnabled,
+            setup,
             message:
-              "El código de FreeOTP no es válido o ya expiró. Revisa la hora del celular e inténtalo de nuevo.",
+              setupEnabled
+                ? "El código no es válido. Escanea nuevamente el QR de configuración y usa el código de la cuenta recién creada."
+                : "El código de FreeOTP no es válido o ya expiró. Revisa la hora del celular e inténtalo de nuevo.",
           },
           { status: 401, headers: { "Cache-Control": "no-store" } },
         );
