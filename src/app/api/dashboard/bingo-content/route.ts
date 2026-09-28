@@ -49,58 +49,6 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: Request) {
-  try {
-    if (!(await isAdminRequest())) return forbiddenResponse();
-
-    const body = (await request.json()) as { selfServiceEnabled?: unknown };
-    if (typeof body.selfServiceEnabled !== "boolean") {
-      return NextResponse.json(
-        { message: "El estado de Autogestion debe ser verdadero o falso." },
-        { status: 400 },
-      );
-    }
-
-    const currentResponse = await requestSupabase("GET");
-    if (!currentResponse.ok) {
-      return NextResponse.json(
-        { message: "No se pudo consultar la configuracion actual." },
-        { status: currentResponse.status },
-      );
-    }
-
-    const rows = (await currentResponse.json()) as { content?: BingoLandingContent }[];
-    const currentContent = rows[0]?.content ?? defaultBingoContent;
-    const nextContent: BingoLandingContent = {
-      ...currentContent,
-      selfServiceEnabled: body.selfServiceEnabled,
-    };
-    const response = await requestSupabase("POST", {
-      id: "default",
-      content: nextContent,
-      updated_at: new Date().toISOString(),
-    });
-    const text = await response.text();
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { message: text || "No se pudo actualizar Autogestion." },
-        { status: response.status },
-      );
-    }
-
-    return NextResponse.json(
-      { ok: true, selfServiceEnabled: nextContent.selfServiceEnabled },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : "No se pudo actualizar Autogestion." },
-      { status: 500 },
-    );
-  }
-}
-
 export async function POST(request: Request) {
   try {
     if (!(await isAdminRequest())) return forbiddenResponse();

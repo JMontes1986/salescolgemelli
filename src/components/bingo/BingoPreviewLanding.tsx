@@ -13,7 +13,7 @@ const galleryImages = [
   "/images/bingo/gallery/28344.jpg",
 ] as const;
 
-export function BingoPreviewLanding({ showSelfServiceNotice = false }: { showSelfServiceNotice?: boolean }) {
+export function BingoPreviewLanding() {
   return (
     <main className="min-h-[100dvh] overflow-hidden bg-[#f5f1e8] font-sans text-[#24231f]">
       <section className="relative min-h-[100dvh] bg-[#24231f] text-[#fffdf7]">
@@ -27,12 +27,6 @@ export function BingoPreviewLanding({ showSelfServiceNotice = false }: { showSel
               <p className="text-xs font-black uppercase tracking-[0.32em] text-[#d7b44a]">Encuentro de la familia gemellista</p>
               <h1 className="mt-6 text-5xl font-black leading-[0.92] tracking-[-0.055em] sm:text-6xl lg:text-7xl">Bingo<span className="block text-white/55">Gemellista</span></h1>
               <p className="mt-7 max-w-xl text-base font-medium leading-7 text-white/70 sm:text-lg sm:leading-8">Un espacio para encontrarnos, compartir en familia y vivir la alegr&#237;a de nuestra comunidad educativa.</p>
-              {showSelfServiceNotice ? (
-                <div className="mt-8 max-w-xl border-l-2 border-[#d7b44a] bg-white/[0.06] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d7b44a]">Aviso importante</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-white/75">La Autogesti&#243;n est&#225; temporalmente deshabilitada. Cuando el nuevo proceso est&#225; listo, publicaremos aqu&#237; toda la informaci&#243;n para participar.</p>
-                </div>
-              ) : null}
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <a href="#informacion" className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#d7b44a] px-6 text-sm font-black text-[#24231f] transition duration-300 hover:-translate-y-0.5 hover:bg-[#e0c268] active:translate-y-px">Conocer m&#225;s</a>
                 <a href={officialGalleryUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/20 px-6 text-sm font-black transition duration-300 hover:-translate-y-0.5 hover:border-white/45 hover:bg-white/[0.06] active:translate-y-px">Ver galer&#237;a oficial 2026</a>
@@ -117,9 +111,9 @@ export function BingoPreviewLanding({ showSelfServiceNotice = false }: { showSel
         <div className="mx-auto grid max-w-[1400px] gap-8 border-t border-white/15 pt-8 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.2em]">Colegio Franciscano Agust&#237;n Gemelli</p>
-            <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-white/55">La Autogesti&#243;n permanece deshabilitada hasta que publiquemos el nuevo proceso de participaci&#243;n.</p>
+            <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-white/55">Los productos y pedidos est&#225;n disponibles en la Autogesti&#243;n de Ventas ColGemelli.</p>
           </div>
-          <a href="https://colgemelli.edu.co/" target="_blank" rel="noreferrer" className="w-fit text-sm font-black text-[#d7b44a] transition duration-300 hover:text-[#e0c268] active:translate-y-px">Sitio institucional</a>
+          <Link href="/self-service" className="w-fit text-sm font-black text-[#d7b44a] transition duration-300 hover:text-[#e0c268] active:translate-y-px">Ir a Autogesti&#243;n</Link>
         </div>
       </footer>
     </main>

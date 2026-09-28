@@ -1,24 +1,20 @@
 import type { Metadata } from 'next';
 export const dynamic = 'force-dynamic';
 
-const TEMPORARY_TITLE = 'Autogesti\u00f3n | Colegio Gemelli';
-const TEMPORARY_DESCRIPTION = 'Acceso a la Autogesti\u00f3n y a la informacion publica del Bingo Gemellista.';
-
-
 const SELF_SERVICE_URL = 'https://salescolgemelli.vercel.app/self-service';
 const OG_IMAGE_URL = 'https://salescolgemelli.vercel.app/og-image.png';
 const TITLE = 'Autogestión de pedidos - Ventas ColGemelli';
 const DESCRIPTION = 'Compre productos del Colegio Gemelli, consulte sus pedidos por cédula y reciba códigos QR para pago y entrega segura.';
 
 export const metadata: Metadata = {
-  title: TEMPORARY_TITLE,
-  description: TEMPORARY_DESCRIPTION,
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: {
     canonical: SELF_SERVICE_URL,
   },
   openGraph: {
-    title: TEMPORARY_TITLE,
-    description: TEMPORARY_DESCRIPTION,
+    title: TITLE,
+    description: DESCRIPTION,
     type: 'website',
     url: SELF_SERVICE_URL,
     siteName: 'Ventas ColGemelli',
@@ -34,8 +30,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: TEMPORARY_TITLE,
-    description: TEMPORARY_DESCRIPTION,
+    title: TITLE,
+    description: DESCRIPTION,
     images: [OG_IMAGE_URL],
   },
 };

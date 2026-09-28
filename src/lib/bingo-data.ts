@@ -47,7 +47,6 @@ const BINGO_LANDING_BLOCKED_PRODUCT_TERMS = [
 ];
 
 export const defaultBingoContent = {
-  selfServiceEnabled: false,
   whatsappMessage: "Hola, quiero informacion para reservar tablas del Bingo Gemellista 2026.",
   hero: {
     navLabel: "Colegio Agustin Gemelli",
