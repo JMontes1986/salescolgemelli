@@ -13,7 +13,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, ClipboardList, PackageCheck, PlayCircle } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, PlayCircle } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -28,7 +28,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { getProductsByAvailability } from '@/lib/services/product-service';
-import { addPreSalePurchase, getSelfServicePurchasesByCedula, getSelfServiceReservedQuantityMap, sanitizeCustomerIdentifier, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
+import { addPreSalePurchase, getSelfServiceReservedQuantityMap, sanitizeCustomerPhone, type NewPurchase, updatePendingPurchase } from '@/lib/services/purchase-service';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { Badge } from '@/components/ui/badge';
@@ -141,16 +141,11 @@ export default function SelfServicePage() {
   const [paymentCode, setPaymentCode] = useState<string | null>(null);
   const [purchaseHistory, setPurchaseHistory] = useState<Purchase[]>([]);
   const [editablePurchaseIds, setEditablePurchaseIds] = useState<Set<string>>(() => new Set());
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [cedula, setCedula] = useState('');
   const [celular, setCelular] = useState('');
-  const [searchCedula, setSearchCedula] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
-  const activeCedula = cedula.trim();
-  const hasActiveCedula = activeCedula.length > 0;
   const realtimeTables = useMemo(() => ['products', 'purchases', 'self_service_reservations'] as const, []);
 
   const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
@@ -191,50 +186,9 @@ export default function SelfServicePage() {
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
-  const refreshPurchaseHistory = useCallback(async (cedulaToRefresh = activeCedula, showLoading = false) => {
-    const normalizedCedula = cedulaToRefresh.trim();
-    if (!normalizedCedula) return;
-
-    if (showLoading) {
-      setIsHistoryLoading(true);
-    }
-
-    try {
-      const purchases = await getSelfServicePurchasesByCedula(normalizedCedula);
-      setPurchaseHistory((prev) => {
-        const sessionPurchases = new Map(
-          prev
-            .filter((purchase) => editablePurchaseIds.has(purchase.id))
-            .map((purchase) => [purchase.id, purchase])
-        );
-
-        return purchases.map((purchase) => {
-          const sessionPurchase = sessionPurchases.get(purchase.id);
-          if (!sessionPurchase) return purchase;
-
-          return {
-            ...purchase,
-            celular: sessionPurchase.celular || purchase.celular,
-            deliveryCode: sessionPurchase.deliveryCode || purchase.deliveryCode,
-            qrPayload: sessionPurchase.qrPayload || purchase.qrPayload,
-          };
-        });
-      });
-    } catch {
-      console.warn("No se pudo actualizar el historial de autogestión.");
-    } finally {
-      if (showLoading) {
-        setIsHistoryLoading(false);
-      }
-    }
-  }, [activeCedula, editablePurchaseIds]);
-
   const refreshSelfServiceData = useCallback(async () => {
-    await Promise.all([
-      loadProducts(false),
-      refreshPurchaseHistory(activeCedula, false),
-    ]);
-  }, [activeCedula, loadProducts, refreshPurchaseHistory]);
+    await loadProducts(false);
+  }, [loadProducts]);
 
   useSupabaseRealtime({
     tables: realtimeTables,
@@ -301,15 +255,6 @@ export default function SelfServicePage() {
   }, [getAvailableStock, products]);
 
   const addToCart = (item: Product) => {
-    if (!hasActiveCedula) {
-      toast({
-        variant: "destructive",
-        title: "Ingrese la cédula primero",
-        description: "Para asociar la compra al padre de familia, consulte primero el documento.",
-      });
-      return;
-    }
-
     const availableStock = getAvailableStock(item);
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
@@ -364,15 +309,6 @@ export default function SelfServicePage() {
   };
 
   const handleInitiatePayment = () => {
-    if (!hasActiveCedula) {
-      toast({
-        variant: "destructive",
-        title: "Ingrese la cédula primero",
-        description: "Consulte la cédula del padre de familia antes de escoger o generar una compra.",
-      });
-      return;
-    }
-
     if (cart.length > 0) {
         if (editingPurchase) {
             handleUpdatePurchase();
@@ -389,14 +325,13 @@ export default function SelfServicePage() {
     try {
         const updatedItems = toServerCartItems(cart);
         const updatedPurchase = await updatePendingPurchase(editingPurchase.id, updatedItems, {
-          customerCedula: activeCedula || editingPurchase.cedula,
+          customerCedula: editingPurchase.cedula,
           customerCelular: editingPurchase.celular,
           selfServiceOnly: true,
         });
         
         setPaymentCode(editingPurchase.id);
         setLastPurchase(updatedPurchase);
-        setSearchCedula(updatedPurchase.cedula);
         setEditablePurchaseIds(prev => new Set(prev).add(updatedPurchase.id));
         setPurchaseHistory(prev => [updatedPurchase, ...prev.filter(purchase => purchase.id !== updatedPurchase.id)]);
         setIsPaymentModalOpen(true);
@@ -413,7 +348,7 @@ export default function SelfServicePage() {
 
   const handleConfirmPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0 || !activeCedula || !celular) return;
+    if (cart.length === 0 || !celular) return;
     setIsProcessing(true);
 
     let normalizedCelular: string;
@@ -433,7 +368,7 @@ export default function SelfServicePage() {
         date: new Date().toLocaleString('es-CO'),
         total: 0,
         items: toServerCartItems(cart),
-        cedula: activeCedula,
+        cedula: '',
         celular: normalizedCelular,
         status: 'pending', // Autogestión reserva disponibilidad y descuenta stock cuando el vendedor registra la entrega.
     };
@@ -442,7 +377,6 @@ export default function SelfServicePage() {
         const addedPurchase = await addPreSalePurchase(newPurchaseData);
         setPaymentCode(addedPurchase.id);
         setLastPurchase(addedPurchase);
-        setSearchCedula(addedPurchase.cedula);
         setCelular(addedPurchase.celular);
         setEditablePurchaseIds(prev => new Set(prev).add(addedPurchase.id));
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
@@ -457,44 +391,6 @@ export default function SelfServicePage() {
         setIsProcessing(false);
     }
   };
-
-  const handleActivateCedula = async () => {
-    const cedulaToActivate = searchCedula.trim() || activeCedula;
-
-    if (!cedulaToActivate) {
-        toast({ variant: "destructive", title: "Error", description: "Ingrese la cédula para activar el perfil." });
-        return;
-    }
-
-    try {
-        const normalizedCedula = sanitizeCustomerIdentifier(cedulaToActivate, 'La cédula');
-        const isSwitchingCedula = normalizedCedula !== activeCedula;
-        setSearchCedula(normalizedCedula);
-        setCedula(normalizedCedula);
-
-        if (isSwitchingCedula) {
-          setPurchaseHistory([]);
-          setEditablePurchaseIds(new Set());
-          setLastPurchase(null);
-          clearCart();
-        }
-
-        await refreshPurchaseHistory(normalizedCedula, true);
-
-        toast({
-          title: "Cédula lista",
-          description: `La cédula ${normalizedCedula} quedó activa y se cargó su historial de compras.`,
-        });
-    } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Revise los datos",
-          description: error instanceof Error ? error.message : "Ingrese una cédula válida.",
-        });
-    } finally {
-        setIsHistoryLoading(false);
-    }
-  }
 
   const closeModal = () => {
       setIsPaymentModalOpen(false);
@@ -515,8 +411,6 @@ export default function SelfServicePage() {
     });
     setCart(cartItems);
     setEditingPurchase(purchase);
-    setSearchCedula(purchase.cedula);
-    setCedula(purchase.cedula);
     setCelular(purchase.celular);
     toast({ title: "Modo Edición", description: "Los artículos de su compra han sido cargados en el carrito." });
   }
@@ -608,7 +502,7 @@ export default function SelfServicePage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-[#126d74]">Tutorial de autogestión</p>
                 <h2 className="text-xl font-black uppercase text-[#232328]">Antes de comprar, revise cómo funciona Molly Ventas</h2>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Los papás pueden ver los pasos completos para consultar la cédula, armar el pedido, generar el código y pagar con seguridad.</p>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Los papás pueden ver los pasos completos para elegir productos, ingresar el celular, generar el código y pagar con seguridad.</p>
               </div>
             </div>
             <Button
@@ -634,58 +528,37 @@ export default function SelfServicePage() {
           <CardHeader className="gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl space-y-2">
               <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.25em] text-[#8d2460]">
-                <ClipboardList className="h-5 w-5" />
-                Antes de escoger productos
+                <ShoppingCart className="h-5 w-5" />
+                Compra en tres pasos
               </div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-[#232328] sm:text-3xl">
                 ¿Cómo comprar por autogestión?
               </CardTitle>
               <CardDescription className="text-base font-semibold text-[#4b4b52]">
-                Primero ingrese su cédula para dejar listo el documento de esta compra. Después elija productos, genere el código y pague en caja o por DaviPlata/Bre-B.
+                Elija los productos libremente. Solo al confirmar el pedido le pediremos un número de celular para generar el código de pago.
               </CardDescription>
             </div>
             <div className="rounded-2xl border border-[#0eb9c3]/35 bg-[#edfafa] px-4 py-3 text-sm font-bold text-[#126d74]">
-              {hasActiveCedula ? `Cédula activa: ${activeCedula}` : 'Sin cédula consultada'}
+              No necesita cédula
             </div>
           </CardHeader>
-          <CardContent className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <CardContent>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-[#0eb9c3]/25 bg-[#f7fbfb] p-4">
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0eb9c3] text-lg font-black text-[#0f1720]">1</div>
-                <h3 className="font-black uppercase text-[#232328]">Ingrese cédula</h3>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Use el mismo documento para generar el código de pago.</p>
+                <h3 className="font-black uppercase text-[#232328]">Elija productos</h3>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Agregue al carrito todo lo que quiera comprar.</p>
               </div>
               <div className="rounded-2xl border border-[#d2528d]/25 bg-[#fff5fa] p-4">
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#b23178] text-lg font-black text-white">2</div>
-                <h3 className="font-black uppercase text-[#232328]">Arme el pedido</h3>
-                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Agregue productos y revise cantidades antes de generar el código.</p>
+                <h3 className="font-black uppercase text-[#232328]">Ingrese el celular</h3>
+                <p className="mt-1 text-sm font-semibold text-[#5f686a]">Al finalizar, escriba solo su número de contacto.</p>
               </div>
               <div className="rounded-2xl border border-[#ecc643]/35 bg-[#fff9df] p-4">
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecc643] text-lg font-black text-[#232328]">3</div>
                 <h3 className="font-black uppercase text-[#232328]">Pague y reciba</h3>
                 <p className="mt-1 text-sm font-semibold text-[#5f686a]">Presente el código en caja o pague por DaviPlata. Abajo verá el estado.</p>
               </div>
-            </div>
-            <div className="rounded-3xl border-2 border-[#0eb9c3]/30 bg-white p-4 shadow-inner">
-              <Label htmlFor="access-cedula" className="text-sm font-black uppercase tracking-wide text-[#126d74]">Activar cédula</Label>
-              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] lg:grid-cols-1 xl:grid-cols-[1fr_auto]">
-                <Input
-                  id="access-cedula"
-                  name="accessCedula"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="h-12 rounded-2xl border-[#0eb9c3]/45 bg-white/95 text-base text-slate-950 placeholder:text-slate-500"
-                  placeholder="Ej: 1020304050"
-                  value={searchCedula}
-                  onChange={(e) => setSearchCedula(e.target.value)}
-                />
-                <Button className="h-12 rounded-2xl bg-[#0eb9c3] px-6 font-black uppercase text-[#0f1720] hover:bg-[#49cbd2]" onClick={handleActivateCedula} disabled={isHistoryLoading}>
-                  {isHistoryLoading ? 'Consultando...' : 'Ingresar'}
-                </Button>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-[#5f686a]">
-                La cédula activa el perfil del padre de familia para esta compra.
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -725,14 +598,14 @@ export default function SelfServicePage() {
                       key={product.id}
                       className={cn(
                         "group overflow-hidden rounded-2xl border-2 border-[#0eb9c3]/22 bg-white/88 text-[#232328] shadow-[0_10px_22px_rgba(35,35,40,0.10)] transition hover:-translate-y-1 hover:border-[#d2528d]/60 hover:shadow-[0_20px_42px_rgba(35,35,40,0.14)] active:scale-[0.99] sm:rounded-3xl sm:shadow-[0_16px_34px_rgba(35,35,40,0.10)]",
-                        (isSoldOut || !hasActiveCedula) && "opacity-60"
+                        isSoldOut && "opacity-60"
                       )}
                     >
                       <button
                         type="button"
-                        className={cn("relative block w-full text-left", hasActiveCedula && !isSoldOut && !hasReachedLimit && "cursor-pointer")}
-                        onClick={() => hasActiveCedula && !isSoldOut && !hasReachedLimit && addToCart(product)}
-                        disabled={!hasActiveCedula || isSoldOut || hasReachedLimit}
+                        className={cn("relative block w-full text-left", !isSoldOut && !hasReachedLimit && "cursor-pointer")}
+                        onClick={() => !isSoldOut && !hasReachedLimit && addToCart(product)}
+                        disabled={isSoldOut || hasReachedLimit}
                         aria-label={`Agregar ${product.name}`}
                       >
                         <div className="relative aspect-[16/10] overflow-hidden bg-[#e8eeee]">
@@ -803,10 +676,10 @@ export default function SelfServicePage() {
                           <Button
                             className="h-10 w-full rounded-xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-xs font-black uppercase text-[#101016] shadow-[0_10px_22px_rgba(6,7,10,0.20)] hover:opacity-95 sm:h-12 sm:rounded-2xl sm:text-base sm:shadow-[0_14px_32px_rgba(6,7,10,0.24)]"
                             onClick={() => addToCart(product)}
-                            disabled={!hasActiveCedula || isSoldOut || hasReachedLimit}
+                            disabled={isSoldOut || hasReachedLimit}
                           >
                             <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-                            {hasActiveCedula ? 'Agregar' : 'Ingrese cédula'}
+                            Agregar
                           </Button>
                         )}
                       </CardContent>
@@ -904,7 +777,7 @@ export default function SelfServicePage() {
               <Button 
                   className="h-14 w-full rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] text-base font-black uppercase text-[#101016] shadow-[0_16px_34px_rgba(6,7,10,0.28)] hover:opacity-95 sm:text-lg"
                 onClick={handleInitiatePayment}
-                disabled={!hasActiveCedula || cart.length === 0 || isProcessing}
+                disabled={cart.length === 0 || isProcessing}
               >
                 {isProcessing ? 'Procesando...' : (editingPurchase ? 'Guardar Cambios' : 'Generar Código de Pago')}
               </Button>
@@ -921,11 +794,11 @@ export default function SelfServicePage() {
           <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-wide text-[#232328]">
-                <PackageCheck className="h-5 w-5" />
-                Perfil del padre de familia
+                <QrCode className="h-5 w-5" />
+                Compras de esta sesión
               </CardTitle>
               <CardDescription className="text-[#5f686a]">
-                Al activar la cédula se muestran las compras registradas a ese documento. El QR y la edición quedan disponibles para compras generadas durante esta sesión.
+                Aquí aparecen los pedidos generados en este dispositivo mientras la página permanezca abierta.
               </CardDescription>
             </div>
           </CardHeader>
@@ -980,10 +853,10 @@ export default function SelfServicePage() {
                           ) : (
                             <div className="rounded-2xl border border-[#0eb9c3]/25 bg-white p-3 text-center shadow-sm">
                               <p className="text-xs font-black uppercase text-[#126d74]">
-                                {purchaseSource === 'pos' ? 'Compra en punto de venta' : 'Historial por cédula'}
+                                {purchaseSource === 'pos' ? 'Compra en punto de venta' : 'Compra anterior'}
                               </p>
                               <p className="mt-1 text-sm font-semibold text-[#5f686a]">
-                                {purchaseSource === 'pos' ? 'Registrada en caja con esta cédula.' : 'Compra registrada anteriormente.'}
+                                {purchaseSource === 'pos' ? 'Registrada en caja.' : 'Compra registrada anteriormente.'}
                               </p>
                             </div>
                           )}
@@ -1006,7 +879,7 @@ export default function SelfServicePage() {
                   })}
               </div>
             ) : (
-                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">{isHistoryLoading ? 'Consultando compras registradas para esta cédula...' : 'Active una cédula para ver las compras registradas a ese documento.'}</p>
+                <p className="rounded-2xl border-2 border-dashed border-[#0eb9c3]/35 bg-[#f7fbfb] p-6 text-center font-semibold text-[#5f686a]">Cuando genere un pedido, podrá consultar aquí su código y estado.</p>
             )}
           </CardContent>
         </Card>
@@ -1022,7 +895,7 @@ export default function SelfServicePage() {
           <Button
             className="h-14 rounded-2xl bg-gradient-to-r from-[#0eb9c3] via-[#b23178] to-[#ecc643] px-5 text-sm font-black uppercase text-[#101016]"
             onClick={handleInitiatePayment}
-            disabled={!hasActiveCedula || cart.length === 0 || isProcessing}
+            disabled={cart.length === 0 || isProcessing}
           >
             {editingPurchase ? 'Guardar' : 'Generar código'}
           </Button>
@@ -1034,16 +907,11 @@ export default function SelfServicePage() {
           <DialogHeader>
             <DialogTitle>Confirmar Información</DialogTitle>
             <DialogDesc>
-              La cédula ya está asociada al perfil. Ingrese solo el celular para generar el código de pago.
+              Ingrese su celular para generar el código de pago. No necesita cédula.
             </DialogDesc>
           </DialogHeader>
           <form id="user-info-form" onSubmit={handleConfirmPayment}>
             <div className="grid gap-4 py-4">
-              <div className="rounded-2xl border bg-muted/50 p-3">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Cédula asociada</p>
-                <p className="text-lg font-black text-foreground">{activeCedula}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Todas las compras quedarán guardadas para este documento.</p>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="celular">Celular (para notificaciones)</Label>
                 <Input 

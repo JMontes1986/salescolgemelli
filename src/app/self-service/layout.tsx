@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 const SELF_SERVICE_URL = 'https://salescolgemelli.vercel.app/self-service';
 const OG_IMAGE_URL = 'https://salescolgemelli.vercel.app/og-image.png';
 const TITLE = 'Autogestión de pedidos - Ventas ColGemelli';
-const DESCRIPTION = 'Compre productos del Colegio Gemelli, consulte sus pedidos por cédula y reciba códigos QR para pago y entrega segura.';
+const DESCRIPTION = 'Compre productos del Colegio Gemelli usando solo su celular y reciba códigos QR para pago y entrega segura.';
 
 export const metadata: Metadata = {
   title: TITLE,

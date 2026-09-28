@@ -479,13 +479,22 @@ export async function addPurchase(purchase: NewPurchase): Promise<Purchase> {
 export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchase> {
   const isSelfService = !purchase.sellerId && !purchase.sellerName;
   if (isSelfService) {
-    const cedula = sanitizeCustomerIdentifier(purchase.cedula, 'La cédula');
     const celular = sanitizeCustomerPhone(purchase.celular);
+    // Supabase still requires the legacy customer-reference field. New
+    // self-service purchases use the normalized phone number internally so
+    // the public flow never has to request a document number.
+    const customerReference = purchase.cedula.trim()
+      ? sanitizeCustomerIdentifier(purchase.cedula, 'La cédula')
+      : celular.replace(/\D/g, '');
+
+    if (!customerIdPattern.test(customerReference)) {
+      throw new Error('El celular debe contener entre 7 y 20 dígitos.');
+    }
 
     try {
       const savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_self_service_purchase', {
         p_items: normalizeCartInput(purchase.items),
-        p_cedula: cedula,
+        p_cedula: customerReference,
         p_celular: celular,
       }));
 
