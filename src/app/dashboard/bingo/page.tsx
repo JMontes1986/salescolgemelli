@@ -565,7 +565,7 @@ export default function BingoContentAdminPage() {
           </div>
 
           <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
-            <div className="overflow-hidden rounded-xl border bg-[#232328] text-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-[#f2c84b]/50 bg-[#073b72] text-white shadow-sm">
               <div className="border-b border-white/12 px-5 py-4">
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-white/50">Lienzo editable</p>
                 <h2 className="mt-1 text-xl font-black">Vista rapida de textos principales</h2>
@@ -585,13 +585,13 @@ export default function BingoContentAdminPage() {
                       onClick={() => setSelectedTextKey(target.key)}
                       className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
                         selected
-                          ? "border-[#ecc643] bg-white text-[#232328]"
+                          ? "border-[#f2c84b] bg-white text-[#073b72]"
                           : target.tone === "light"
                             ? "border-white/14 bg-white/10 text-white"
-                            : "border-white/14 bg-[#fffdf7] text-[#232328]"
+                            : "border-white/14 bg-[#fffdf7] text-[#073b72]"
                       }`}
                     >
-                      <span className={`text-[11px] font-black uppercase tracking-[0.2em] ${selected ? "text-[#b23178]" : "text-current opacity-60"}`}>
+                      <span className={`text-[11px] font-black uppercase tracking-[0.2em] ${selected ? "text-[#8a6f12]" : "text-current opacity-60"}`}>
                         {target.label}
                       </span>
                       <span className="mt-3 block text-xl font-black leading-tight" style={style}>
@@ -638,7 +638,7 @@ export default function BingoContentAdminPage() {
                   <Input
                     id="visual-color"
                     type="color"
-                    value={selectedTextStyle.color ?? (selectedTextTarget.tone === "light" ? "#ffffff" : "#232328")}
+                    value={selectedTextStyle.color ?? (selectedTextTarget.tone === "light" ? "#ffffff" : "#073b72")}
                     onChange={(event) => updateSelectedTextStyle({ color: event.target.value })}
                     className="h-11 p-1"
                   />

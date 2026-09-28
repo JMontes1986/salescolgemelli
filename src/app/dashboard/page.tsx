@@ -64,8 +64,8 @@ const statusColors: Record<Purchase['status'], string> = {
     delivered: 'border-sky-200 bg-sky-50 text-sky-700',
     'partially-delivered': 'border-emerald-200 bg-emerald-50 text-emerald-700',
     cancelled: 'border-rose-200 bg-rose-50 text-rose-700',
-    'pre-sale': 'border-violet-200 bg-violet-50 text-violet-700',
-    'pre-sale-confirmed': 'border-teal-200 bg-teal-50 text-teal-700',
+    'pre-sale': 'border-amber-200 bg-amber-50 text-amber-800',
+    'pre-sale-confirmed': 'border-blue-200 bg-blue-50 text-blue-800',
 };
 
 type ProductSales = {
@@ -473,7 +473,7 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
                     </div>
                     <div className="h-3 overflow-hidden rounded-full bg-secondary">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-sky-400"
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-[#f2c84b]"
                         style={{ width: `${Math.max(8, Math.min(100, (item.value / maxReportChartValue) * 100))}%` }}
                       />
                     </div>
@@ -492,14 +492,14 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
                 value={formatCurrency(netIncomeDashboardValue)}
                 caption={`${paidPurchases.length} ventas pagadas, ticket promedio ${formatCurrency(averageTicket)}`}
                 icon={Store}
-                tone="bg-emerald-50 text-emerald-700"
+                tone="bg-blue-50 text-blue-800"
               />
               <KpiCard
                 title="Autogestión"
                 value={formatCurrency(selfServiceRevenue)}
                 caption={`${selfServiceUsers} clientes únicos compraron en el portal`}
                 icon={UserCog}
-                tone="bg-sky-50 text-sky-700"
+                tone="bg-[#edf4fb] text-[#0d4d8b]"
               />
               <KpiCard
                 title="Artículos vendidos"
@@ -513,12 +513,12 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
                 value={activeSellers.toLocaleString("es-CO")}
                 caption="Vendedores con transacciones confirmadas"
                 icon={Users}
-                tone="bg-violet-50 text-violet-700"
+                tone="bg-[#fff3c4] text-[#735d0f]"
               />
             </section>
 
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-3xl border bg-gradient-to-br from-emerald-500 to-sky-500 p-5 text-white shadow-sm md:col-span-2">
+              <div className="rounded-3xl border border-[#f2c84b]/60 bg-gradient-to-br from-[#073b72] to-[#0d4d8b] p-5 text-white shadow-sm md:col-span-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-white/80">
                   <ReceiptText className="h-4 w-4" />
                   Dashboard Power BI · Ingresos del evento
@@ -574,7 +574,7 @@ Recomendación Molly IA: mantener seguimiento diario a los productos de mayor ro
             <section className="grid gap-4 lg:grid-cols-4">
               <KpiCard title="Autogestión neta" value={formatCurrency(selfServiceRevenue)} caption={`${confirmedSelfServicePurchases.length} compras confirmadas, ticket ${formatCurrency(selfServiceAverageTicket)}`} icon={UserCog} tone="bg-sky-50 text-sky-700" />
               <KpiCard title="Artículos autogestión" value={selfServiceItemCount.toLocaleString("es-CO")} caption={`${selfServiceReturnedItems} devoluciones en el canal`} icon={ShoppingCart} tone="bg-orange-50 text-orange-700" />
-              <KpiCard title="Clientes únicos" value={selfServiceUsers.toLocaleString("es-CO")} caption="Compradores distintos en el portal" icon={Users} tone="bg-violet-50 text-violet-700" />
+              <KpiCard title="Clientes únicos" value={selfServiceUsers.toLocaleString("es-CO")} caption="Compradores distintos en el portal" icon={Users} tone="bg-[#fff3c4] text-[#735d0f]" />
               <KpiCard title="Pendientes" value={selfServicePending.toLocaleString("es-CO")} caption="Compras por gestionar o confirmar" icon={Undo2} tone="bg-rose-50 text-rose-700" />
             </section>
 

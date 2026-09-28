@@ -28,8 +28,8 @@ export function TopNav({
           href={item.href}
           target={item.external ? '_blank' : '_self'}
           className={cn(
-            "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors hover:bg-[#eef0ec] hover:text-[#174f43] dark:hover:bg-white/10 dark:hover:text-white",
-            pathname === item.href ? "bg-[#e5f0eb] text-[#174f43] shadow-sm hover:bg-[#e5f0eb] hover:text-[#174f43] dark:bg-[#203c33] dark:text-[#d5ebe3]" : "text-muted-foreground"
+            "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground",
+            pathname === item.href ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground"
           )}
         >
           <item.icon className="h-4 w-4" />

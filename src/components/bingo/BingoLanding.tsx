@@ -14,7 +14,7 @@ import { BingoRegistrationForm } from "./RegistrationForm";
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#b23178]">
+    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#8a6f12]">
       {children}
     </p>
   );
@@ -65,7 +65,7 @@ function SectionTitle({
   className?: string;
 }) {
   return (
-    <h2 className={`mt-4 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-[#232328] sm:text-5xl ${className}`}>
+    <h2 className={`mt-4 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-[#073b72] sm:text-5xl ${className}`}>
       {children}
     </h2>
   );
@@ -107,7 +107,7 @@ function SectionBand({
   const styles = {
     light: "bg-[#fffdf7]",
     soft: "bg-[#f6fbfb]",
-    dark: "bg-[#232328] text-white",
+    dark: "bg-[#073b72] text-white",
   };
 
   return (
@@ -178,8 +178,8 @@ export function BingoLanding({
   const styleFor = (key: string) => buildTextStyle(textStyles[key]);
 
   return (
-    <main className="bingo-landing min-h-screen bg-[#fffdf7] text-[#232328]">
-      <section className="relative min-h-[100dvh] overflow-hidden bg-[#232328] text-white">
+    <main className="bingo-landing min-h-[100dvh] bg-[#f4f7fb] text-[#172434]">
+      <section className="relative min-h-[100dvh] overflow-hidden bg-[#073b72] text-white">
         <Image
           src={content.hero.backgroundImageUrl || "/images/bingo/bingo-card.svg"}
           alt="Ambiente del Bingo Gemellista"
@@ -191,7 +191,7 @@ export function BingoLanding({
         <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(35,35,40,0.97)_0%,rgba(35,35,40,0.91)_42%,rgba(35,35,40,0.48)_100%)]" />
         <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
           <nav className="bingo-reveal flex items-center justify-between gap-4">
-            <Link href="/" className="text-xs font-black uppercase tracking-[0.28em] text-white/90 transition hover:text-[#ecc643]">
+            <Link href="/" className="text-xs font-black uppercase tracking-[0.28em] text-white/90 transition hover:text-[#f2c84b]">
               {content.hero.navLabel}
             </Link>
             <a
@@ -206,7 +206,7 @@ export function BingoLanding({
             <div className="self-end">
               <MotionItem>
                 <span className="inline-flex items-center gap-2 rounded-md border border-white/18 bg-white/10 px-4 py-2 text-sm font-bold text-white/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-md">
-                  <Sparkles className="h-4 w-4 text-[#ecc643]" />
+                  <Sparkles className="h-4 w-4 text-[#f2c84b]" />
                   {content.hero.badge}
                 </span>
               </MotionItem>
@@ -224,7 +224,7 @@ export function BingoLanding({
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <a
                     href="#confirmacion"
-                    className="bingo-primary-action inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#ecc643] px-6 text-sm font-black text-[#232328] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f2d263] active:translate-y-px"
+                    className="bingo-primary-action inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#f2c84b] px-6 text-sm font-black text-[#073b72] transition duration-300 hover:-translate-y-0.5 hover:bg-[#ffe07a] active:translate-y-px"
                   >
                     {content.hero.primaryCta}
                     <ArrowRight className="h-4 w-4" />
@@ -246,7 +246,7 @@ export function BingoLanding({
                     <p className="text-xs font-black uppercase tracking-[0.24em] text-white/58">Datos clave</p>
                     <h2 className="mt-2 text-2xl font-black text-white">Todo para llegar listo</h2>
                   </div>
-                  <div className="mt-4 rounded-md bg-[#0eb9c3] px-4 py-3 text-sm font-black text-[#08272a] sm:mt-0">
+                  <div className="mt-4 rounded-md bg-[#0d4d8b] px-4 py-3 text-sm font-black text-white sm:mt-0">
                     Preventa: {tablesSoldLabel}
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export function BingoLanding({
                         index >= eventSummary.length - 2 ? "sm:border-b-0" : ""
                       }`}
                     >
-                      <item.icon className="h-5 w-5 text-[#ecc643] transition duration-300 group-hover:-translate-y-0.5" />
+                      <item.icon className="h-5 w-5 text-[#f2c84b] transition duration-300 group-hover:-translate-y-0.5" />
                       <p className="mt-4 text-xs font-black uppercase tracking-[0.22em] text-white/50">
                         {item.label}
                       </p>
@@ -278,7 +278,7 @@ export function BingoLanding({
               {[...marqueeItems, ...marqueeItems].map((item, index) => (
                 <span key={`${item}-${index}`} className="flex items-center gap-8">
                   {item}
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#ecc643]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#f2c84b]" />
                 </span>
               ))}
             </div>
@@ -310,9 +310,9 @@ export function BingoLanding({
         <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {essentialInfo.map((item, index) => (
             <MotionItem key={item.label} index={index}>
-              <article className="h-full rounded-md border border-[#dce9e9] bg-white p-5 shadow-[0_14px_35px_-26px_rgba(35,35,40,0.42)] transition duration-300 hover:-translate-y-1 hover:border-[#0eb9c3]/55">
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#126d74]">{item.label}</p>
-                <h3 className="mt-4 text-xl font-black text-[#232328]">{item.value}</h3>
+              <article className="h-full rounded-md border border-[#d7e1ec] bg-white p-5 shadow-[0_14px_35px_-26px_rgba(7,59,114,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#0d4d8b]/55">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">{item.label}</p>
+                <h3 className="mt-4 text-xl font-black text-[#073b72]">{item.value}</h3>
                 {shouldShowPendingNote(item.value, content.information.pendingText) ? (
                   <p className="mt-3 text-sm leading-6 text-[#5f686a]">{content.information.pendingText}</p>
                 ) : null}
@@ -321,10 +321,10 @@ export function BingoLanding({
           ))}
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-stretch">
-          <div className="rounded-md border border-[#ecc643]/65 bg-[#fff8d9] px-5 py-4 text-sm font-bold leading-6 text-[#5d4b10] shadow-[0_14px_35px_-28px_rgba(236,198,67,0.95)] sm:text-base">
+          <div className="rounded-md border border-[#f2c84b]/65 bg-[#fff3c4] px-5 py-4 text-sm font-bold leading-6 text-[#735d0f] shadow-[0_14px_35px_-28px_rgba(242,200,75,0.72)] sm:text-base">
             {content.information.paymentAlert}
           </div>
-          <div className="rounded-md border border-[#0eb9c3]/35 bg-white px-5 py-4 text-sm font-black text-[#232328]">
+          <div className="rounded-md border border-[#0d4d8b]/35 bg-white px-5 py-4 text-sm font-black text-[#073b72]">
             Preventa registrada: {tablesSoldLabel} tablas
           </div>
         </div>
@@ -345,14 +345,14 @@ export function BingoLanding({
             {content.reasons.map((reason, index) => (
               <MotionItem key={reason.title} index={index}>
                 <article
-                  className={`group h-full rounded-md border border-[#ece5dd] bg-white p-6 shadow-[0_18px_42px_-30px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#d2528d]/45 ${
+                  className={`group h-full rounded-md border border-[#d7e1ec] bg-white p-6 shadow-[0_18px_42px_-30px_rgba(7,59,114,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#f2c84b]/70 ${
                     index === 0 ? "sm:min-h-56" : ""
                   }`}
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#fff1f7] text-[#b23178] transition duration-300 group-hover:-translate-y-0.5">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#fff3c4] text-[#073b72] transition duration-300 group-hover:-translate-y-0.5">
                     <EditableIcon name={reason.icon as keyof typeof iconMap} className="h-6 w-6" />
                   </div>
-                  <h3 className="mt-6 text-2xl font-black text-[#232328]">{reason.title}</h3>
+                  <h3 className="mt-6 text-2xl font-black text-[#073b72]">{reason.title}</h3>
                   <p className="mt-4 max-w-sm text-base leading-7 text-[#4b4b52]">{reason.description}</p>
                 </article>
               </MotionItem>
@@ -373,12 +373,12 @@ export function BingoLanding({
             </p>
           </div>
           <div className="relative">
-            <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-[#0eb9c3]/35 sm:block" />
+            <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-[#0d4d8b]/35 sm:block" />
             <div className="grid gap-4">
               {content.participation.steps.map((step, index) => (
                 <MotionItem key={step} index={index}>
-                  <article className="relative grid gap-4 rounded-md border border-[#dce9e9] bg-white p-5 shadow-[0_16px_38px_-30px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#0eb9c3]/55 sm:grid-cols-[3rem_1fr] sm:items-center">
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0eb9c3] text-sm font-black text-[#062f34] ring-4 ring-[#eafafa]">
+                  <article className="relative grid gap-4 rounded-md border border-[#d7e1ec] bg-white p-5 shadow-[0_16px_38px_-30px_rgba(7,59,114,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#0d4d8b]/55 sm:grid-cols-[3rem_1fr] sm:items-center">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0d4d8b] text-sm font-black text-white ring-4 ring-[#edf4fb]">
                       {index + 1}
                     </span>
                     <p className="text-base font-semibold leading-7 text-[#33415f]">{step}</p>
@@ -402,7 +402,7 @@ export function BingoLanding({
                 {content.food.description}
               </p>
             </div>
-            <div className="mt-8 rounded-md border border-[#ecc643]/45 bg-[#fff8d9] p-5 text-sm font-bold leading-6 text-[#5d4b10] shadow-[0_18px_42px_-34px_rgba(236,198,67,0.9)]">
+            <div className="mt-8 rounded-md border border-[#f2c84b]/55 bg-[#fff3c4] p-5 text-sm font-bold leading-6 text-[#735d0f] shadow-[0_18px_42px_-34px_rgba(242,200,75,0.65)]">
               Compra tus antojos durante el evento y acompaña cada juego con algo rico para compartir.
             </div>
           </div>
@@ -412,7 +412,7 @@ export function BingoLanding({
               <>
                 {featuredFoodProduct ? (
                   <MotionItem>
-                    <article className="group overflow-hidden rounded-md border border-[#ece5dd] bg-white shadow-[0_28px_70px_-48px_rgba(35,35,40,0.55)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/80">
+                    <article className="group overflow-hidden rounded-md border border-[#d7e1ec] bg-white shadow-[0_28px_70px_-48px_rgba(7,59,114,0.38)] transition duration-300 hover:-translate-y-1 hover:border-[#f2c84b]/80">
                       <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
                         <div className="relative aspect-[4/3] bg-[#fff8d9] md:aspect-auto md:min-h-[18rem]">
                           {featuredFoodProduct.imageUrl ? (
@@ -430,13 +430,13 @@ export function BingoLanding({
                           )}
                         </div>
                         <div className="flex flex-col justify-center p-7 sm:p-8">
-                          <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b23178]">
+                          <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8a6f12]">
                             Recomendado para compartir
                           </p>
-                          <h3 className="mt-4 text-4xl font-black leading-none tracking-tight text-[#232328]">
+                          <h3 className="mt-4 text-4xl font-black leading-none tracking-tight text-[#073b72]">
                             {featuredFoodProduct.name}
                           </h3>
-                          <p className="mt-3 text-2xl font-black text-[#126d74]">
+                          <p className="mt-3 text-2xl font-black text-[#0d4d8b]">
                             {formatCurrency(featuredFoodProduct.price)}
                           </p>
                           <p className="mt-5 max-w-sm text-base font-semibold leading-7 text-[#4b4b52]">
@@ -451,7 +451,7 @@ export function BingoLanding({
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {secondaryFoodProducts.map((product, index) => (
                     <MotionItem key={product.id} index={index + 1}>
-                      <article className="group overflow-hidden rounded-md border border-[#ece5dd] bg-white shadow-[0_16px_38px_-30px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
+                      <article className="group overflow-hidden rounded-md border border-[#d7e1ec] bg-white shadow-[0_16px_38px_-30px_rgba(7,59,114,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#f2c84b]/70">
                         <div className="relative aspect-[5/4] bg-[#fff8d9]">
                           {product.imageUrl ? (
                             <Image
@@ -468,10 +468,10 @@ export function BingoLanding({
                           )}
                         </div>
                         <div className="flex min-h-24 flex-col justify-center p-4">
-                          <h3 className="text-lg font-black leading-tight text-[#232328]">
+                          <h3 className="text-lg font-black leading-tight text-[#073b72]">
                             {product.name}
                           </h3>
-                          <p className="mt-2 text-base font-black text-[#126d74]">
+                          <p className="mt-2 text-base font-black text-[#0d4d8b]">
                             {formatCurrency(product.price)}
                           </p>
                         </div>
@@ -484,7 +484,7 @@ export function BingoLanding({
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {content.food.options.map((option, index) => (
                   <MotionItem key={option} index={index}>
-                    <article className="group flex min-h-28 items-center gap-4 rounded-md border border-[#ece5dd] bg-white p-5 text-lg font-black text-[#232328] shadow-[0_15px_34px_-28px_rgba(35,35,40,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#ecc643]/70">
+                    <article className="group flex min-h-28 items-center gap-4 rounded-md border border-[#d7e1ec] bg-white p-5 text-lg font-black text-[#073b72] shadow-[0_15px_34px_-28px_rgba(7,59,114,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#f2c84b]/70">
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#fff8d9] text-[#8a6f12] transition duration-300 group-hover:-rotate-2">
                         <EditableIcon name="Utensils" className="h-6 w-6" />
                       </span>
@@ -514,19 +514,19 @@ export function BingoLanding({
               <article
                 className={`group h-full rounded-md border p-6 shadow-[0_18px_42px_-30px_rgba(35,35,40,0.48)] transition duration-300 hover:-translate-y-1 ${
                   plan.recommended
-                    ? "border-[#d2528d]/45 bg-[#fff1f7]"
+                    ? "border-[#f2c84b]/65 bg-[#fff3c4]"
                     : "border-[#dce9e9] bg-white"
                 }`}
               >
                 {plan.recommended ? (
-                  <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b23178]">{content.sponsors.recommendedLabel}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8a6f12]">{content.sponsors.recommendedLabel}</p>
                 ) : null}
-                <h3 className="mt-4 text-3xl font-black text-[#232328]">{plan.title}</h3>
-                <p className="mt-4 text-lg font-black text-[#126d74]">{plan.price}</p>
+                <h3 className="mt-4 text-3xl font-black text-[#073b72]">{plan.title}</h3>
+                <p className="mt-4 text-lg font-black text-[#0d4d8b]">{plan.price}</p>
                 <ul className="mt-7 space-y-4 text-sm leading-6 text-[#4b4b52]">
                   {plan.benefits.map((benefit) => (
                     <li key={benefit} className="flex gap-3">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#b23178]" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#b48b12]" />
                       {benefit}
                     </li>
                   ))}
@@ -535,7 +535,7 @@ export function BingoLanding({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#232328] text-sm font-black text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#34343a] active:translate-y-px"
+                  className="mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#073b72] text-sm font-black text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#0d4d8b] active:translate-y-px"
                 >
                   {content.sponsors.cta}
                   <ArrowRight className="h-4 w-4" />
@@ -546,7 +546,7 @@ export function BingoLanding({
         </div>
       </SectionBand>
 
-      <section id="confirmacion" className="relative overflow-hidden bg-[#232328] px-5 py-16 text-white sm:px-8 lg:px-10 lg:py-24">
+      <section id="confirmacion" className="relative overflow-hidden bg-[#073b72] px-5 py-16 text-white sm:px-8 lg:px-10 lg:py-24">
         <div className="absolute inset-0 bingo-stage-lines opacity-35" />
         <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
           <div>
@@ -574,7 +574,7 @@ export function BingoLanding({
       <footer className="bg-[#19191e] px-5 py-10 text-white sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-white/68 sm:flex-row sm:items-center sm:justify-between">
           <p>{content.footer.text}</p>
-          <Link href="/" className="font-bold text-white transition hover:text-[#ecc643]">
+          <Link href="/" className="font-bold text-white transition hover:text-[#f2c84b]">
             {content.footer.backLink}
           </Link>
         </div>

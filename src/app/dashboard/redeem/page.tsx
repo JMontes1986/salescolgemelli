@@ -38,8 +38,8 @@ const statusColors: Record<Purchase['status'], string> = {
     delivered: 'bg-green-500/20 text-green-700',
     'partially-delivered': 'bg-emerald-500/20 text-emerald-700',
     cancelled: 'bg-red-500/20 text-red-700',
-    'pre-sale': 'bg-purple-500/20 text-purple-700',
-    'pre-sale-confirmed': 'bg-teal-500/20 text-teal-700',
+    'pre-sale': 'bg-amber-500/20 text-amber-800',
+    'pre-sale-confirmed': 'bg-blue-500/20 text-blue-800',
 };
 
 type BarcodeDetectorResult = {
@@ -702,7 +702,7 @@ function RedeemPageComponent() {
         switch (purchase.status) {
             case 'pre-sale':
                 return (
-                    <div className="w-full rounded-md border border-purple-200 bg-purple-50 p-3 text-center text-sm font-semibold text-purple-900">
+                    <div className="w-full rounded-md border border-amber-200 bg-amber-50 p-3 text-center text-sm font-semibold text-amber-900">
                         Esta preventa se modifica y confirma desde el módulo Preventa. Cuando quede lista, aquí podrá registrar la entrega.
                     </div>
                 );

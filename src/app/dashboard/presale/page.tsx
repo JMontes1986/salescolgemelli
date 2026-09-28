@@ -80,8 +80,8 @@ const statusColors: Record<Purchase['status'], string> = {
     delivered: 'bg-green-500/20 text-green-700',
     'partially-delivered': 'bg-emerald-500/20 text-emerald-700',
     cancelled: 'bg-red-500/20 text-red-700',
-    'pre-sale': 'bg-purple-500/20 text-purple-700',
-    'pre-sale-confirmed': 'bg-teal-500/20 text-teal-700',
+    'pre-sale': 'bg-amber-500/20 text-amber-800',
+    'pre-sale-confirmed': 'bg-blue-500/20 text-blue-800',
 };
 
 export default function PreSalePage() {
@@ -448,7 +448,7 @@ export default function PreSalePage() {
             size="sm"
             onClick={() => handleConfirmPreSale(ps)}
             disabled={confirmingPurchaseId === ps.id || deletingPurchaseId === ps.id}
-            className="w-full bg-purple-600 hover:bg-purple-700 sm:w-auto"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
           >
             <PackagePlus className="mr-2 h-3 w-3" />
             {confirmingPurchaseId === ps.id ? 'Confirmando...' : 'Confirmar y dejar lista'}
@@ -456,7 +456,7 @@ export default function PreSalePage() {
         </>
       )}
       {ps.status === 'pre-sale-confirmed' && (
-        <div className="inline-flex w-full items-center justify-center rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-700 sm:w-auto">
+        <div className="inline-flex w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 sm:w-auto">
           <CheckCircle className="mr-2 h-3 w-3" />
           Preventa lista
         </div>

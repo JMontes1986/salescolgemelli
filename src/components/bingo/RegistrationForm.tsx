@@ -89,7 +89,7 @@ export function BingoRegistrationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bingo-reveal rounded-lg border border-white/12 bg-white p-5 text-[#232328] shadow-[0_28px_80px_-45px_rgba(0,0,0,0.68)] sm:p-7">
+    <form onSubmit={handleSubmit} className="bingo-reveal rounded-lg border border-white/12 bg-white p-5 text-[#172434] shadow-[0_28px_80px_-45px_rgba(7,59,114,0.58)] sm:p-7">
       <div className="grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">
           Nombre completo *
@@ -187,7 +187,7 @@ export function BingoRegistrationForm() {
           type="checkbox"
           checked={form.privacy}
           onChange={(event) => updateField("privacy", event.target.checked)}
-          className="mt-1 h-5 w-5 rounded border-slate-300 accent-[#0eb9c3]"
+          className="mt-1 h-5 w-5 rounded border-slate-300 accent-[#0d4d8b]"
         />
         <span>Autorizo el tratamiento de datos personales para la gestion de mi confirmacion.</span>
       </label>
@@ -210,7 +210,7 @@ export function BingoRegistrationForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#232328] px-5 text-sm font-black text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#34343a] active:translate-y-px disabled:opacity-70"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#073b72] px-5 text-sm font-black text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#0d4d8b] active:translate-y-px disabled:opacity-70"
         >
           {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           Enviar confirmacion
@@ -219,7 +219,7 @@ export function BingoRegistrationForm() {
           href={whatsappUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-12 items-center justify-center rounded-md border border-[#b23178]/25 px-5 text-sm font-black text-[#b23178] transition duration-300 hover:-translate-y-0.5 hover:bg-[#fff1f7] active:translate-y-px"
+          className="inline-flex h-12 items-center justify-center rounded-md border border-[#f2c84b] px-5 text-sm font-black text-[#735d0f] transition duration-300 hover:-translate-y-0.5 hover:bg-[#fff3c4] active:translate-y-px"
         >
           Enviar por WhatsApp
         </a>

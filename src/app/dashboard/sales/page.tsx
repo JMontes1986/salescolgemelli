@@ -359,7 +359,7 @@ export default function SalesPage() {
                                                     <div className='flex flex-wrap items-center gap-1.5'>
                                                         <Badge variant="outline">Stock: {product.stock}</Badge>
                                                         {selfServicePending > 0 && (
-                                                            <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">Autogestión: {selfServicePending}</Badge>
+                                                            <Badge variant="secondary" className="bg-amber-500/20 text-amber-800">Autogestión: {selfServicePending}</Badge>
                                                         )}
                                                         <Badge variant={availableStock > 0 ? "secondary" : "destructive"}>Disp.: {availableStock}</Badge>
                                                     </div>

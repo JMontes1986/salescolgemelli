@@ -278,7 +278,7 @@ export function SecurityAiAssistant() {
 
       {isSelfService ? (
         <div
-          className="flex h-12 items-center gap-2 rounded-full bg-[#b23178] px-4 font-bold text-white shadow-xl shadow-slate-950/20 dark:bg-[#b23178]"
+          className="flex h-12 items-center gap-2 rounded-full border border-[#f2c84b] bg-[#073b72] px-4 font-bold text-white shadow-xl shadow-slate-950/20 dark:bg-[#f2c84b] dark:text-[#073b72]"
           aria-label="IA activa en autogestión"
           role="status"
         >

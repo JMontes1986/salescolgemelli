@@ -455,8 +455,8 @@ export default function SelfServicePage() {
   );
 
   return (
-    <div className="self-service-theme min-h-[100dvh] overflow-hidden bg-[#f5f4ef] pb-32 pt-14 text-[#202522] transition-colors duration-300 sm:pt-4 lg:pb-10">
-      <div className="self-service-bg pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_88%_8%,rgba(23,107,87,0.10),transparent_28%),linear-gradient(180deg,#fbfbf8_0%,#f5f4ef_60%,#edf0eb_100%)]" />
+    <div className="self-service-theme min-h-[100dvh] overflow-hidden bg-background pb-32 pt-14 text-foreground transition-colors duration-300 sm:pt-4 lg:pb-10">
+      <div className="self-service-bg pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_88%_8%,rgba(13,77,139,0.12),transparent_28%),linear-gradient(180deg,#fbfdff_0%,#f4f7fb_60%,#edf4fb_100%)]" />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 py-4 sm:px-6 lg:px-8">
         <header className="relative overflow-hidden rounded-[1.5rem] bg-[#073b72] px-5 py-5 text-white shadow-[0_24px_60px_-42px_rgba(7,59,114,0.8)] sm:px-7">
           <div className="flex items-center justify-between gap-4 border-b border-[#f2c84b]/35 pb-3">
@@ -523,7 +523,7 @@ export default function SelfServicePage() {
                 <h2 className="text-2xl font-bold tracking-[-0.025em] text-[#202522]">Productos disponibles</h2>
                 <p className="text-sm text-[#68706a]">Seleccione un producto para agregarlo al pedido.</p>
               </div>
-              <Badge variant="secondary" className="shrink-0 border border-[#cbd7d1] bg-white px-3 py-1 text-sm font-semibold text-[#176b57] hover:bg-white">
+              <Badge variant="secondary" className="shrink-0 border border-[#d7e1ec] bg-white px-3 py-1 text-sm font-semibold text-[#0d4d8b] hover:bg-white">
                 {products.length} opciones
               </Badge>
             </div>
@@ -531,7 +531,7 @@ export default function SelfServicePage() {
           {isLoading ? (
               <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-40 animate-pulse rounded-2xl border border-[#dde1db] bg-white/70 sm:h-48" />
+                  <div key={item} className="h-40 animate-pulse rounded-2xl border border-[#d7e1ec] bg-white/70 sm:h-48" />
                 ))}
               </div>
           ) : products.length > 0 ? (
@@ -550,7 +550,7 @@ export default function SelfServicePage() {
                     <Card
                       key={product.id}
                       className={cn(
-                        "group overflow-hidden rounded-2xl border border-[#dde1db] bg-white text-[#202522] shadow-[0_16px_36px_-30px_rgba(32,37,34,0.55)] transition duration-200 hover:-translate-y-0.5 hover:border-[#9db9ae] hover:shadow-[0_24px_44px_-30px_rgba(23,79,67,0.42)] active:translate-y-px",
+                        "group overflow-hidden rounded-2xl border border-[#d7e1ec] bg-white text-[#172434] shadow-[0_16px_36px_-30px_rgba(7,59,114,0.34)] transition duration-200 hover:-translate-y-0.5 hover:border-[#6c9bc3] hover:shadow-[0_24px_44px_-30px_rgba(7,59,114,0.38)] active:translate-y-px",
                         isSoldOut && "opacity-60"
                       )}
                     >
@@ -561,7 +561,7 @@ export default function SelfServicePage() {
                         disabled={isSoldOut || hasReachedLimit}
                         aria-label={`Agregar ${product.name}`}
                       >
-                        <div className="relative aspect-[16/10] overflow-hidden bg-[#eef1ed]">
+                        <div className="relative aspect-[16/10] overflow-hidden bg-[#edf4fb]">
                           <Image
                             src={productImageUrl}
                             alt={product.name}
@@ -573,7 +573,7 @@ export default function SelfServicePage() {
                         </div>
                         <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1 sm:left-3 sm:top-3 sm:gap-2">
                           {quantityInCart > 0 && (
-                              <Badge className="bg-[#176b57] px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-[#176b57] sm:px-3 sm:py-1 sm:text-sm">
+                              <Badge className="bg-[#0d4d8b] px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-[#0d4d8b] sm:px-3 sm:py-1 sm:text-sm">
                                 {quantityInCart} en pedido
                               </Badge>
                           )}
@@ -592,7 +592,7 @@ export default function SelfServicePage() {
                         <div className="min-h-[58px] space-y-1 sm:min-h-[72px]">
                           <h3 className="text-sm font-bold leading-snug text-[#202522] sm:text-lg">{product.name}</h3>
                           <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                            <span className="text-lg font-bold text-[#176b57] sm:text-2xl">{formatCurrency(product.price)}</span>
+                            <span className="text-lg font-bold text-[#0d4d8b] sm:text-2xl">{formatCurrency(product.price)}</span>
                             <span className="text-[10px] font-medium leading-tight text-[#68706a] sm:text-right sm:text-xs">
                               {availableStock} disponible{availableStock === 1 ? '' : 's'}
                               {selfServiceReserved > 0 && ` · ${selfServiceReserved} reservado${selfServiceReserved === 1 ? '' : 's'}`}
@@ -605,18 +605,18 @@ export default function SelfServicePage() {
                             <Button
                               size="icon"
                               variant="outline"
-                              className="h-10 w-10 rounded-xl border-[#b9c8c1] bg-white text-[#176b57] hover:bg-[#e5f0eb] sm:h-12 sm:w-12"
+                              className="h-10 w-10 rounded-xl border-[#cbd9e8] bg-white text-[#0d4d8b] hover:bg-[#fff3c4] sm:h-12 sm:w-12"
                               onClick={() => updateQuantity(product.id, quantityInCart - 1)}
                               aria-label={`Quitar una unidad de ${product.name}`}
                             >
                               <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
-                            <div className="flex h-10 items-center justify-center rounded-xl border border-[#cbd7d1] bg-[#f4f7f5] text-base font-bold text-[#202522] sm:h-12 sm:text-lg">
+                            <div className="flex h-10 items-center justify-center rounded-xl border border-[#cbd9e8] bg-[#f0f5fa] text-base font-bold text-[#172434] sm:h-12 sm:text-lg">
                               {quantityInCart}
                             </div>
                             <Button
                               size="icon"
-                              className="h-10 w-10 rounded-xl bg-[#176b57] text-white hover:bg-[#125746] sm:h-12 sm:w-12"
+                              className="h-10 w-10 rounded-xl bg-[#0d4d8b] text-white hover:bg-[#073b72] sm:h-12 sm:w-12"
                               onClick={() => updateQuantity(product.id, quantityInCart + 1)}
                               disabled={hasReachedLimit}
                               aria-label={`Agregar una unidad de ${product.name}`}
@@ -626,7 +626,7 @@ export default function SelfServicePage() {
                           </div>
                         ) : (
                           <Button
-                            className="h-10 w-full rounded-xl bg-[#176b57] text-xs font-semibold text-white shadow-none hover:bg-[#125746] active:translate-y-px sm:h-12 sm:text-sm"
+                            className="h-10 w-full rounded-xl bg-[#0d4d8b] text-xs font-semibold text-white shadow-none hover:bg-[#073b72] active:translate-y-px sm:h-12 sm:text-sm"
                             onClick={() => addToCart(product)}
                             disabled={isSoldOut || hasReachedLimit}
                           >
@@ -640,14 +640,14 @@ export default function SelfServicePage() {
               })}
             </div>
           ) : (
-              <div className="rounded-2xl border border-dashed border-[#b9c8c1] bg-white/70 p-8 text-center text-[#68706a]">
+              <div className="rounded-2xl border border-dashed border-[#cbd9e8] bg-white/70 p-8 text-center text-[#5f6f82]">
                 No hay productos disponibles en Autogestión por el momento.
               </div>
           )}
           </section>
 
           <aside className="space-y-4 lg:sticky lg:top-5">
-          <Card className="border border-[#cfd6d1] bg-white text-[#202522] shadow-[0_24px_56px_-36px_rgba(32,37,34,0.52)]">
+          <Card className="border border-[#d7e1ec] bg-white text-[#172434] shadow-[0_24px_56px_-36px_rgba(7,59,114,0.34)]">
             <CardHeader>
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -656,7 +656,7 @@ export default function SelfServicePage() {
                       {cartItemCount > 0 ? `${cartItemCount} producto${cartItemCount === 1 ? '' : 's'} seleccionado${cartItemCount === 1 ? '' : 's'}` : 'El carrito está vacío'}
                     </CardDescription>
                   </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e5f0eb] text-lg font-bold text-[#176b57]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fff3c4] text-lg font-bold text-[#073b72]">
                     {cartItemCount}
                   </div>
                 </div>
@@ -664,13 +664,13 @@ export default function SelfServicePage() {
             </CardHeader>
               <CardContent className="space-y-4">
                 {cart.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[#b9c8c1] bg-[#f7f8f5] p-6 text-center text-sm text-[#68706a]">
+                  <div className="rounded-2xl border border-dashed border-[#cbd9e8] bg-[#f6f9fc] p-6 text-center text-sm text-[#5f6f82]">
                     Su pedido está vacío. Agregue un producto para comenzar.
                   </div>
                 ) : (
                   <div className="space-y-3">
                       {cart.map(item => (
-                      <div key={item.id} className="rounded-2xl border border-[#dde1db] bg-[#f7f8f5] p-3">
+                      <div key={item.id} className="rounded-2xl border border-[#d7e1ec] bg-[#f6f9fc] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-bold leading-tight">{item.name}</p>
@@ -683,7 +683,7 @@ export default function SelfServicePage() {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-11 w-11 rounded-xl border-[#cbd7d1] bg-white text-[#176b57] hover:bg-[#e5f0eb]"
+                                className="h-11 w-11 rounded-xl border-[#cbd9e8] bg-white text-[#0d4d8b] hover:bg-[#fff3c4]"
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                 aria-label={`Quitar una unidad de ${item.name}`}
                               >
@@ -693,7 +693,7 @@ export default function SelfServicePage() {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-11 w-11 rounded-xl border-[#cbd7d1] bg-white text-[#176b57] hover:bg-[#e5f0eb]"
+                                className="h-11 w-11 rounded-xl border-[#cbd9e8] bg-white text-[#0d4d8b] hover:bg-[#fff3c4]"
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 aria-label={`Agregar una unidad de ${item.name}`}
                               >
@@ -714,26 +714,26 @@ export default function SelfServicePage() {
                       ))}
                   </div>
                 )}
-                <div className="rounded-2xl border border-[#cbd7d1] bg-[#e5f0eb] p-4">
-                  <div className="flex justify-between text-sm font-medium text-[#4f6e63]">
+                <div className="rounded-2xl border border-[#f2c84b] bg-[#fff3c4] p-4">
+                  <div className="flex justify-between text-sm font-medium text-[#42566d]">
                     <span>Total a pagar</span>
                     <span>{cartItemCount} producto{cartItemCount === 1 ? '' : 's'}</span>
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-3">
                     <span className="text-xl font-bold text-[#202522]">Total</span>
-                    <span className="text-3xl font-bold text-[#176b57]">{formatCurrency(subtotal)}</span>
+                    <span className="text-3xl font-bold text-[#073b72]">{formatCurrency(subtotal)}</span>
                   </div>
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
               <Button 
-                  className="h-14 w-full rounded-xl bg-[#176b57] text-base font-semibold text-white shadow-none hover:bg-[#125746] active:translate-y-px"
+                  className="h-14 w-full rounded-xl bg-[#0d4d8b] text-base font-semibold text-white shadow-none hover:bg-[#073b72] active:translate-y-px"
                 onClick={handleInitiatePayment}
                 disabled={cart.length === 0 || isProcessing}
               >
                 {isProcessing ? 'Procesando...' : (editingPurchase ? 'Guardar Cambios' : 'Generar Código de Pago')}
               </Button>
-                <Button variant="outline" className="h-12 w-full rounded-xl border-[#cbd7d1] bg-white text-base font-semibold text-[#4f5751] hover:bg-[#f1f3ef] hover:text-[#202522]" onClick={clearCart} disabled={cart.length === 0 && !editingPurchase}>
+                <Button variant="outline" className="h-12 w-full rounded-xl border-[#cbd9e8] bg-white text-base font-semibold text-[#42566d] hover:bg-[#edf4fb] hover:text-[#172434]" onClick={clearCart} disabled={cart.length === 0 && !editingPurchase}>
                 {editingPurchase ? 'Cancelar Edición' : 'Vaciar'}
               </Button>
             </CardFooter>
@@ -742,7 +742,7 @@ export default function SelfServicePage() {
         </div>
 
         <section className="mt-2">
-        <Card className="border border-[#dde1db] bg-white text-[#202522] shadow-[0_22px_52px_-38px_rgba(32,37,34,0.48)]">
+        <Card className="border border-[#d7e1ec] bg-white text-[#172434] shadow-[0_22px_52px_-38px_rgba(7,59,114,0.32)]">
           <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.02em] text-[#202522]">
@@ -762,36 +762,36 @@ export default function SelfServicePage() {
                     const purchaseSource = getPurchaseSource(purchase);
 
                     return (
-                      <div key={purchase.id} className="rounded-2xl border border-[#dde1db] bg-[#f7f8f5] p-4">
+                      <div key={purchase.id} className="rounded-2xl border border-[#d7e1ec] bg-[#f6f9fc] p-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0 space-y-3">
                           <div className="space-y-1">
-                            <p className="text-xs font-semibold text-[#176b57]">Código de compra</p>
+                            <p className="text-xs font-semibold text-[#0d4d8b]">Código de compra</p>
                             <p className="font-mono text-base font-bold">{purchase.id}</p>
                             <p className="text-sm text-[#68706a]">{purchase.date}</p>
-                            <Badge variant="outline" className="mt-1 w-fit border-[#cbd7d1] bg-white text-[#176b57]">
+                            <Badge variant="outline" className="mt-1 w-fit border-[#cbd9e8] bg-white text-[#0d4d8b]">
                               {getPurchaseSourceLabel(purchase)}
                             </Badge>
                           </div>
                           <PurchaseModifiedIndicator purchase={purchase} audience="parent" showDetails />
                           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                             {purchase.items.map((item) => (
-                              <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#dde1db] bg-white p-3">
+                              <div key={`${purchase.id}-${item.id}`} className="rounded-2xl border border-[#d7e1ec] bg-white p-3">
                                 <p className="font-bold leading-tight text-[#202522]">{item.name}</p>
                                 <p className="text-sm text-[#68706a]">Cantidad: {item.quantity}</p>
                                 {purchaseSource === 'pos' ? (
                                   <p className="text-xs font-semibold text-emerald-700">Comprado y pagado en caja</p>
                                 ) : (
-                                  <p className="text-xs font-semibold text-[#176b57]">Entregado: {item.deliveredQuantity || 0} · Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
+                                  <p className="text-xs font-semibold text-[#0d4d8b]">Entregado: {item.deliveredQuantity || 0} · Pendiente: {Math.max(item.quantity - (item.deliveredQuantity || 0), 0)}</p>
                                 )}
-                                <p className="text-sm font-bold text-[#176b57]">{formatCurrency(item.price * item.quantity)}</p>
+                                <p className="text-sm font-bold text-[#0d4d8b]">{formatCurrency(item.price * item.quantity)}</p>
                               </div>
                             ))}
                           </div>
                         </div>
                         <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
                           {hasSessionActions ? (
-                            <div className="rounded-2xl border border-[#cbd7d1] bg-white p-3 text-center shadow-sm">
+                            <div className="rounded-2xl border border-[#cbd9e8] bg-white p-3 text-center shadow-sm">
                               <img
                                 src={buildDeliveryQrImageUrl(purchase)}
                                 alt={`QR de entrega ${purchase.id}`}
@@ -799,12 +799,12 @@ export default function SelfServicePage() {
                                 height={116}
                                 className="mx-auto h-28 w-28"
                               />
-                              <p className="mt-2 text-xs font-semibold text-[#176b57]">Código adicional</p>
-                              <p className="font-mono text-lg font-bold text-[#176b57]">{purchase.deliveryCode || 'Pendiente'}</p>
+                              <p className="mt-2 text-xs font-semibold text-[#0d4d8b]">Código adicional</p>
+                              <p className="font-mono text-lg font-bold text-[#0d4d8b]">{purchase.deliveryCode || 'Pendiente'}</p>
                             </div>
                           ) : (
-                            <div className="rounded-2xl border border-[#cbd7d1] bg-white p-3 text-center shadow-sm">
-                              <p className="text-xs font-semibold text-[#176b57]">
+                            <div className="rounded-2xl border border-[#cbd9e8] bg-white p-3 text-center shadow-sm">
+                              <p className="text-xs font-semibold text-[#0d4d8b]">
                                 {purchaseSource === 'pos' ? 'Compra en punto de venta' : 'Compra anterior'}
                               </p>
                               <p className="mt-1 text-sm text-[#68706a]">
@@ -818,7 +818,7 @@ export default function SelfServicePage() {
                             </Badge>
                             <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
                             {hasSessionActions && (purchase.status === 'pending' || purchase.status === 'pre-sale') && (
-                              <Button variant="outline" className="h-11 rounded-xl border-[#cbd7d1] bg-white text-[#176b57] hover:bg-[#e5f0eb] hover:text-[#174f43]" onClick={() => handleEditPurchase(purchase)}>
+                              <Button variant="outline" className="h-11 rounded-xl border-[#cbd9e8] bg-white text-[#0d4d8b] hover:bg-[#fff3c4] hover:text-[#073b72]" onClick={() => handleEditPurchase(purchase)}>
                                 <Pencil className="h-4 w-4" />
                                 Modificar
                               </Button>
@@ -831,21 +831,21 @@ export default function SelfServicePage() {
                   })}
               </div>
             ) : (
-                <p className="rounded-2xl border border-dashed border-[#b9c8c1] bg-[#f7f8f5] p-6 text-center text-[#68706a]">Cuando genere un pedido, podrá consultar aquí su código y estado.</p>
+                <p className="rounded-2xl border border-dashed border-[#cbd9e8] bg-[#f6f9fc] p-6 text-center text-[#5f6f82]">Cuando genere un pedido, podrá consultar aquí su código y estado.</p>
             )}
           </CardContent>
         </Card>
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#cbd7d1] bg-white/95 p-3 shadow-[0_-12px_32px_rgba(32,37,34,0.12)] backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#cbd9e8] bg-white/95 p-3 shadow-[0_-12px_32px_rgba(7,59,114,0.14)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-[1fr_auto] items-center gap-3">
           <div>
             <p className="text-xs font-medium text-[#68706a]">{cartItemCount} producto{cartItemCount === 1 ? '' : 's'} en el pedido</p>
-            <p className="text-xl font-bold text-[#176b57]">{formatCurrency(subtotal)}</p>
+            <p className="text-xl font-bold text-[#0d4d8b]">{formatCurrency(subtotal)}</p>
           </div>
           <Button
-            className="h-14 rounded-xl bg-[#176b57] px-5 text-sm font-semibold text-white hover:bg-[#125746]"
+            className="h-14 rounded-xl bg-[#0d4d8b] px-5 text-sm font-semibold text-white hover:bg-[#073b72]"
             onClick={handleInitiatePayment}
             disabled={cart.length === 0 || isProcessing}
           >

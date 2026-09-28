@@ -8,17 +8,19 @@ La composicion usa bloques amplios, jerarquia tipografica firme y espacios en bl
 
 ## 2. Color Palette & Roles
 
-- **Canvas Linen** (`#F5F4EF`) — fondo principal calido; reduce el brillo sin verse gris.
+- **Canvas Blue Mist** (`#F4F7FB`) — fondo principal frio y luminoso; conecta todas las areas sin competir con el contenido.
 - **Pure Surface** (`#FFFFFF`) — paneles, formularios y superficies elevadas.
-- **Charcoal Ink** (`#202522`) — texto principal; reemplaza el negro puro.
-- **Quiet Olive** (`#68706A`) — texto secundario, ayudas y metadatos.
-- **Mist Border** (`#DDE1DB`) — divisores y bordes estructurales de 1 px.
-- **Franciscan Green** (`#176B57`) — unico acento; acciones primarias, foco, seleccion y estados activos.
-- **Soft Green Wash** (`#E5F0EB`) — fondos informativos vinculados al acento.
+- **Navy Ink** (`#172434`) — texto principal; reemplaza el negro puro.
+- **Slate Blue** (`#5F6F82`) — texto secundario, ayudas y metadatos.
+- **Blue Mist Border** (`#D7E1EC`) — divisores y bordes estructurales de 1 px.
+- **Gemelli Blue** (`#0D4D8B`) — acento principal; acciones, foco, seleccion y estados activos.
+- **Deep Gemelli Blue** (`#073B72`) — superficies institucionales de alto contraste.
+- **Gemelli Yellow** (`#F2C84B`) — acento complementario para hitos, llamadas destacadas e indicadores.
+- **Soft Yellow Wash** (`#FFF3C4`) — fondos seleccionados y realces vinculados al amarillo.
 - **Semantic Amber** (`#A86413`) — solo avisos y estados pendientes, nunca decoracion.
 - **Semantic Red** (`#B42318`) — errores y acciones destructivas.
 
-No usar gradientes multicolor, cyan, magenta o amarillo como decoracion simultanea. El verde institucional es el unico acento de marca.
+No usar gradientes multicolor, cyan, magenta o morado como decoracion. Azul y amarillo son los unicos acentos de marca; los colores semanticos se reservan para estados.
 
 ## 3. Typography Rules
 
@@ -30,9 +32,9 @@ No usar gradientes multicolor, cyan, magenta o amarillo como decoracion simultan
 
 ## 4. Component Stylings
 
-- **Botones:** altura minima de 44 px, radio de 12–14 px, texto semibold. El primario usa Franciscan Green; secundarios blancos con borde Mist. Al presionar se desplazan 1 px hacia abajo. Sin brillos externos.
+- **Botones:** altura minima de 44 px, radio de 12–14 px, texto semibold. El primario usa Gemelli Blue; el amarillo se reserva para llamadas institucionales destacadas. Los secundarios son blancos con borde Blue Mist. Al presionar se desplazan 1 px hacia abajo. Sin brillos externos.
 - **Paneles:** radio de 20–24 px, borde fino y sombra corta tintada al fondo. Solo se elevan formularios, resumenes y acciones principales; las listas densas usan divisores.
-- **Campos:** etiqueta visible arriba, ayuda opcional debajo y error inmediatamente posterior. Altura minima de 48 px y foco verde de alto contraste.
+- **Campos:** etiqueta visible arriba, ayuda opcional debajo y error inmediatamente posterior. Altura minima de 48 px y foco azul de alto contraste.
 - **Productos:** imagen con proporcion consistente, nombre legible sin mayusculas, precio prominente y disponibilidad expresada en lenguaje simple. La tarjeta completa puede agregar el producto, pero conserva un boton explicito.
 - **Pasos:** secuencia vertical u horizontal numerada con verbos breves. En movil se convierte en una sola columna.
 - **Carga:** esqueletos con las mismas dimensiones del contenido final. No usar spinners genericos.

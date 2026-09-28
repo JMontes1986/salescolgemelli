@@ -74,29 +74,29 @@ export default function SelfServiceTutorialPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5efe6] pb-12 text-[#1a1a1a]">
-      <header className="sticky top-0 z-40 border-b-2 border-[#e8ddd0] bg-white/95 shadow-sm backdrop-blur">
+    <main className="min-h-[100dvh] bg-background pb-12 text-foreground">
+      <header className="sticky top-0 z-40 border-b-2 border-[#d7e1ec] bg-white/95 shadow-sm backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <Image
             src="/molly-ventas.png"
             alt="Logo de Molly Ventas"
             width={56}
             height={56}
-            className="h-14 w-14 rounded-full border-2 border-[#e8ddd0] bg-[#fff8ee] object-contain p-1"
+            className="h-14 w-14 rounded-full border-2 border-[#f2c84b] bg-[#fff3c4] object-contain p-1"
             priority
           />
           <div className="min-w-0">
             <h1 className="text-lg font-black sm:text-xl">Tutorial de Autogestión</h1>
             <p className="text-xs font-bold text-[#777] sm:text-sm">Compre sin cédula, usando solo su celular</p>
           </div>
-          <Button asChild variant="outline" className="ml-auto border-[#00b5bd]/35 bg-[#e6faf9] font-black text-[#006b6f]">
+          <Button asChild variant="outline" className="ml-auto border-[#0d4d8b]/35 bg-[#edf4fb] font-black text-[#073b72]">
             <Link href="/self-service">
               <ShoppingCart className="h-4 w-4" />
               Tienda
             </Link>
           </Button>
         </div>
-        <div className="border-t border-[#e8ddd0] px-4 py-3">
+        <div className="border-t border-[#d7e1ec] px-4 py-3">
           <div className="mx-auto grid max-w-3xl grid-cols-4 gap-2">
             {steps.map((step, index) => {
               const Icon = step.icon;
@@ -108,8 +108,8 @@ export default function SelfServiceTutorialPage() {
                   className={cn(
                     "rounded-xl border px-2 py-2 text-center text-[11px] font-black transition sm:text-xs",
                     currentStep === index
-                      ? "border-[#00b5bd] bg-[#e6faf9] text-[#006b6f]"
-                      : "border-[#e8ddd0] bg-white text-[#777]",
+                      ? "border-[#0d4d8b] bg-[#fff3c4] text-[#073b72]"
+                      : "border-[#d7e1ec] bg-white text-[#5f6f82]",
                   )}
                 >
                   <Icon className="mx-auto mb-1 h-4 w-4" />
@@ -122,11 +122,11 @@ export default function SelfServiceTutorialPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <section className="rounded-3xl border border-[#e8ddd0] bg-white p-5 shadow-[0_10px_28px_rgba(26,26,26,0.06)] sm:p-7">
+        <section className="rounded-3xl border border-[#d7e1ec] bg-white p-5 shadow-[0_10px_28px_rgba(7,59,114,0.08)] sm:p-7">
           {currentStep === 0 && (
             <div className="space-y-5">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#006b6f]">Paso 1</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 1</p>
                 <h2 className="mt-2 text-2xl font-black">Elija sus productos</h2>
                 <p className="mt-2 font-semibold text-[#666]">Puede comenzar a comprar inmediatamente. No necesita registrarse ni ingresar cédula.</p>
               </div>
@@ -134,30 +134,30 @@ export default function SelfServiceTutorialPage() {
                 {products.map((product, index) => {
                   const quantity = quantities[index];
                   return (
-                    <article key={product.name} className="rounded-2xl border-2 border-[#e8ddd0] bg-[#fff8ee] p-3 text-center">
+                    <article key={product.name} className="rounded-2xl border-2 border-[#d7e1ec] bg-[#f8fbfe] p-3 text-center">
                       <span className="text-3xl">{product.icon}</span>
                       <p className="mt-2 text-sm font-black uppercase">{product.name}</p>
-                      <p className="text-sm font-black text-[#d4006a]">{formatCurrency(product.price)}</p>
+                      <p className="text-sm font-black text-[#0d4d8b]">{formatCurrency(product.price)}</p>
                       {quantity === 0 ? (
-                        <button type="button" onClick={() => changeQuantity(index, 1)} className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-[#00b5bd] to-[#f5c842] text-xs font-black text-white">
+                        <button type="button" onClick={() => changeQuantity(index, 1)} className="mt-3 h-9 w-full rounded-xl bg-[#0d4d8b] text-xs font-black text-white hover:bg-[#073b72]">
                           Agregar
                         </button>
                       ) : (
                         <div className="mt-3 grid grid-cols-[32px_1fr_32px] items-center gap-1">
-                          <button type="button" onClick={() => changeQuantity(index, quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00a878] text-white"><Minus className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => changeQuantity(index, quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0d4d8b] text-white"><Minus className="h-4 w-4" /></button>
                           <span className="font-black">{quantity}</span>
-                          <button type="button" onClick={() => changeQuantity(index, quantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00a878] text-white"><Plus className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => changeQuantity(index, quantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0d4d8b] text-white"><Plus className="h-4 w-4" /></button>
                         </div>
                       )}
                     </article>
                   );
                 })}
               </div>
-              <div className="rounded-2xl border border-[#ffadd4] bg-[#fff0f6] p-4">
-                <div className="flex items-center justify-between font-black"><span>Total</span><span className="text-xl text-[#d4006a]">{formatCurrency(total)}</span></div>
+              <div className="rounded-2xl border border-[#f2c84b] bg-[#fff3c4] p-4">
+                <div className="flex items-center justify-between font-black"><span>Total</span><span className="text-xl text-[#073b72]">{formatCurrency(total)}</span></div>
               </div>
               <div className="flex justify-end">
-                <Button disabled={cart.length === 0} onClick={() => goToStep(1)} className="bg-gradient-to-r from-[#00b5bd] to-[#f5c842] font-black text-white">Continuar <ChevronRight className="h-4 w-4" /></Button>
+                <Button disabled={cart.length === 0} onClick={() => goToStep(1)} className="bg-[#0d4d8b] font-black text-white hover:bg-[#073b72]">Continuar <ChevronRight className="h-4 w-4" /></Button>
               </div>
             </div>
           )}
@@ -165,7 +165,7 @@ export default function SelfServiceTutorialPage() {
           {currentStep === 1 && (
             <div className="space-y-5">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#006b6f]">Paso 2</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 2</p>
                 <h2 className="mt-2 text-2xl font-black">Ingrese solo su celular</h2>
                 <p className="mt-2 font-semibold text-[#666]">El celular se solicita al finalizar el pedido. La tienda no pide cédula.</p>
               </div>
@@ -178,12 +178,12 @@ export default function SelfServiceTutorialPage() {
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 placeholder="3001234567"
-                className="h-14 w-full rounded-2xl border-2 border-[#e8ddd0] bg-white px-4 text-lg font-black outline-none focus:border-[#00b5bd] focus:ring-4 focus:ring-[#00b5bd]/15"
+                className="h-14 w-full rounded-2xl border-2 border-[#d7e1ec] bg-white px-4 text-lg font-black outline-none focus:border-[#0d4d8b] focus:ring-4 focus:ring-[#0d4d8b]/15"
               />
-              <p className="rounded-2xl border border-[#b2e8e8] bg-[#e6faf9] p-4 text-sm font-semibold text-[#006b6f]">Este número permite identificar el pedido y contactar al comprador si es necesario.</p>
+              <p className="rounded-2xl border border-[#cbd9e8] bg-[#edf4fb] p-4 text-sm font-semibold text-[#073b72]">Este número permite identificar el pedido y contactar al comprador si es necesario.</p>
               <div className="flex justify-between gap-3">
                 <Button variant="outline" onClick={() => goToStep(0)}><ChevronLeft className="h-4 w-4" />Anterior</Button>
-                <Button disabled={!validPhone} onClick={() => goToStep(2)} className="bg-gradient-to-r from-[#00b5bd] to-[#f5c842] font-black text-white">Continuar <ChevronRight className="h-4 w-4" /></Button>
+                <Button disabled={!validPhone} onClick={() => goToStep(2)} className="bg-[#0d4d8b] font-black text-white hover:bg-[#073b72]">Continuar <ChevronRight className="h-4 w-4" /></Button>
               </div>
             </div>
           )}
@@ -191,7 +191,7 @@ export default function SelfServiceTutorialPage() {
           {currentStep === 2 && (
             <div className="space-y-5">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#006b6f]">Paso 3</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 3</p>
                 <h2 className="mt-2 text-2xl font-black">Escoja cómo pagar</h2>
                 <p className="mt-2 font-semibold text-[#666]">Puede pagar en caja o por DaviPlata/Bre-B usando el código del pedido como referencia.</p>
               </div>
@@ -200,8 +200,8 @@ export default function SelfServiceTutorialPage() {
                   ["caja", "Pagar en caja", "Presente el código o QR al cajero."],
                   ["daviplata", "DaviPlata / Bre-B", "Transfiera a la llave del colegio."],
                 ] as const).map(([value, title, description]) => (
-                  <button key={value} type="button" onClick={() => setPaymentMethod(value)} className={cn("rounded-2xl border-2 p-5 text-left", paymentMethod === value ? "border-[#00b5bd] bg-[#e6faf9]" : "border-[#e8ddd0]")}>
-                    <CreditCard className="mb-3 h-8 w-8 text-[#00b5bd]" />
+                  <button key={value} type="button" onClick={() => setPaymentMethod(value)} className={cn("rounded-2xl border-2 p-5 text-left", paymentMethod === value ? "border-[#0d4d8b] bg-[#fff3c4]" : "border-[#d7e1ec]")}>
+                    <CreditCard className="mb-3 h-8 w-8 text-[#0d4d8b]" />
                     <p className="font-black uppercase">{title}</p>
                     <p className="mt-1 text-sm font-semibold text-[#666]">{description}</p>
                   </button>
@@ -209,27 +209,27 @@ export default function SelfServiceTutorialPage() {
               </div>
               <div className="flex justify-between gap-3">
                 <Button variant="outline" onClick={() => goToStep(1)}><ChevronLeft className="h-4 w-4" />Anterior</Button>
-                <Button disabled={!paymentMethod} onClick={() => goToStep(3)} className="bg-gradient-to-r from-[#00b5bd] to-[#f5c842] font-black text-white">Ver código <ChevronRight className="h-4 w-4" /></Button>
+                <Button disabled={!paymentMethod} onClick={() => goToStep(3)} className="bg-[#0d4d8b] font-black text-white hover:bg-[#073b72]">Ver código <ChevronRight className="h-4 w-4" /></Button>
               </div>
             </div>
           )}
 
           {currentStep === 3 && (
             <div className="space-y-5 text-center">
-              <CheckCircle2 className="mx-auto h-16 w-16 text-[#00a878]" />
+              <CheckCircle2 className="mx-auto h-16 w-16 text-[#0d4d8b]" />
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#006b6f]">Paso 4</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 4</p>
                 <h2 className="mt-2 text-2xl font-black">Guarde su código de compra</h2>
                 <p className="mt-2 font-semibold text-[#666]">Al confirmar, la tienda mostrará el código y el QR para pagar y retirar los productos.</p>
               </div>
-              <div className="mx-auto max-w-sm rounded-3xl border-2 border-[#00b5bd] bg-[#e6faf9] p-6">
+              <div className="mx-auto max-w-sm rounded-3xl border-2 border-[#f2c84b] bg-[#fff3c4] p-6">
                 <QrCode className="mx-auto h-24 w-24 text-[#1a1a1a]" />
-                <p className="mt-3 font-mono text-2xl font-black text-[#d4006a]">PVX0001</p>
+                <p className="mt-3 font-mono text-2xl font-black text-[#073b72]">PVX0001</p>
                 <p className="mt-1 text-sm font-semibold text-[#666]">Ejemplo de código; cada compra genera uno diferente.</p>
               </div>
               <div className="flex flex-col justify-center gap-3 sm:flex-row">
                 <Button variant="outline" onClick={resetTutorial}><RotateCcw className="h-4 w-4" />Repetir tutorial</Button>
-                <Button asChild className="bg-gradient-to-r from-[#00b5bd] to-[#f5c842] font-black text-white"><Link href="/self-service"><ShoppingCart className="h-4 w-4" />Ir a comprar</Link></Button>
+                <Button asChild className="bg-[#0d4d8b] font-black text-white hover:bg-[#073b72]"><Link href="/self-service"><ShoppingCart className="h-4 w-4" />Ir a comprar</Link></Button>
               </div>
             </div>
           )}

@@ -120,7 +120,7 @@ const getActionVariant = (action: AuditLogAction) => {
         case 'STOCK_RESTOCK':
         case 'SELF_SERVICE_HISTORY':
         case 'RETURN_PROCESS':
-            return 'bg-purple-500/20 text-purple-700';
+            return 'bg-blue-500/20 text-blue-800';
         case 'SELF_SERVICE_SECURITY_ALERT':
         case 'AUDIT_LOG_FAILURE':
             return 'bg-red-500/20 text-red-700';
