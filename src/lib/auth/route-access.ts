@@ -12,6 +12,7 @@ const dashboardRoutePermissions = [
   { prefix: "/dashboard/products", permission: "products" },
   { prefix: "/dashboard/presale", permission: "presale", alternatePermissions: ["cashbox"] },
   { prefix: "/dashboard/returns", permission: "returns" },
+  { prefix: "/dashboard/breb-payments", permission: "cashbox" },
   { prefix: "/dashboard/cashbox", permission: "cashbox" },
   { prefix: "/dashboard/redeem", permission: "redeem" },
   { prefix: "/dashboard/bingo", permission: "users" },

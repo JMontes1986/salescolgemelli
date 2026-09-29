@@ -400,32 +400,6 @@ export async function getDashboardPreSales(): Promise<Purchase[]> {
   return sortByNewest(purchases.map(ensureReturnedFlags)).filter(isDashboardPreSale);
 }
 
-export async function getSelfServicePurchasesByCedula(cedula: string): Promise<Purchase[]> {
-  const safeCedula = sanitizeCustomerIdentifier(cedula, 'La cédula');
-
-  try {
-    const purchases = await callRpc<Purchase[]>('get_self_service_purchases_by_cedula', {
-      p_cedula: safeCedula,
-    });
-    return sortByNewest((purchases ?? []).map(ensureReturnedFlags));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('get_self_service_purchases_by_cedula')) {
-      throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para consultar el historial de compras por cédula en autogestión.');
-    }
-
-    throw error;
-  }
-}
-
-export async function getSelfServicePurchasesByCustomer(
-  cedula: string,
-  celular: string,
-): Promise<Purchase[]> {
-  sanitizeCustomerIdentifier(cedula, 'La cédula');
-  sanitizeCustomerPhone(celular);
-  throw new Error('El historial público por cédula y celular fue deshabilitado por seguridad. Consulte el estado con el código de compra o desde el dashboard autenticado.');
-}
-
 export async function getPurchasesByCelular(celular: string): Promise<Purchase[]> {
   const purchases = await selectRows<Purchase>('purchases', { celular: `eq.${sanitizeCustomerPhone(celular)}` });
   return sortByNewest(purchases.map(ensureReturnedFlags));
@@ -480,39 +454,13 @@ export async function addPreSalePurchase(purchase: NewPurchase): Promise<Purchas
   const isSelfService = !purchase.sellerId && !purchase.sellerName;
   if (isSelfService) {
     const celular = sanitizeCustomerPhone(purchase.celular);
-    // Supabase still requires the legacy customer-reference field. New
-    // self-service purchases use the normalized phone number internally so
-    // the public flow never has to request a document number.
-    const customerReference = purchase.cedula.trim()
-      ? sanitizeCustomerIdentifier(purchase.cedula, 'La cédula')
-      : celular.replace(/\D/g, '');
-
-    if (!customerIdPattern.test(customerReference)) {
-      throw new Error('El celular debe contener entre 7 y 20 dígitos.');
-    }
-
-    try {
-      const savedPurchase = ensureReturnedFlags(await callRpc<Purchase>('create_self_service_purchase', {
-        p_items: normalizeCartInput(purchase.items),
-        p_cedula: customerReference,
-        p_celular: celular,
-      }));
-
-      await addAuditLog({
-        userId: savedPurchase.cedula,
-        userName: 'Cliente (Autogestión)',
-        action: 'SELF_SERVICE_PURCHASE',
-        details: `Nueva compra de autogestión ${savedPurchase.id} registrada por ${savedPurchase.total}. Unidades: ${countPurchaseUnits(savedPurchase.items)}.`,
-      });
-
-      return savedPurchase;
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('create_self_service_purchase')) {
-        throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para crear compras de autogestión con precios, stock y QR firmados desde la base.');
-      }
-
-      throw error;
-    }
+    const response = await fetch('/api/self-service/purchases', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', cache: 'no-store',
+      body: JSON.stringify({ items: normalizeCartInput(purchase.items), celular }),
+    });
+    const body = await response.json().catch(() => null) as { purchase?: Purchase; message?: string } | null;
+    if (!response.ok || !body?.purchase) throw new Error(body?.message || 'No se pudo crear la compra.');
+    return ensureReturnedFlags(body.purchase);
   }
 
   const cedula = sanitizeCustomerIdentifier(purchase.cedula, 'La cédula');
@@ -612,26 +560,13 @@ export async function updatePendingPurchase(
 ): Promise<Purchase> {
   const safePurchaseId = sanitizeRecordId(purchaseId, 'La compra');
   if (options.selfServiceOnly) {
-    if (!options.customerCedula || !options.customerCelular) {
-      throw new Error('Los datos del cliente son requeridos para modificar esta compra.');
-    }
-
-    try {
-      const updatedPurchase = ensureReturnedFlags(await callRpc<Purchase>('update_self_service_pending_purchase', {
-        p_purchase_id: safePurchaseId,
-        p_items: normalizeCartInput(newCart),
-        p_cedula: sanitizeCustomerIdentifier(options.customerCedula, 'La cédula'),
-        p_celular: sanitizeCustomerPhone(options.customerCelular),
-      }));
-
-      return updatedPurchase;
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('update_self_service_pending_purchase')) {
-        throw new Error('Falta actualizar Supabase. Ejecuta el SQL nuevo de supabase/schema.sql para modificar compras pendientes de autogestión.');
-      }
-
-      throw error;
-    }
+    const response = await fetch(`/api/self-service/purchases/${encodeURIComponent(safePurchaseId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', cache: 'no-store',
+      body: JSON.stringify({ items: normalizeCartInput(newCart) }),
+    });
+    const body = await response.json().catch(() => null) as { purchase?: Purchase; message?: string } | null;
+    if (!response.ok || !body?.purchase) throw new Error(body?.message || 'No se pudo modificar la compra.');
+    return ensureReturnedFlags(body.purchase);
   }
 
   const originalPurchase = await getPurchaseById(safePurchaseId);

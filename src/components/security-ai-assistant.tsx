@@ -26,13 +26,13 @@ type SecurityAuditorResponse = {
 
 const SELF_SERVICE_SECURITY_EVIDENCE = [
   "Estado real de /self-service en este checkout:",
-  "- No existe endpoint público de historial por cédula/celular en la UI; la pantalla pública solo muestra compras generadas durante la sesión actual.",
-  "- La función get_self_service_purchases_by_customer existe solo como compatibilidad SQL, pero el execute fue revocado para anon/authenticated y el servicio cliente devuelve error si alguien intenta usarla.",
+  "- El historial público se limita a los IDs incluidos en una sesión HttpOnly firmada; no existe búsqueda global por documento o celular.",
+  "- Las funciones públicas antiguas de historial por cédula/celular fueron eliminadas del esquema final.",
   "- La creación pública de compras no inserta directo en purchases: usa RPC create_self_service_purchase con security definer.",
   "- El cliente envía solo id y quantity del carrito; Supabase vuelve a leer productos, disponibilidad, precio y stock antes de guardar.",
   "- purchases revocó INSERT para anon; anon solo puede ejecutar create_self_service_purchase.",
   "- El QR de entrega usa token HMAC con expiración y validación en get_purchase_for_delivery_lookup.",
-  "- El QR/enlace de pago DaviPlata no incluye el monto como parámetro; el total visible viene de la compra confirmada por Supabase.",
+  "- Bre-B es manual: solo se muestra la llave y un QR oficial opcional generado localmente; reportar no marca la compra como pagada.",
   "- Las reservas de autogestión usan reservationExpiresAt con timeout de 6 horas; el cálculo de disponibilidad y las RPC de compra descuentan solo reservas pendientes no vencidas (reservationExpiresAt > now()).",
   "- No hay tablas orders, order_items ni payment_logs en este esquema; el flujo actual usa purchases con items jsonb.",
 ].join("\n");

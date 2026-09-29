@@ -10,7 +10,7 @@ type MemoryAttempt = {
   resetAt: number;
 };
 
-type RateLimitResult = {
+export type RateLimitResult = {
   limited: boolean;
   retryAfter: number;
 };
@@ -41,10 +41,12 @@ function hashRateLimitKey(key: string) {
   return createHash("sha256").update(key).digest("hex");
 }
 
-function consumeMemoryAttempt(key: string): RateLimitResult {
+function consumeMemoryAttempt(
+  key: string,
+  maxAttempts = getRateLimitMaxAttempts(),
+  windowSeconds = getRateLimitWindowSeconds(),
+): RateLimitResult {
   const now = Date.now();
-  const windowSeconds = getRateLimitWindowSeconds();
-  const maxAttempts = getRateLimitMaxAttempts();
   const currentAttempt = memoryAttempts.get(key);
 
   if (!currentAttempt || currentAttempt.resetAt <= now) {
@@ -125,6 +127,26 @@ export async function consumeLoginRateLimit(key: string): Promise<RateLimitResul
   } catch (error) {
     console.warn("Login rate limit fell back to local memory.", error);
     return consumeMemoryAttempt(hashedKey);
+  }
+}
+
+export async function consumeRateLimit(
+  key: string,
+  maxAttempts: number,
+  windowSeconds: number,
+): Promise<RateLimitResult> {
+  const hashedKey = hashRateLimitKey(key);
+  try {
+    const result = await callSupabaseRateLimitRpc<SupabaseRateLimitResponse>("consume_login_rate_limit", {
+      p_key: hashedKey,
+      p_max_attempts: Math.max(1, Math.floor(maxAttempts)),
+      p_window_seconds: Math.max(1, Math.floor(windowSeconds)),
+    });
+    const retryAfter = Number(result.retryAfter ?? result.retry_after ?? 0);
+    return { limited: result.limited === true, retryAfter: Number.isFinite(retryAfter) ? Math.max(0, retryAfter) : 0 };
+  } catch (error) {
+    console.warn("Rate limit fell back to local memory.", error);
+    return consumeMemoryAttempt(hashedKey, maxAttempts, windowSeconds);
   }
 }
 

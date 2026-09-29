@@ -14,6 +14,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
     "security:audit": "node scripts/run-security-audit-groq.mjs"
   },
   "dependencies": {
@@ -48,8 +49,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.475.0",
-    "next": "15.5.19",
-    "patch-package": "^8.0.0",
+    "next": "15.5.26",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -71,12 +71,9 @@
   },
   "overrides": {
     "@babel/runtime": "7.26.10",
-    "minimatch@3.1.2": {
-      "brace-expansion": "1.1.13"
-    },
-    "minimatch@9.0.5": {
-      "brace-expansion": "2.0.3"
-    },
+    "minimatch": "9.0.9",
+    "brace-expansion": "2.1.7",
+    "sharp": "0.35.5",
     "postcss": "$postcss",
     "tmp": "0.2.7"
   }

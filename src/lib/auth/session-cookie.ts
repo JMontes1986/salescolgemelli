@@ -13,12 +13,11 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 function getSigningSecret() {
-  return (
-    process.env.AUTH_COOKIE_SECRET ??
-    process.env.NEXT_SERVER_AUTH_SECRET ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    "development-only-auth-cookie-secret"
-  );
+  const value = process.env.AUTH_COOKIE_SECRET ?? process.env.NEXT_SERVER_AUTH_SECRET;
+  if (!value && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_COOKIE_SECRET es obligatorio en producción.");
+  }
+  return value ?? "development-only-auth-cookie-secret";
 }
 
 function toBase64Url(bytes: Uint8Array) {
@@ -84,9 +83,20 @@ export async function verifyAuthSessionCookie(
     return null;
   }
 
-  const expectedSignature = await signValue(encodedPayload);
-
-  if (signature !== expectedSignature) {
+  let signatureBytes: Uint8Array;
+  try {
+    signatureBytes = fromBase64Url(signature);
+  } catch {
+    return null;
+  }
+  const key = await getSigningKey();
+  const validSignature = await crypto.subtle.verify(
+    "HMAC",
+    key,
+    signatureBytes,
+    encoder.encode(encodedPayload),
+  );
+  if (!validSignature) {
     return null;
   }
 
