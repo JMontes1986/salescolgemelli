@@ -709,7 +709,16 @@ function RedeemPageComponent() {
             case 'pre-sale-confirmed':
                 return renderDeliveryButton(purchase);
             case 'pending':
-                return renderDeliveryButton(purchase);
+                return (
+                    <div className="grid w-full gap-2">
+                        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                            La entrega está bloqueada hasta confirmar el ingreso. Los pagos Bre-B reportados se verifican en el módulo Pagos Bre-B.
+                        </div>
+                        <Button type="button" onClick={() => handleUpdateStatus(purchase.id, 'paid')} disabled={isUpdating}>
+                            {isUpdating ? 'Confirmando...' : 'Confirmar pago recibido en el colegio'}
+                        </Button>
+                    </div>
+                );
             case 'paid':
             case 'partially-delivered':
                 return renderDeliveryButton(purchase);
@@ -975,7 +984,7 @@ function RedeemPageComponent() {
                                                                     <p className="font-medium">{item.name} (x{item.quantity}) - {formatCurrency(item.price * item.quantity)}</p>
                                                                     <p className="text-xs text-muted-foreground">Entregado: {delivered} | Pendiente: {pending}</p>
                                                                 </div>
-                                                                {pending > 0 && (purchase.status === 'pending' || purchase.status === 'paid' || purchase.status === 'pre-sale-confirmed' || purchase.status === 'partially-delivered') && (
+                                                                {pending > 0 && (purchase.status === 'paid' || purchase.status === 'pre-sale-confirmed' || purchase.status === 'partially-delivered') && (
                                                                     <div className="flex items-center gap-2">
                                                                         <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setSelectedDeliveryQuantity(purchase, item.id, selected - 1)}>
                                                                             <Minus className="h-3 w-3" />

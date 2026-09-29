@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import type { Product, Purchase } from '@/lib/types';
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, PlayCircle } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, Pencil, QrCode, Smartphone, PlayCircle, Copy, CheckCircle2, Landmark } from "lucide-react";
 import { formatCurrency, cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -34,48 +34,21 @@ import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { Badge } from '@/components/ui/badge';
 import { MOLLY_LOGO_URL } from '@/components/icons';
 import { PurchaseModifiedIndicator } from '@/components/purchase-modified-indicator';
+import { LocalQrCode } from '@/components/local-qr-code';
+import { reportBrebPayment } from '@/lib/services/payment-service';
 
 
 
-const DEFAULT_DAVIPLATA_BREB_KEY = '3206766574';
-const DAVIPLATA_BREB_KEY = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_KEY?.trim() || DEFAULT_DAVIPLATA_BREB_KEY;
-const DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE = 'daviplata://pagar?llave={key}&referencia={code}';
-const DAVIPLATA_BREB_LINK_TEMPLATE = process.env.NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL?.trim() || DEFAULT_DAVIPLATA_BREB_LINK_TEMPLATE;
-const DAVIPLATA_DEEP_LINK_PREFIX = 'daviplata:';
+const BREB_ENABLED = process.env.NEXT_PUBLIC_BREB_ENABLED !== 'false';
+const BREB_KEY = process.env.NEXT_PUBLIC_BREB_KEY?.trim() || '';
+const BREB_ACCOUNT_NAME = process.env.NEXT_PUBLIC_BREB_ACCOUNT_NAME?.trim() || 'Colegio Franciscano Agustín Gemelli';
+const BREB_QR_PAYLOAD = process.env.NEXT_PUBLIC_BREB_QR_PAYLOAD?.trim() || '';
 const SELF_SERVICE_REFRESH_INTERVAL_MS = 60_000;
 const SELF_SERVICE_REFRESH_JITTER_MS = 15_000;
-
-const buildDaviplataPaymentHref = (paymentCode: string | null, _total: number) => {
-  if (!DAVIPLATA_BREB_KEY || !DAVIPLATA_BREB_LINK_TEMPLATE) return '';
-
-  return DAVIPLATA_BREB_LINK_TEMPLATE
-    .replaceAll('{code}', encodeURIComponent(paymentCode || ''))
-    .replaceAll('{amount}', '')
-    .replaceAll('{amount_cents}', '')
-    .replaceAll('{key}', encodeURIComponent(DAVIPLATA_BREB_KEY));
-};
-
-const buildDaviplataQrPayload = (paymentCode: string | null, total: number) => {
-  const paymentHref = buildDaviplataPaymentHref(paymentCode, total);
-
-  if (paymentHref) return paymentHref;
-
-  return [
-    'Pago por DaviPlata / Bre-B',
-    DAVIPLATA_BREB_KEY ? `Llave: ${DAVIPLATA_BREB_KEY}` : 'Llave Bre-B no configurada',
-    paymentCode ? `Referencia: ${paymentCode}` : '',
-  ].filter(Boolean).join('\n');
-};
-
-const buildQrImageUrl = (payload: string) => (
-  `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(payload)}`
-);
 
 const buildDeliveryQrPayload = (purchase: Purchase) => (
   purchase.qrPayload || `/dashboard/redeem?code=${encodeURIComponent(purchase.id)}&delivery=${encodeURIComponent(purchase.deliveryCode || '')}`
 );
-
-const buildDeliveryQrImageUrl = (purchase: Purchase) => buildQrImageUrl(buildDeliveryQrPayload(purchase));
 
 const getReservationExpiryLabel = (purchase?: Purchase | null) => {
   if (!purchase?.reservationExpiresAt || purchase.status !== 'pending') return null;
@@ -88,19 +61,6 @@ const getReservationExpiryLabel = (purchase?: Purchase | null) => {
   }).format(expiresAt);
 };
 
-const isDaviplataDeepLink = (href: string) => href.toLowerCase().startsWith(DAVIPLATA_DEEP_LINK_PREFIX);
-
-const isMobileDevice = () => (
-  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-);
-
-const getPaymentLinkTarget = (href: string) => (
-  href && !isDaviplataDeepLink(href) ? '_blank' : undefined
-);
-
-const getPaymentLinkRel = (href: string) => (
-  getPaymentLinkTarget(href) ? 'noopener noreferrer' : undefined
-);
 const getPurchaseSource = (purchase: Purchase) => (
   purchase.purchaseSource
     ?? (purchase.id.startsWith('CG') ? 'pos' : purchase.sellerId ? 'presale' : 'self-service')
@@ -146,22 +106,10 @@ export default function SelfServicePage() {
   const { toast } = useToast();
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
+  const [paymentStep, setPaymentStep] = useState<'choice' | 'breb' | 'reported'>('choice');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [reportedPaymentIds, setReportedPaymentIds] = useState<Set<string>>(() => new Set());
   const realtimeTables = useMemo(() => ['products', 'purchases', 'self_service_reservations'] as const, []);
-
-  const handleDaviplataPaymentClick = useCallback((event: MouseEvent<HTMLAnchorElement>, paymentHref: string) => {
-    if (!paymentHref) {
-      event.preventDefault();
-      return;
-    }
-
-    if (isDaviplataDeepLink(paymentHref) && !isMobileDevice()) {
-      event.preventDefault();
-      toast({
-        title: "Escanee el QR desde el celular",
-        description: `Este pago se abre en la app DaviPlata del telefono. Desde computador use la llave Bre-B ${DAVIPLATA_BREB_KEY}.`,
-      });
-    }
-  }, [toast]);
 
   const loadProducts = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -325,13 +273,12 @@ export default function SelfServicePage() {
     try {
         const updatedItems = toServerCartItems(cart);
         const updatedPurchase = await updatePendingPurchase(editingPurchase.id, updatedItems, {
-          customerCedula: editingPurchase.cedula,
-          customerCelular: editingPurchase.celular,
           selfServiceOnly: true,
         });
         
         setPaymentCode(editingPurchase.id);
         setLastPurchase(updatedPurchase);
+        setPaymentStep('choice');
         setEditablePurchaseIds(prev => new Set(prev).add(updatedPurchase.id));
         setPurchaseHistory(prev => [updatedPurchase, ...prev.filter(purchase => purchase.id !== updatedPurchase.id)]);
         setIsPaymentModalOpen(true);
@@ -377,6 +324,7 @@ export default function SelfServicePage() {
         const addedPurchase = await addPreSalePurchase(newPurchaseData);
         setPaymentCode(addedPurchase.id);
         setLastPurchase(addedPurchase);
+        setPaymentStep('choice');
         setCelular(addedPurchase.celular);
         setEditablePurchaseIds(prev => new Set(prev).add(addedPurchase.id));
         setPurchaseHistory(prev => [addedPurchase, ...prev.filter(purchase => purchase.id !== addedPurchase.id)]);
@@ -396,6 +344,8 @@ export default function SelfServicePage() {
       setIsPaymentModalOpen(false);
       setPaymentCode(null);
       setCelular('');
+      setPaymentStep('choice');
+      setCopiedField(null);
       clearCart();
       loadProducts(); // Refresh products after a successful purchase
   }
@@ -420,10 +370,26 @@ export default function SelfServicePage() {
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const paymentTotal = lastPurchase?.id === paymentCode ? lastPurchase.total : subtotal;
   const paymentItems = lastPurchase?.id === paymentCode ? lastPurchase.items : cart;
-  const daviplataPaymentHref = buildDaviplataPaymentHref(paymentCode, paymentTotal);
-  const daviplataQrPayload = buildDaviplataQrPayload(paymentCode, paymentTotal);
-  const daviplataQrImageUrl = buildQrImageUrl(daviplataQrPayload);
   const reservationExpiryLabel = getReservationExpiryLabel(lastPurchase);
+  const copyValue = async (label: string, value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedField(label);
+    window.setTimeout(() => setCopiedField(current => current === label ? null : current), 1800);
+  };
+  const handleReportPayment = async () => {
+    if (!paymentCode) return;
+    setIsProcessing(true);
+    try {
+      await reportBrebPayment(paymentCode);
+      setReportedPaymentIds(current => new Set(current).add(paymentCode));
+      setPaymentStep('reported');
+      toast({ title: 'Pago reportado', description: 'El colegio verificará el ingreso. La compra aún no está marcada como pagada.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'No se pudo reportar', description: error instanceof Error ? error.message : 'Intente nuevamente.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
   const canShowSessionActions = (purchase: Purchase) => editablePurchaseIds.has(purchase.id);
   const getPurchaseStatusLabel = (status: Purchase['status']) => {
     switch (status) {
@@ -494,7 +460,7 @@ export default function SelfServicePage() {
               </li>
               <li className="grid grid-cols-[32px_1fr] gap-3 px-4 py-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2c84b] font-bold text-[#073b72]">3</span>
-                <div><p className="font-semibold">Pague y reciba</p><p className="text-sm leading-5 text-white/70">Use el código en caja o pague por DaviPlata.</p></div>
+                <div><p className="font-semibold">Pague y reciba</p><p className="text-sm leading-5 text-white/70">Use el código en caja o pague con Bre-B.</p></div>
               </li>
             </ol>
           </div>
@@ -792,11 +758,9 @@ export default function SelfServicePage() {
                         <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
                           {hasSessionActions ? (
                             <div className="rounded-2xl border border-[#cbd9e8] bg-white p-3 text-center shadow-sm">
-                              <img
-                                src={buildDeliveryQrImageUrl(purchase)}
-                                alt={`QR de entrega ${purchase.id}`}
-                                width={116}
-                                height={116}
+                              <LocalQrCode
+                                value={buildDeliveryQrPayload(purchase)}
+                                label={`QR de entrega ${purchase.id}`}
                                 className="mx-auto h-28 w-28"
                               />
                               <p className="mt-2 text-xs font-semibold text-[#0d4d8b]">Código adicional</p>
@@ -814,7 +778,9 @@ export default function SelfServicePage() {
                           )}
                           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                             <Badge variant="secondary" className={getPurchaseStatusClassName(purchase.status)}>
-                              {getPurchaseStatusLabel(purchase.status)}
+                              {purchase.status === 'pending' && reportedPaymentIds.has(purchase.id)
+                                ? 'Pago Bre-B reportado'
+                                : getPurchaseStatusLabel(purchase.status)}
                             </Badge>
                             <span className="text-lg font-black">{formatCurrency(purchase.total)}</span>
                             {hasSessionActions && (purchase.status === 'pending' || purchase.status === 'pre-sale') && (
@@ -859,7 +825,7 @@ export default function SelfServicePage() {
           <DialogHeader>
             <DialogTitle>Confirmar Información</DialogTitle>
             <DialogDesc>
-              Ingrese su celular para generar el código de pago. No necesita cédula.
+              Ingrese su celular para generar el código de pago y proteger esta sesión.
             </DialogDesc>
           </DialogHeader>
           <form id="user-info-form" onSubmit={handleConfirmPayment}>
@@ -908,7 +874,7 @@ export default function SelfServicePage() {
             )}
             <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-md border border-yellow-200 dark:border-yellow-800">
                 <p className="text-base font-semibold">
-                    Su compra está pendiente. Puede pagar en caja o por DaviPlata/Bre-B; después presente este código para confirmar y recibir sus productos.
+                    Su compra está pendiente. Puede pagar en el colegio o con Bre-B; el personal debe verificar el ingreso antes de marcarla como pagada.
                 </p>
             </div>
             <div className="text-center">
@@ -924,61 +890,65 @@ export default function SelfServicePage() {
                   <QrCode className="h-5 w-5" />
                   QR único de entrega
                 </div>
-                <img
-                  src={buildDeliveryQrImageUrl(lastPurchase)}
-                  alt={`QR de entrega ${lastPurchase.id}`}
-                  width={180}
-                  height={180}
-                  className="mx-auto h-44 w-44 rounded-md border bg-white p-2"
+                <LocalQrCode
+                  value={buildDeliveryQrPayload(lastPurchase)}
+                  label={`QR de entrega ${lastPurchase.id}`}
+                  className="mx-auto"
                 />
                 <p className="mt-3 text-sm font-semibold">Código adicional para validar: <span className="font-mono text-lg text-primary">{lastPurchase.deliveryCode}</span></p>
               </div>
             )}
 
-            <div className="rounded-md border bg-background p-4 text-center">
-              <div className="mb-3 flex items-center justify-center gap-2 font-black text-primary">
-                <Smartphone className="h-5 w-5" />
-                Pago por DaviPlata / Bre-B
-              </div>
-              <a
-                href={daviplataPaymentHref || undefined}
-                target={getPaymentLinkTarget(daviplataPaymentHref)}
-                rel={getPaymentLinkRel(daviplataPaymentHref)}
-                onClick={(event) => handleDaviplataPaymentClick(event, daviplataPaymentHref)}
-                aria-label="Abrir pago por DaviPlata Bre-B"
-                className={cn(
-                  "mx-auto flex w-fit rounded-md border bg-white p-3 shadow-sm",
-                  daviplataPaymentHref ? "cursor-pointer hover:ring-2 hover:ring-primary" : "cursor-default"
-                )}
-              >
-                <img
-                  src={daviplataQrImageUrl}
-                  alt="QR de pago DaviPlata Bre-B"
-                  width={220}
-                  height={220}
-                  className="h-52 w-52"
-                />
-              </a>
-              <p className="mt-3 text-sm font-semibold">
-                En computador, escanee el QR desde el celular. En el telefono, toque el QR para intentar abrir DaviPlata.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use el código {paymentCode} como referencia y pague exactamente {formatCurrency(paymentTotal)}.
-              </p>
-              {reservationExpiryLabel && (
-                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                  La reserva de inventario vence a las {reservationExpiryLabel}.
-                </p>
+            <div className="rounded-2xl border border-[#cbd9e8] bg-[#f6f9fc] p-4">
+              {paymentStep === 'choice' && (
+                <div className="space-y-3 text-left">
+                  <p className="text-sm font-bold text-[#073b72]">¿Cómo desea pagar?</p>
+                  {BREB_ENABLED && (
+                    <Button type="button" className="h-14 w-full bg-[#0d4d8b] text-white active:scale-[0.98]" onClick={() => setPaymentStep('breb')}>
+                      <Landmark className="mr-2 h-5 w-5" /> Pagar con Bre-B
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" className="h-14 w-full active:scale-[0.98]" onClick={closeModal}>
+                    Pagar en el colegio
+                  </Button>
+                </div>
               )}
-              {DAVIPLATA_BREB_KEY ? (
-                <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs font-semibold">
-                  Llave Bre-B DaviPlata del colegio: {DAVIPLATA_BREB_KEY}
-                </p>
-              ) : (
-                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                  Configure NEXT_PUBLIC_DAVIPLATA_BREB_KEY para mostrar la llave Bre-B real del colegio.
-                </p>
+              {paymentStep === 'breb' && (
+                <div className="space-y-4 text-left">
+                  <div className="flex items-center gap-2 font-black text-[#073b72]"><Smartphone className="h-5 w-5" /> Paga con Bre-B</div>
+                  <div className="rounded-xl bg-[#073b72] p-4 text-white">
+                    <p className="text-xs font-semibold uppercase text-white/70">Total exacto</p>
+                    <p className="text-3xl font-black">{formatCurrency(paymentTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">Llave del colegio</p>
+                    <p className="break-all font-mono text-xl font-bold">{BREB_KEY || 'Llave no configurada'}</p>
+                    <p className="text-sm text-muted-foreground">Destinatario: {BREB_ACCOUNT_NAME}</p>
+                  </div>
+                  {BREB_KEY && <Button type="button" variant="outline" className="w-full" onClick={() => copyValue('key', BREB_KEY)}><Copy className="mr-2 h-4 w-4" />{copiedField === 'key' ? 'Copiado' : 'Copiar llave'}</Button>}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="outline" onClick={() => copyValue('amount', String(paymentTotal))}><Copy className="mr-2 h-4 w-4" />{copiedField === 'amount' ? 'Copiado' : 'Copiar valor'}</Button>
+                    <Button type="button" variant="outline" onClick={() => copyValue('code', paymentCode || '')}><Copy className="mr-2 h-4 w-4" />{copiedField === 'code' ? 'Copiado' : 'Copiar código'}</Button>
+                  </div>
+                  {BREB_QR_PAYLOAD && <div className="flex justify-center"><LocalQrCode value={BREB_QR_PAYLOAD} label="QR oficial Bre-B" /></div>}
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Importante: pague exactamente {formatCurrency(paymentTotal)}. Una diferencia puede impedir identificar su pago.</div>
+                  <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                    <li>Abra la aplicación de su banco o billetera.</li><li>Ingrese a Bre-B y seleccione pagar con llave.</li><li>Digite la llave y el valor exacto.</li><li>Verifique que el destinatario sea el colegio.</li><li>Confirme en su entidad y regrese aquí.</li>
+                  </ol>
+                  <Button type="button" className="h-14 w-full bg-emerald-700 text-white active:scale-[0.98]" disabled={isProcessing || !BREB_KEY} onClick={handleReportPayment}>
+                    {isProcessing ? 'Reportando...' : 'Ya realicé el pago'}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">Este botón no confirma el dinero ni marca la compra como pagada.</p>
+                </div>
               )}
+              {paymentStep === 'reported' && (
+                <div className="space-y-3 py-3 text-center">
+                  <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-700" />
+                  <p className="text-xl font-black text-[#073b72]">Pago reportado</p>
+                  <p className="text-sm text-muted-foreground">Estamos verificando el ingreso en Bre-B. Su compra sigue pendiente y reservada. No realice un segundo pago.</p>
+                </div>
+              )}
+              {reservationExpiryLabel && paymentStep !== 'reported' && <p className="mt-3 text-center text-xs font-semibold text-amber-800">Reserva válida hasta las {reservationExpiryLabel}.</p>}
             </div>
 
             <div>

@@ -39,7 +39,7 @@ El sistema está diseñado para cubrir tres canales de operación:
 - **Ventas multicanal:** POS interno, preventas para eventos y portal público de autogestión.
 - **Inventario en tiempo real:** control de stock con validación de disponibilidad, reservas y reintegro por devoluciones.
 - **Caja y finanzas:** apertura/cierre de caja, totales esperados, descuadres y verificación de pagos digitales.
-- **Pagos DaviPlata/Bre-B:** generación configurable de enlaces profundos o URL con placeholders para llave, valor y referencia.
+- **Pagos Bre-B manuales:** muestra la llave oficial, permite reportar el pago y exige verificación posterior de caja.
 - **Autenticación y RBAC:** inicio de sesión con Supabase Auth y roles `admin`, `cashier`, `seller` y `auditor`.
 - **Auditoría:** registro opcional de acciones críticas como ventas, canjes, pagos, reintegros, cierres de caja y cambios de rol.
 - **Dashboard administrativo:** KPIs, productos, caja, devoluciones, usuarios y bitácora de auditoría.
@@ -101,8 +101,8 @@ Supabase REST, Auth y RPC PostgreSQL
 
 - Ruta pública: `/self-service`.
 - Permite a padres o estudiantes seleccionar productos y generar una reserva.
-- Usa identificación por cédula/celular.
-- Genera códigos y enlaces/QR de pago configurables con DaviPlata/Bre-B.
+- Usa celular y una sesión temporal HttpOnly ligada a las compras creadas; el flujo público no usa cédula.
+- Genera QR local de entrega y solo muestra QR Bre-B cuando existe un payload oficial del banco.
 - Mantiene compras pendientes hasta su verificación o entrega.
 
 ### 3. Preventa
@@ -225,11 +225,15 @@ Crea `.env.local` para desarrollo y configura las mismas variables en **Vercel �
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_solo_servidor
-NEXT_PUBLIC_DAVIPLATA_BREB_KEY=3206766574
-NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL=daviplata://pagar?llave={key}&valor={amount}&referencia={code}
+SELF_SERVICE_SESSION_SECRET=secreto_aleatorio_de_al_menos_32_caracteres
+NEXT_PUBLIC_BREB_ENABLED=true
+NEXT_PUBLIC_BREB_KEY=
+NEXT_PUBLIC_BREB_ACCOUNT_NAME=Colegio Franciscano Agustín Gemelli
+NEXT_PUBLIC_BREB_QR_PAYLOAD=
+BREB_REPORTED_RESERVATION_MINUTES=1440
 ```
 
-`NEXT_PUBLIC_DAVIPLATA_BREB_PAYMENT_URL` puede ser un enlace profundo o URL provista por DaviPlata/Bre-B. Soporta los placeholders `{key}`, `{amount}`, `{amount_cents}` y `{code}`. Si no se configura, el autoservicio usa por defecto `daviplata://pagar?llave={key}&valor={amount}&referencia={code}` con la llave Bre-B `3206766574`.
+No se integra DaviPlata ni se inventan enlaces bancarios. `NEXT_PUBLIC_BREB_QR_PAYLOAD` debe quedar vacío salvo que la entidad financiera entregue un payload oficial.
 
 > ⚠️ No subas claves privadas ni archivos `.env.local` al repositorio.
 
@@ -293,6 +297,9 @@ Pasos sugeridos:
 ---
 
 ## Documentación adicional
+
+- [Pagos Bre-B manuales](docs/BREB_PAYMENTS.md)
+- [Seguridad de autogestión](docs/SELF_SERVICE_SECURITY.md)
 
 - `docs/blueprint.md`: blueprint original de producto, features y guía visual.
 - `supabase/schema.sql`: definición de tablas, funciones RPC, triggers/migraciones y permisos SQL.

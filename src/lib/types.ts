@@ -154,6 +154,23 @@ export type Purchase = {
   purchaseSource?: 'self-service' | 'pos' | 'presale';
 };
 
+export type PaymentStatus = 'created' | 'reported' | 'verified' | 'rejected' | 'cancelled';
+export type PaymentTransaction = {
+  id: string;
+  purchase_id: string;
+  provider: 'breb';
+  method: 'breb_key';
+  amount: number;
+  currency: 'COP';
+  status: PaymentStatus;
+  created_at: string;
+  reported_at?: string | null;
+  verified_at?: string | null;
+  verified_by?: string | null;
+  notes?: string | null;
+  purchase?: Pick<Purchase, 'id' | 'date' | 'total' | 'items' | 'celular' | 'status'>;
+};
+
 // Type for creating a new purchase
 export type NewPurchase = Omit<Purchase, 'id'>;
 

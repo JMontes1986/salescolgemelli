@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
   FilePenLine,
   Trash2,
+  Landmark,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -48,6 +49,7 @@ export const navItems: NavItem[] = [
   { href: "/dashboard/redeem", icon: QrCode, label: "Gestión entrega", permission: 'redeem' },
   { href: "/dashboard/presale", icon: ClipboardCheck, label: "Preventa", permission: 'presale', alternatePermissions: ['cashbox'] },
   { href: "/dashboard/cashbox", icon: Archive, label: "Caja", permission: 'cashbox' },
+  { href: "/dashboard/breb-payments", icon: Landmark, label: "Pagos Bre-B", permission: 'cashbox' },
   { href: "/dashboard/returns", icon: Undo2, label: "Devoluciones", permission: 'returns' },
 ];
 

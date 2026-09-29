@@ -9,7 +9,7 @@
 - Cashbox Management: Enable opening and closing of cashboxes with consolidated totals and audit logging using Cloud Functions.
 - User Role Management: Administer user roles (admin, cashier, seller, auditor, readonly) by assigning custom claims to users for permission control using a Cloud Function.
 - Auditing: Automatically maintains an audit log related to sensitive transactions, such as when tickets are issued, marked as sold, marked as void, or cashed in. The logs include the user who initiated the action as well as timestamps for further forensic analysis.
-- Self-Service Purchase: Allow parents to purchase tickets online, generating a unique code for verification. Redirect them to the school's Daviplata application for payment. After payment, allow them to authorize the purchase and claim the tickets at the box office.
+- Self-Service Purchase: Allow parents to create a phone-bound reservation, pay manually with the school's Bre-B key, and report the transfer for later verification by authorized staff.
 
 ## Style Guidelines:
 

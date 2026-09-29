@@ -43,7 +43,7 @@ export default function SelfServiceTutorialPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [quantities, setQuantities] = useState<number[]>(() => products.map(() => 0));
   const [phone, setPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"caja" | "daviplata" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"caja" | "breb" | null>(null);
 
   const cart = useMemo(
     () => products
@@ -87,7 +87,7 @@ export default function SelfServiceTutorialPage() {
           />
           <div className="min-w-0">
             <h1 className="text-lg font-black sm:text-xl">Tutorial de Autogestión</h1>
-            <p className="text-xs font-bold text-[#777] sm:text-sm">Compre sin cédula, usando solo su celular</p>
+            <p className="text-xs font-bold text-[#777] sm:text-sm">Compre usando su celular</p>
           </div>
           <Button asChild variant="outline" className="ml-auto border-[#0d4d8b]/35 bg-[#edf4fb] font-black text-[#073b72]">
             <Link href="/self-service">
@@ -128,7 +128,7 @@ export default function SelfServiceTutorialPage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 1</p>
                 <h2 className="mt-2 text-2xl font-black">Elija sus productos</h2>
-                <p className="mt-2 font-semibold text-[#666]">Puede comenzar a comprar inmediatamente. No necesita registrarse ni ingresar cédula.</p>
+                <p className="mt-2 font-semibold text-[#666]">Puede comenzar a comprar inmediatamente y registrar su celular al finalizar.</p>
               </div>
               <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 {products.map((product, index) => {
@@ -167,7 +167,7 @@ export default function SelfServiceTutorialPage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 2</p>
                 <h2 className="mt-2 text-2xl font-black">Ingrese solo su celular</h2>
-                <p className="mt-2 font-semibold text-[#666]">El celular se solicita al finalizar el pedido. La tienda no pide cédula.</p>
+                <p className="mt-2 font-semibold text-[#666]">El celular se solicita al finalizar el pedido para asociarlo a su sesión.</p>
               </div>
               <label className="block text-sm font-black" htmlFor="tutorial-phone">Número de celular</label>
               <input
@@ -193,12 +193,12 @@ export default function SelfServiceTutorialPage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0d4d8b]">Paso 3</p>
                 <h2 className="mt-2 text-2xl font-black">Escoja cómo pagar</h2>
-                <p className="mt-2 font-semibold text-[#666]">Puede pagar en caja o por DaviPlata/Bre-B usando el código del pedido como referencia.</p>
+                <p className="mt-2 font-semibold text-[#666]">Puede pagar en el colegio o transferir con la llave Bre-B.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {([
                   ["caja", "Pagar en caja", "Presente el código o QR al cajero."],
-                  ["daviplata", "DaviPlata / Bre-B", "Transfiera a la llave del colegio."],
+                  ["breb", "Pagar con Bre-B", "Transfiera a la llave del colegio y reporte el pago."],
                 ] as const).map(([value, title, description]) => (
                   <button key={value} type="button" onClick={() => setPaymentMethod(value)} className={cn("rounded-2xl border-2 p-5 text-left", paymentMethod === value ? "border-[#0d4d8b] bg-[#fff3c4]" : "border-[#d7e1ec]")}>
                     <CreditCard className="mb-3 h-8 w-8 text-[#0d4d8b]" />
